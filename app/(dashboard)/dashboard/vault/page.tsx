@@ -38,13 +38,13 @@ export default async function VaultPage() {
   const documents = (documentsData as Document[] | null) ?? [];
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between border-b border-slate-200 pb-4">
+    <div className="space-y-8 max-w-[1200px] mx-auto">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-3xl font-heading font-bold text-slate-900 tracking-tight">
             Trezor Dokumenata
           </h1>
-          <p className="mt-1.5 text-base text-slate-500">
+          <p className="mt-1 text-base text-slate-500">
             Upravljajte dokumentima firme i pratite rokove isteka.
           </p>
         </div>

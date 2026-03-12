@@ -22,7 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Loader2, Upload } from "lucide-react";
+import { Plus, Loader2, Upload, FileText } from "lucide-react";
 
 export function AddDocumentModal() {
   const router = useRouter();
@@ -107,28 +107,35 @@ export function AddDocumentModal() {
       }}
     >
       <DialogTrigger asChild>
-        <Button>
-          <Plus className="size-4" />
+        <Button className="rounded-xl bg-primary text-white shadow-lg shadow-blue-500/30 hover:bg-blue-700 hover:shadow-blue-500/40 hover:-translate-y-0.5 transition-all font-bold px-6 h-11">
+          <Plus className="mr-2 size-4" />
           Dodaj dokument
         </Button>
       </DialogTrigger>
-      <DialogContent className="border-border bg-card sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>Dodaj novi dokument</DialogTitle>
-          <DialogDescription>
-            Uploadajte dokument u trezor vaše firme.
-          </DialogDescription>
+      <DialogContent className="rounded-2xl border-none shadow-2xl sm:max-w-lg bg-white p-0 overflow-hidden">
+        <DialogHeader className="px-6 pt-6 pb-4 border-b border-slate-100 bg-slate-50/50">
+          <div className="flex items-center gap-3 mb-1">
+            <div className="flex size-10 items-center justify-center rounded-xl bg-blue-100 text-primary">
+              <Upload className="size-5" />
+            </div>
+            <div>
+              <DialogTitle className="text-xl font-heading font-bold text-slate-900">Novi dokument</DialogTitle>
+              <DialogDescription className="text-slate-500">
+                Dodajte dokument u vaš sigurni trezor.
+              </DialogDescription>
+            </div>
+          </div>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="p-6 space-y-5">
           {error && (
-            <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
+            <div className="rounded-xl bg-red-50 p-4 text-sm font-medium text-red-600 border border-red-100">
               {error}
             </div>
           )}
 
           <div className="space-y-2">
-            <Label htmlFor="doc-name">Naziv dokumenta *</Label>
+            <Label htmlFor="doc-name" className="text-sm font-bold text-slate-700">Naziv dokumenta <span className="text-red-500">*</span></Label>
             <Input
               id="doc-name"
               type="text"
@@ -137,41 +144,46 @@ export function AddDocumentModal() {
               onChange={(e) => setName(e.target.value)}
               required
               disabled={loading}
+              className="h-11 rounded-xl border-slate-200 bg-white px-4 text-sm focus-visible:ring-primary focus-visible:border-primary transition-all"
             />
           </div>
 
-          <div className="space-y-2">
-            <Label>Tip dokumenta *</Label>
-            <Select value={type} onValueChange={setType} disabled={loading}>
-              <SelectTrigger>
-                <SelectValue placeholder="Odaberite tip" />
-              </SelectTrigger>
-              <SelectContent>
-                {DOCUMENT_TYPES.map((dt) => (
-                  <SelectItem key={dt} value={dt}>
-                    {dt}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="grid grid-cols-2 gap-5">
+            <div className="space-y-2">
+              <Label className="text-sm font-bold text-slate-700">Tip dokumenta <span className="text-red-500">*</span></Label>
+              <Select value={type} onValueChange={setType} disabled={loading}>
+                <SelectTrigger className="h-11 rounded-xl border-slate-200 bg-white px-4 text-sm focus:ring-primary focus:border-primary transition-all">
+                  <SelectValue placeholder="Odaberite tip" />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl border-slate-200 shadow-xl">
+                  {DOCUMENT_TYPES.map((dt) => (
+                    <SelectItem key={dt} value={dt} className="focus:bg-blue-50 focus:text-primary rounded-lg cursor-pointer py-2.5">
+                      {dt}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="doc-expires" className="text-sm font-bold text-slate-700">Datum isteka (opciono)</Label>
+              <Input
+                id="doc-expires"
+                type="date"
+                value={expiresAt}
+                onChange={(e) => setExpiresAt(e.target.value)}
+                disabled={loading}
+                className="h-11 rounded-xl border-slate-200 bg-white px-4 text-sm focus-visible:ring-primary focus-visible:border-primary transition-all font-mono text-slate-600"
+              />
+            </div>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="doc-expires">Datum isteka (opciono)</Label>
-            <Input
-              id="doc-expires"
-              type="date"
-              value={expiresAt}
-              onChange={(e) => setExpiresAt(e.target.value)}
-              disabled={loading}
-              className="font-mono"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="doc-file">Fajl *</Label>
+            <Label htmlFor="doc-file" className="text-sm font-bold text-slate-700">Fajl <span className="text-red-500">*</span></Label>
             <div
-              className="relative flex cursor-pointer items-center justify-center rounded-md border-2 border-dashed border-border p-6 transition-colors hover:border-primary/50"
+              className={`relative flex flex-col items-center justify-center rounded-xl border-2 border-dashed p-8 transition-all cursor-pointer group ${
+                file ? "border-primary bg-blue-50/50" : "border-slate-200 hover:border-primary hover:bg-slate-50"
+              }`}
               onClick={() => fileInputRef.current?.click()}
             >
               <input
@@ -183,36 +195,55 @@ export function AddDocumentModal() {
                 className="hidden"
                 disabled={loading}
               />
-              <div className="text-center">
-                <Upload className="mx-auto mb-2 size-6 text-muted-foreground" />
-                {file ? (
-                  <p className="text-sm font-medium text-foreground">
-                    {file.name}{" "}
-                    <span className="text-muted-foreground">
-                      ({(file.size / 1024 / 1024).toFixed(1)} MB)
-                    </span>
+              
+              {file ? (
+                <div className="text-center">
+                  <div className="mx-auto mb-3 flex size-12 items-center justify-center rounded-full bg-blue-100 text-primary">
+                    <FileText className="size-6" />
+                  </div>
+                  <p className="text-sm font-bold text-slate-900 truncate max-w-[250px]">
+                    {file.name}
                   </p>
-                ) : (
-                  <p className="text-sm text-muted-foreground">
-                    Kliknite da odaberete fajl (max 10 MB)
+                  <p className="text-xs text-slate-500 mt-1">
+                    {(file.size / 1024 / 1024).toFixed(2)} MB
                   </p>
-                )}
-              </div>
+                  <p className="text-xs font-bold text-primary mt-3 hover:underline">
+                    Kliknite za promjenu
+                  </p>
+                </div>
+              ) : (
+                <div className="text-center">
+                  <div className="mx-auto mb-3 flex size-12 items-center justify-center rounded-full bg-slate-100 text-slate-400 group-hover:bg-blue-100 group-hover:text-primary transition-colors">
+                    <Upload className="size-6" />
+                  </div>
+                  <p className="text-sm font-medium text-slate-900">
+                    <span className="font-bold text-primary hover:underline">Kliknite za upload</span> ili prevucite fajl
+                  </p>
+                  <p className="text-xs text-slate-500 mt-1">
+                    PDF, DOCX, XLSX, JPG (max 10MB)
+                  </p>
+                </div>
+              )}
             </div>
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="pt-2">
             <Button
               type="button"
               variant="outline"
               onClick={() => setOpen(false)}
               disabled={loading}
+              className="h-11 rounded-xl border-slate-200 text-slate-700 hover:bg-slate-50 font-bold px-6"
             >
               Odustani
             </Button>
-            <Button type="submit" disabled={loading}>
-              {loading && <Loader2 className="animate-spin" />}
-              Upload
+            <Button 
+              type="submit" 
+              disabled={loading}
+              className="h-11 rounded-xl bg-primary text-white hover:bg-blue-700 shadow-lg shadow-blue-500/20 hover:shadow-blue-500/30 transition-all font-bold px-8"
+            >
+              {loading && <Loader2 className="mr-2 size-4 animate-spin" />}
+              Uploaduj dokument
             </Button>
           </DialogFooter>
         </form>
