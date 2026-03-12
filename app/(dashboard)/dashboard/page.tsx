@@ -122,7 +122,8 @@ export default async function DashboardPage() {
             href="/dashboard/bids"
             className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-primary px-5 text-sm font-bold text-white shadow-lg shadow-blue-500/30 transition-all hover:bg-blue-700 hover:shadow-blue-500/40 hover:-translate-y-0.5"
           >
-            Novi radni prostor
+            <Plus className="size-4" />
+            Nova ponuda
           </Link>
         </div>
       </div>
@@ -136,7 +137,7 @@ export default async function DashboardPage() {
             <div className="flex size-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
               <FileText className="size-5" />
             </div>
-            <p className="text-sm font-bold text-slate-500">Total Tenders</p>
+            <p className="text-sm font-bold text-slate-500">Ukupno ponuda</p>
           </div>
           <p className="font-heading text-4xl font-extrabold text-slate-900 relative z-10 mt-2">
             {(bidsCount ?? 0) + (wonBidsCount ?? 0) + (lostBidsCount ?? 0)}
@@ -187,16 +188,26 @@ export default async function DashboardPage() {
           <div className="rounded-[1.5rem] bg-white shadow-sm border border-slate-100 overflow-hidden flex flex-col h-full">
             <div className="flex items-center justify-between p-6 border-b border-slate-50">
               <h2 className="font-heading text-xl font-bold text-slate-900">Aktivne ponude</h2>
-              <Link href="/dashboard/bids" className="text-sm font-bold text-primary hover:text-blue-700 flex items-center gap-1 transition-colors bg-blue-50 px-3 py-1.5 rounded-lg">
-                Prikaži sve
-              </Link>
+              <div className="flex items-center gap-3">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
+                  <input 
+                    type="text" 
+                    placeholder="Pretraži ponude..." 
+                    className="h-9 pl-9 pr-4 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all w-48 sm:w-64"
+                  />
+                </div>
+                <Link href="/dashboard/bids" className="hidden sm:flex h-9 items-center justify-center px-4 rounded-xl bg-blue-50 text-sm font-bold text-primary hover:bg-blue-100 transition-colors">
+                  Sve ponude
+                </Link>
+              </div>
             </div>
 
             <div className="flex-1 overflow-x-auto">
-              <table className="w-full text-left border-collapse">
+              <table className="w-full text-left border-collapse min-w-[600px]">
                 <thead>
                   <tr className="border-b border-slate-100 text-xs font-bold text-slate-400 uppercase tracking-wider bg-slate-50/50">
-                    <th className="p-4 pl-6 font-medium">Naziv tendera</th>
+                    <th className="p-4 pl-6 font-medium w-[40%]">Naziv tendera</th>
                     <th className="p-4 font-medium">Rok za predaju</th>
                     <th className="p-4 font-medium">Budžet</th>
                     <th className="p-4 font-medium">Status</th>
@@ -230,7 +241,7 @@ export default async function DashboardPage() {
                       return (
                         <tr key={bid.id} className="hover:bg-slate-50/80 transition-colors group">
                           <td className="p-4 pl-6">
-                            <Link href={`/dashboard/bids/${bid.id}`} className="font-semibold text-slate-900 hover:text-primary transition-colors line-clamp-1 max-w-[250px]" title={bid.tenders?.title}>
+                            <Link href={`/dashboard/bids/${bid.id}`} className="font-semibold text-slate-900 hover:text-primary transition-colors line-clamp-1 pr-4" title={bid.tenders?.title}>
                               {bid.tenders?.title ?? "Nepoznat tender"}
                             </Link>
                           </td>
@@ -241,17 +252,20 @@ export default async function DashboardPage() {
                             {bid.tenders?.estimated_value ? `${bid.tenders.estimated_value.toLocaleString("bs-BA")} KM` : "—"}
                           </td>
                           <td className="p-4">
-                            <span className={`inline-flex items-center justify-center rounded-full border px-2.5 py-1 text-xs font-bold ${status.colors}`}>
+                            <span className={`inline-flex items-center justify-center rounded-full border px-2.5 py-0.5 text-xs font-bold ${status.colors}`}>
                               {status.label}
                             </span>
                           </td>
                           <td className="p-4 pr-6">
-                            <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                              <Link href={`/dashboard/bids/${bid.id}`} className="p-1.5 text-slate-400 hover:text-primary hover:bg-blue-50 rounded-lg transition-colors">
+                            <div className="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <Link href={`/dashboard/bids/${bid.id}`} className="p-1.5 text-slate-400 hover:text-primary hover:bg-blue-50 rounded-lg transition-colors" title="Pregledaj">
                                 <Eye className="size-4" />
                               </Link>
-                              <button className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
+                              <button className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Uredi">
                                 <PenLine className="size-4" />
+                              </button>
+                              <button className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Obriši">
+                                <Trash2 className="size-4" />
                               </button>
                             </div>
                           </td>
