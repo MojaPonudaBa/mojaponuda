@@ -7,19 +7,19 @@ import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, Terminal, ShieldAlert } from "lucide-react";
+import { Loader2, ArrowRight, CheckCircle2 } from "lucide-react";
 
 const errorMessages: Record<string, string> = {
-  "User already registered": "SYS_ERROR // KORISNIK VEĆ POSTOJI",
+  "User already registered": "Korisnik sa ovom email adresom već postoji.",
   "Password should be at least 6 characters":
-    "SEC_ALERT // LOZINKA MORA IMATI MINIMALNO 6 ZNAKOVA",
-  "Too many requests": "SYS_BLOCK // PREVIŠE POKUŠAJA. RATE_LIMIT_ACTIVE",
+    "Lozinka mora imati minimalno 6 znakova.",
+  "Too many requests": "Previše pokušaja. Pokušajte ponovo za nekoliko minuta.",
   "Signup requires a valid password":
-    "SEC_ALERT // UNESITE VALIDNU LOZINKU",
+    "Unesite validnu lozinku.",
 };
 
 function translateError(message: string): string {
-  return errorMessages[message] || "SYS_ERROR // GREŠKA PRI REGISTRACIJI";
+  return errorMessages[message] || "Greška pri registraciji. Pokušajte ponovo.";
 }
 
 export default function SignupPage() {
@@ -38,19 +38,19 @@ export default function SignupPage() {
     setLoading(true);
 
     if (password !== confirmPassword) {
-      setError("SEC_ALERT // LOZINKE SE NE POKLAPAJU");
+      setError("Lozinke se ne poklapaju.");
       setLoading(false);
       return;
     }
 
     if (password.length < 6) {
-      setError("SEC_ALERT // LOZINKA MORA IMATI MINIMALNO 6 ZNAKOVA");
+      setError("Lozinka mora imati minimalno 6 znakova.");
       setLoading(false);
       return;
     }
 
     if (companyName.trim().length < 2) {
-      setError("DATA_REQ // UNESITE NAZIV ENTITETA (FIRME)");
+      setError("Unesite ispravan naziv firme.");
       setLoading(false);
       return;
     }
@@ -100,151 +100,135 @@ export default function SignupPage() {
 
   if (success) {
     return (
-      <div className="w-full border border-emerald-900/50 bg-[#060b17] shadow-[0_0_30px_rgba(16,185,129,0.1)]">
-        <div className="flex items-center justify-between border-b border-slate-800 bg-[#020611] px-4 py-3">
-          <div className="flex items-center gap-3">
-            <Terminal className="size-4 text-emerald-500" />
-            <span className="font-mono text-xs font-bold text-emerald-500 tracking-widest">
-              SYSTEM_MSG
-            </span>
+      <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-8 sm:p-10 shadow-xl shadow-blue-500/5 text-center">
+        <div className="flex justify-center mb-6">
+          <div className="rounded-full bg-emerald-50 p-4">
+            <CheckCircle2 className="size-12 text-emerald-500" />
           </div>
         </div>
-        <div className="p-8 text-center">
-          <ShieldAlert className="mx-auto mb-4 size-12 text-emerald-500" />
-          <h2 className="mb-4 font-mono text-lg font-bold text-white">
-            VERIFIKACIJA_IDENTITETA
-          </h2>
-          <p className="mb-8 font-mono text-xs text-slate-400 leading-relaxed">
-            Link za verifikaciju poslan na:<br/>
-            <span className="text-emerald-400">{email}</span><br/><br/>
-            Sistem zahtijeva potvrdu email adrese za aktivaciju.
-          </p>
-          <Link href="/login">
-            <Button className="w-full rounded-none border border-slate-700 bg-transparent font-mono text-xs hover:bg-slate-800 hover:text-white">
-              RETURN_TO_LOGIN
-            </Button>
-          </Link>
-        </div>
+        <h2 className="mb-4 font-heading text-2xl font-bold text-slate-900">
+          Provjerite Vaš Email
+        </h2>
+        <p className="mb-8 text-sm text-slate-500 leading-relaxed">
+          Link za verifikaciju je uspješno poslan na:<br/>
+          <span className="font-semibold text-slate-900 mt-2 block">{email}</span><br/>
+          Molimo potvrdite vašu email adresu kako biste nastavili sa registracijom.
+        </p>
+        <Link href="/login" className="block">
+          <Button variant="outline" className="w-full h-12 rounded-full border-slate-200 text-slate-700 hover:bg-slate-50 transition-all">
+            Vrati se na prijavu
+          </Button>
+        </Link>
       </div>
     );
   }
 
   return (
-    <div className="w-full border border-slate-800 bg-[#060b17] shadow-2xl">
-      <div className="flex items-center justify-between border-b border-slate-800 bg-[#020611] px-4 py-3">
-        <div className="flex items-center gap-3">
-          <Terminal className="size-4 text-blue-500" />
-          <span className="font-mono text-xs font-bold text-white tracking-widest">
-            NODE_REGISTRATION
+    <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-8 sm:p-10 shadow-xl shadow-blue-500/5">
+      <div className="mb-10 text-center">
+        <Link href="/" className="inline-flex items-baseline gap-0.5 mb-6">
+          <span className="font-heading text-2xl font-bold tracking-tight text-slate-900">
+            MojaPonuda
           </span>
-        </div>
-        <div className="flex gap-1.5">
-          <div className="size-2 rounded-sm bg-slate-700" />
-          <div className="size-2 rounded-sm bg-slate-700" />
-          <div className="size-2 rounded-sm bg-slate-700" />
-        </div>
+          <span className="font-heading text-2xl font-bold text-primary">.ba</span>
+        </Link>
+        <h1 className="font-heading text-2xl font-bold text-slate-900">
+          Kreirajte Vaš Račun
+        </h1>
+        <p className="mt-2 text-sm text-slate-500">
+          Započnite besplatno upravljanje tenderima.
+        </p>
       </div>
 
-      <div className="p-8">
-        <div className="mb-8 text-center">
-          <h1 className="font-serif text-2xl font-bold tracking-tight text-white">
-            MojaPonuda<span className="text-blue-500">.ba</span>
-          </h1>
-          <p className="mt-2 font-mono text-[10px] text-slate-500 uppercase tracking-widest">
-            Aktivacija novog entiteta
+      <form onSubmit={handleSignup} className="space-y-6">
+        {error && (
+          <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-600">
+            {error}
+          </div>
+        )}
+
+        <div className="space-y-2">
+          <Label htmlFor="companyName" className="text-sm font-semibold text-slate-700">
+            Naziv firme
+          </Label>
+          <Input
+            id="companyName"
+            type="text"
+            placeholder="Vaša firma d.o.o."
+            value={companyName}
+            onChange={(e) => setCompanyName(e.target.value)}
+            required
+            disabled={loading}
+            className="rounded-xl border-slate-200 bg-white px-4 py-2 text-sm focus-visible:ring-primary focus-visible:border-primary transition-all"
+          />
+        </div>
+        
+        <div className="space-y-2">
+          <Label htmlFor="email" className="text-sm font-semibold text-slate-700">
+            Email adresa
+          </Label>
+          <Input
+            id="email"
+            type="email"
+            placeholder="vas@email.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            disabled={loading}
+            className="rounded-xl border-slate-200 bg-white px-4 py-2 text-sm focus-visible:ring-primary focus-visible:border-primary transition-all"
+          />
+        </div>
+        
+        <div className="space-y-2">
+          <Label htmlFor="password" className="text-sm font-semibold text-slate-700">
+            Lozinka
+          </Label>
+          <Input
+            id="password"
+            type="password"
+            placeholder="••••••••"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            disabled={loading}
+            className="rounded-xl border-slate-200 bg-white px-4 py-2 text-sm focus-visible:ring-primary focus-visible:border-primary transition-all"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="confirmPassword" className="text-sm font-semibold text-slate-700">
+            Potvrdite lozinku
+          </Label>
+          <Input
+            id="confirmPassword"
+            type="password"
+            placeholder="••••••••"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            required
+            disabled={loading}
+            className="rounded-xl border-slate-200 bg-white px-4 py-2 text-sm focus-visible:ring-primary focus-visible:border-primary transition-all"
+          />
+        </div>
+
+        <Button 
+          type="submit" 
+          className="w-full h-12 rounded-full bg-primary text-base font-bold text-white shadow-lg shadow-blue-500/30 transition-all hover:bg-blue-700 hover:shadow-blue-500/40 hover:-translate-y-0.5 mt-2" 
+          disabled={loading}
+        >
+          {loading ? <Loader2 className="mr-2 size-5 animate-spin" /> : null}
+          Registruj se
+        </Button>
+
+        <div className="text-center pt-2">
+          <p className="text-sm text-slate-500">
+            Već imate račun?{" "}
+            <Link href="/login" className="font-semibold text-primary hover:text-blue-700 transition-colors">
+              Prijavite se
+            </Link>
           </p>
         </div>
-
-        <form onSubmit={handleSignup} className="space-y-6">
-          {error && (
-            <div className="border border-red-900/50 bg-red-950/20 p-3 font-mono text-xs font-bold text-red-500">
-              {error}
-            </div>
-          )}
-
-          <div className="space-y-2">
-            <Label htmlFor="companyName" className="font-mono text-[10px] font-bold uppercase tracking-widest text-slate-500">
-              ENTITY_NAME (NAZIV FIRME)
-            </Label>
-            <Input
-              id="companyName"
-              type="text"
-              placeholder="Vaša firma d.o.o."
-              value={companyName}
-              onChange={(e) => setCompanyName(e.target.value)}
-              required
-              disabled={loading}
-              className="rounded-none border-slate-800 bg-[#020611] font-mono text-xs text-white focus-visible:border-blue-500 focus-visible:ring-0"
-            />
-          </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="email" className="font-mono text-[10px] font-bold uppercase tracking-widest text-slate-500">
-              COMM_CHANNEL (EMAIL)
-            </Label>
-            <Input
-              id="email"
-              type="email"
-              placeholder="vas@email.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              disabled={loading}
-              className="rounded-none border-slate-800 bg-[#020611] font-mono text-xs text-white focus-visible:border-blue-500 focus-visible:ring-0"
-            />
-          </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="password" className="font-mono text-[10px] font-bold uppercase tracking-widest text-slate-500">
-              SECURE_KEY (LOZINKA)
-            </Label>
-            <Input
-              id="password"
-              type="password"
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              disabled={loading}
-              className="rounded-none border-slate-800 bg-[#020611] font-mono text-xs text-white focus-visible:border-blue-500 focus-visible:ring-0"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="confirmPassword" className="font-mono text-[10px] font-bold uppercase tracking-widest text-slate-500">
-              VERIFY_SECURE_KEY
-            </Label>
-            <Input
-              id="confirmPassword"
-              type="password"
-              placeholder="••••••••"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              required
-              disabled={loading}
-              className="rounded-none border-slate-800 bg-[#020611] font-mono text-xs text-white focus-visible:border-blue-500 focus-visible:ring-0"
-            />
-          </div>
-
-          <Button 
-            type="submit" 
-            className="w-full rounded-none bg-blue-600 font-mono text-xs font-bold uppercase tracking-widest text-white hover:bg-blue-500" 
-            disabled={loading}
-          >
-            {loading ? <Loader2 className="mr-2 size-4 animate-spin" /> : null}
-            EXECUTE_REGISTRATION
-          </Button>
-
-          <div className="border-t border-slate-800 pt-6 text-center">
-            <p className="font-mono text-[10px] text-slate-500">
-              ACTIVE_LICENSE_EXISTS?{" "}
-              <Link href="/login" className="text-blue-500 hover:text-blue-400 font-bold transition-colors">
-                INITIATE_LOGIN
-              </Link>
-            </p>
-          </div>
-        </form>
-      </div>
+      </form>
     </div>
   );
 }

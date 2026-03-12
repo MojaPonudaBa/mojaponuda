@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import type { Company } from "@/types/database";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { OnboardingForm } from "@/components/onboarding-form";
 
 export default async function OnboardingPage() {
@@ -29,21 +28,24 @@ export default async function OnboardingPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <div className="w-full max-w-lg">
-        <Card className="border-border bg-card">
-          <CardHeader className="text-center">
-            <CardTitle className="text-2xl font-bold tracking-tight">
-              Dobrodošli na MojaPonuda<span className="text-primary">.ba</span>
-            </CardTitle>
-            <CardDescription className="text-muted-foreground">
-              Popunite podatke o vašoj firmi da biste mogli koristiti platformu.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <OnboardingForm companyId={company?.id ?? ""} companyName={company?.name ?? ""} />
-          </CardContent>
-        </Card>
+    <div className="flex min-h-screen flex-col items-center justify-center bg-slate-50 px-4 py-12">
+      <div className="mb-10 text-center">
+        <div className="inline-flex items-baseline gap-0.5 mb-6">
+          <span className="font-heading text-3xl font-bold tracking-tight text-slate-900">
+            MojaPonuda
+          </span>
+          <span className="font-heading text-3xl font-bold text-primary">.ba</span>
+        </div>
+        <h1 className="font-heading text-3xl font-bold text-slate-900">
+          Završite podešavanje profila
+        </h1>
+        <p className="mt-3 text-base text-slate-500 max-w-md mx-auto">
+          Popunite podatke o vašoj firmi kako biste otključali sve funkcionalnosti platforme i započeli s radom.
+        </p>
+      </div>
+
+      <div className="w-full max-w-2xl rounded-3xl border border-slate-200 bg-white p-8 sm:p-10 shadow-xl shadow-blue-500/5">
+        <OnboardingForm companyId={company?.id ?? ""} companyName={company?.name ?? ""} />
       </div>
     </div>
   );
