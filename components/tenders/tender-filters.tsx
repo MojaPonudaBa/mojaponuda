@@ -12,7 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, RotateCcw } from "lucide-react";
+import { Search, RotateCcw, Filter } from "lucide-react";
 
 const CONTRACT_TYPES = [
   { value: "all", label: "Svi tipovi" },
@@ -83,52 +83,57 @@ export function TenderFilters() {
   }
 
   return (
-    <div className="space-y-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+    <div className="space-y-5 rounded-[1.5rem] border border-slate-100 bg-white p-6 shadow-sm transition-all duration-300 hover:shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
+      <div className="flex items-center gap-2 mb-2">
+        <Filter className="size-4 text-blue-500" />
+        <h3 className="font-heading text-sm font-bold text-slate-900">Napredna pretraga i filteri</h3>
+      </div>
+      
       {/* Red 1: Keyword + tipovi */}
-      <div className="flex flex-wrap items-end gap-4">
-        <div className="min-w-[200px] flex-1 space-y-2">
-          <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-            Pretraga
+      <div className="flex flex-wrap items-end gap-5">
+        <div className="min-w-[240px] flex-1 space-y-2">
+          <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+            Pretraga po ključnoj riječi
           </Label>
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+          <div className="relative group">
+            <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors" />
             <Input
-              placeholder="Ključna riječ u naslovu..."
+              placeholder="Npr. računari, izgradnja puta..."
               value={keyword}
               onChange={(e) => setKeyword(e.target.value)}
               onKeyDown={handleKeyDown}
-              className="rounded-xl border-slate-200 pl-9 text-sm focus-visible:ring-primary focus-visible:border-primary"
+              className="h-11 rounded-xl border-slate-200 pl-10 text-sm shadow-sm focus-visible:ring-primary focus-visible:border-primary transition-all"
             />
           </div>
         </div>
-        <div className="w-[160px] space-y-2">
-          <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+        <div className="w-[180px] space-y-2">
+          <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
             Tip Ugovora
           </Label>
           <Select value={contractType} onValueChange={setContractType}>
-            <SelectTrigger className="rounded-xl border-slate-200 text-sm focus:ring-primary focus:border-primary">
+            <SelectTrigger className="h-11 rounded-xl border-slate-200 text-sm shadow-sm focus:ring-primary focus:border-primary transition-all">
               <SelectValue />
             </SelectTrigger>
-            <SelectContent className="rounded-xl border-slate-200">
+            <SelectContent className="rounded-xl border-slate-200 shadow-xl">
               {CONTRACT_TYPES.map((ct) => (
-                <SelectItem key={ct.value} value={ct.value} className="focus:bg-blue-50 focus:text-primary rounded-lg cursor-pointer">
+                <SelectItem key={ct.value} value={ct.value} className="focus:bg-blue-50 focus:text-primary rounded-lg cursor-pointer py-2">
                   {ct.label}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
-        <div className="w-[180px] space-y-2">
-          <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+        <div className="w-[200px] space-y-2">
+          <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
             Procedura
           </Label>
           <Select value={procedureType} onValueChange={setProcedureType}>
-            <SelectTrigger className="rounded-xl border-slate-200 text-sm focus:ring-primary focus:border-primary">
+            <SelectTrigger className="h-11 rounded-xl border-slate-200 text-sm shadow-sm focus:ring-primary focus:border-primary transition-all">
               <SelectValue />
             </SelectTrigger>
-            <SelectContent className="rounded-xl border-slate-200">
+            <SelectContent className="rounded-xl border-slate-200 shadow-xl">
               {PROCEDURE_TYPES.map((pt) => (
-                <SelectItem key={pt.value} value={pt.value} className="focus:bg-blue-50 focus:text-primary rounded-lg cursor-pointer">
+                <SelectItem key={pt.value} value={pt.value} className="focus:bg-blue-50 focus:text-primary rounded-lg cursor-pointer py-2">
                   {pt.label}
                 </SelectItem>
               ))}
@@ -138,65 +143,66 @@ export function TenderFilters() {
       </div>
 
       {/* Red 2: Datumi + vrijednosti + dugmad */}
-      <div className="flex flex-wrap items-end gap-4 border-t border-slate-100 pt-5 mt-2">
-        <div className="w-[140px] space-y-2">
-          <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+      <div className="flex flex-wrap items-end gap-5 border-t border-slate-50 pt-5">
+        <div className="w-[150px] space-y-2">
+          <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
             Rok od
           </Label>
           <Input
             type="date"
             value={deadlineFrom}
             onChange={(e) => setDeadlineFrom(e.target.value)}
-            className="rounded-xl border-slate-200 text-sm focus-visible:ring-primary focus-visible:border-primary"
+            className="h-11 rounded-xl border-slate-200 text-sm shadow-sm focus-visible:ring-primary focus-visible:border-primary transition-all"
           />
         </div>
-        <div className="w-[140px] space-y-2">
-          <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+        <div className="w-[150px] space-y-2">
+          <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
             Rok do
           </Label>
           <Input
             type="date"
             value={deadlineTo}
             onChange={(e) => setDeadlineTo(e.target.value)}
-            className="rounded-xl border-slate-200 text-sm focus-visible:ring-primary focus-visible:border-primary"
+            className="h-11 rounded-xl border-slate-200 text-sm shadow-sm focus-visible:ring-primary focus-visible:border-primary transition-all"
           />
         </div>
-        <div className="w-[130px] space-y-2">
-          <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-            Min (KM)
+        <div className="w-[140px] space-y-2">
+          <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+            Min vrijednost (KM)
           </Label>
           <Input
             type="number"
             placeholder="0"
             value={valueMin}
             onChange={(e) => setValueMin(e.target.value)}
-            className="rounded-xl border-slate-200 text-sm focus-visible:ring-primary focus-visible:border-primary"
+            className="h-11 rounded-xl border-slate-200 text-sm shadow-sm focus-visible:ring-primary focus-visible:border-primary transition-all"
           />
         </div>
-        <div className="w-[130px] space-y-2">
-          <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-            Max (KM)
+        <div className="w-[140px] space-y-2">
+          <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+            Max vrijednost (KM)
           </Label>
           <Input
             type="number"
             placeholder="∞"
             value={valueMax}
             onChange={(e) => setValueMax(e.target.value)}
-            className="rounded-xl border-slate-200 text-sm focus-visible:ring-primary focus-visible:border-primary"
+            className="h-11 rounded-xl border-slate-200 text-sm shadow-sm focus-visible:ring-primary focus-visible:border-primary transition-all"
           />
         </div>
-        <div className="flex gap-3 flex-1 justify-end">
+        <div className="flex gap-3 flex-1 justify-end mt-2 sm:mt-0">
           <Button 
             variant="outline" 
             onClick={resetFilters} 
-            title="Resetuj filtere"
-            className="rounded-xl border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+            title="Resetuj sve filtere"
+            className="h-11 rounded-xl border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-all font-bold px-4"
           >
-            <RotateCcw className="size-4" />
+            <RotateCcw className="mr-2 size-4" />
+            Resetuj
           </Button>
           <Button 
             onClick={applyFilters} 
-            className="rounded-xl bg-primary text-white hover:bg-blue-700 shadow-sm shadow-blue-500/20"
+            className="h-11 rounded-xl bg-primary text-white hover:bg-blue-700 shadow-lg shadow-blue-500/30 hover:shadow-blue-500/40 hover:-translate-y-0.5 transition-all font-bold px-6"
           >
             <Search className="mr-2 size-4" />
             Pretraži
