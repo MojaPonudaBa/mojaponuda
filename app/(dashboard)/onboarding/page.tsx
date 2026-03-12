@@ -23,12 +23,8 @@ export default async function OnboardingPage() {
 
   const company = data as Company | null;
 
-  if (!company) {
-    redirect("/login");
-  }
-
   // Ako je firma već popunjena (ima JIB), preusmjeri na dashboard
-  if (company.jib && company.jib.length > 0) {
+  if (company?.jib && company.jib.length > 0) {
     redirect("/dashboard");
   }
 
@@ -45,7 +41,7 @@ export default async function OnboardingPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <OnboardingForm companyId={company.id} companyName={company.name} />
+            <OnboardingForm companyId={company?.id ?? ""} companyName={company?.name ?? ""} />
           </CardContent>
         </Card>
       </div>
