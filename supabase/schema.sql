@@ -63,6 +63,21 @@ CREATE TABLE bids (
   created_at  timestamptz NOT NULL DEFAULT now()
 );
 
+-- bid_checklist_items — stavke checklista za pripremu ponude
+CREATE TYPE checklist_status AS ENUM ('missing', 'attached', 'confirmed');
+
+CREATE TABLE bid_checklist_items (
+  id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  bid_id        uuid NOT NULL REFERENCES bids(id) ON DELETE CASCADE,
+  title         text NOT NULL,
+  description   text,
+  status        checklist_status NOT NULL DEFAULT 'missing',
+  document_id   uuid REFERENCES documents(id) ON DELETE SET NULL,
+  risk_note     text,
+  sort_order    integer NOT NULL DEFAULT 0,
+  created_at    timestamptz NOT NULL DEFAULT now()
+);
+
 -- bid_documents — koji dokumenti su priloženi uz koju ponudu
 CREATE TABLE bid_documents (
   id                  uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -155,6 +170,17 @@ CREATE TABLE planned_procurements (
   created_at                timestamptz NOT NULL DEFAULT now()
 );
 
+-- authority_requirement_patterns — učestalost dokumentacijskih zahtjeva po naručiocu
+CREATE TABLE authority_requirement_patterns (
+  id                        uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  contracting_authority_jib  text NOT NULL,
+  document_type              text NOT NULL,
+  tender_id                  uuid REFERENCES tenders(id) ON DELETE SET NULL,
+  is_required                boolean NOT NULL DEFAULT true,
+  created_at                 timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (contracting_authority_jib, document_type, tender_id)
+);
+
 -- sync_log — evidencija API sinhronizacije
 CREATE TABLE sync_log (
   id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -195,6 +221,10 @@ CREATE INDEX idx_bids_company_id ON bids(company_id);
 CREATE INDEX idx_bids_tender_id ON bids(tender_id);
 CREATE INDEX idx_bids_status ON bids(status);
 
+-- bid_checklist_items
+CREATE INDEX idx_bid_checklist_items_bid_id ON bid_checklist_items(bid_id);
+CREATE INDEX idx_bid_checklist_items_document_id ON bid_checklist_items(document_id);
+
 -- bid_documents
 CREATE INDEX idx_bid_documents_bid_id ON bid_documents(bid_id);
 CREATE INDEX idx_bid_documents_document_id ON bid_documents(document_id);
@@ -222,6 +252,11 @@ CREATE INDEX idx_planned_procurements_contracting_authority_id ON planned_procur
 CREATE INDEX idx_planned_procurements_planned_date ON planned_procurements(planned_date);
 CREATE INDEX idx_planned_procurements_cpv_code ON planned_procurements(cpv_code);
 
+-- authority_requirement_patterns
+CREATE INDEX idx_arp_authority_jib ON authority_requirement_patterns(contracting_authority_jib);
+CREATE INDEX idx_arp_document_type ON authority_requirement_patterns(document_type);
+CREATE INDEX idx_arp_tender_id ON authority_requirement_patterns(tender_id);
+
 -- sync_log
 CREATE INDEX idx_sync_log_endpoint ON sync_log(endpoint);
 CREATE INDEX idx_sync_log_ran_at ON sync_log(ran_at);
@@ -234,12 +269,14 @@ ALTER TABLE companies ENABLE ROW LEVEL SECURITY;
 ALTER TABLE documents ENABLE ROW LEVEL SECURITY;
 ALTER TABLE tenders ENABLE ROW LEVEL SECURITY;
 ALTER TABLE bids ENABLE ROW LEVEL SECURITY;
+ALTER TABLE bid_checklist_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE bid_documents ENABLE ROW LEVEL SECURITY;
 ALTER TABLE subscriptions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE contracting_authorities ENABLE ROW LEVEL SECURITY;
 ALTER TABLE market_companies ENABLE ROW LEVEL SECURITY;
 ALTER TABLE award_decisions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE planned_procurements ENABLE ROW LEVEL SECURITY;
+ALTER TABLE authority_requirement_patterns ENABLE ROW LEVEL SECURITY;
 ALTER TABLE sync_log ENABLE ROW LEVEL SECURITY;
 
 -- companies: korisnik vidi samo svoju firmu
@@ -305,6 +342,44 @@ CREATE POLICY "Users can update own bids"
 CREATE POLICY "Users can delete own bids"
   ON bids FOR DELETE
   USING (company_id IN (SELECT id FROM companies WHERE user_id = auth.uid()));
+
+-- bid_checklist_items: korisnik vidi samo stavke svojih ponuda
+CREATE POLICY "Users can view own bid_checklist_items"
+  ON bid_checklist_items FOR SELECT
+  USING (bid_id IN (
+    SELECT b.id FROM bids b
+    JOIN companies c ON c.id = b.company_id
+    WHERE c.user_id = auth.uid()
+  ));
+
+CREATE POLICY "Users can insert own bid_checklist_items"
+  ON bid_checklist_items FOR INSERT
+  WITH CHECK (bid_id IN (
+    SELECT b.id FROM bids b
+    JOIN companies c ON c.id = b.company_id
+    WHERE c.user_id = auth.uid()
+  ));
+
+CREATE POLICY "Users can update own bid_checklist_items"
+  ON bid_checklist_items FOR UPDATE
+  USING (bid_id IN (
+    SELECT b.id FROM bids b
+    JOIN companies c ON c.id = b.company_id
+    WHERE c.user_id = auth.uid()
+  ))
+  WITH CHECK (bid_id IN (
+    SELECT b.id FROM bids b
+    JOIN companies c ON c.id = b.company_id
+    WHERE c.user_id = auth.uid()
+  ));
+
+CREATE POLICY "Users can delete own bid_checklist_items"
+  ON bid_checklist_items FOR DELETE
+  USING (bid_id IN (
+    SELECT b.id FROM bids b
+    JOIN companies c ON c.id = b.company_id
+    WHERE c.user_id = auth.uid()
+  ));
 
 -- bid_documents: korisnik vidi samo bid_documents svojih ponuda
 CREATE POLICY "Users can view own bid_documents"
@@ -400,6 +475,20 @@ CREATE POLICY "Planned procurements are publicly readable"
 
 CREATE POLICY "Service role can manage planned_procurements"
   ON planned_procurements FOR ALL
+  USING (auth.role() = 'service_role')
+  WITH CHECK (auth.role() = 'service_role');
+
+-- authority_requirement_patterns: javni za čitanje, service_role za sve
+CREATE POLICY "Authority patterns are publicly readable"
+  ON authority_requirement_patterns FOR SELECT
+  USING (true);
+
+CREATE POLICY "Authenticated users can insert authority patterns"
+  ON authority_requirement_patterns FOR INSERT
+  WITH CHECK (auth.role() = 'authenticated');
+
+CREATE POLICY "Service role can manage authority_requirement_patterns"
+  ON authority_requirement_patterns FOR ALL
   USING (auth.role() = 'service_role')
   WITH CHECK (auth.role() = 'service_role');
 

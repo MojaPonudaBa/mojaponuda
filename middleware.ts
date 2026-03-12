@@ -1,5 +1,7 @@
 import { type NextRequest } from 'next/server'
 import { updateSession } from '@/utils/supabase/middleware'
+// Note: middleware helper stays in utils/supabase/middleware.ts
+// as it uses NextRequest/NextResponse, not the standard client pattern
 
 export async function middleware(request: NextRequest) {
   return await updateSession(request)
