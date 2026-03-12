@@ -1,7 +1,11 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  serverExternalPackages: [
+    "@supabase/ssr",
+    "@supabase/supabase-js",
+    "openai",
+  ],
 };
 
 export default nextConfig;
