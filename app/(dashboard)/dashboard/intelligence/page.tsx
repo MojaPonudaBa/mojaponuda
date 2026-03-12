@@ -94,62 +94,65 @@ export default async function IntelligencePage() {
   const topWinners = [...winnerMap.values()].sort((a, b) => b.total_value - a.total_value).slice(0, 10);
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between border-b border-slate-800 pb-4">
+    <div className="space-y-8">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between border-b border-slate-200 pb-4">
         <div>
-          <div className="flex items-center gap-2 mb-2">
-            <span className="size-1.5 bg-blue-500 animate-pulse" />
-            <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-slate-500">
-              Module_Active // Market_Intelligence
-            </p>
-          </div>
-          <h1 className="text-2xl font-serif font-bold text-white tracking-tight">
+          <h1 className="text-3xl font-heading font-bold text-slate-900 tracking-tight">
             Tržišna Analitika
           </h1>
+          <p className="mt-1.5 text-base text-slate-500">
+            Pregled BiH tržišta javnih nabavki baziran na e-Procurement portalu.
+          </p>
         </div>
         <div className="text-right">
-          <p className="font-mono text-[10px] text-emerald-400">DATA_SYNC: REALTIME</p>
-          <p className="mt-1 font-mono text-[10px] text-slate-500">
-            SOURCE: EJN_OData_API
+          <p className="text-xs font-semibold uppercase tracking-wider text-emerald-600">Ažurirano</p>
+          <p className="mt-1 text-sm font-medium text-slate-600">
+            U realnom vremenu
           </p>
         </div>
       </div>
 
       {/* Kartice */}
-      <div className="grid gap-px bg-slate-800 sm:grid-cols-3 border border-slate-800">
-        <div className="bg-[#020611] p-6 relative overflow-hidden group hover:bg-[#060b17] transition-colors">
-          <div className="flex items-center justify-between mb-6">
-            <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-slate-500">Aktivni Tenderi</p>
-            <FileText className="size-4 text-blue-500" />
+      <div className="grid gap-6 sm:grid-cols-3">
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition-all hover:shadow-md">
+          <div className="flex items-center justify-between mb-4">
+            <p className="text-sm font-semibold uppercase tracking-wider text-slate-500">Aktivni Tenderi</p>
+            <div className="flex size-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+              <FileText className="size-5" />
+            </div>
           </div>
-          <p className="font-mono text-4xl font-light text-white">{activeCount ?? 0}</p>
-          <p className="mt-2 font-mono text-[10px] text-slate-500">STATUS: OPEN_DEADLINE</p>
+          <p className="font-heading text-4xl font-bold text-slate-900">{activeCount ?? 0}</p>
+          <p className="mt-2 text-sm text-slate-500">Trenutno s otvorenim rokom</p>
         </div>
 
-        <div className="bg-[#020611] p-6 relative overflow-hidden group hover:bg-[#060b17] transition-colors">
-          <div className="flex items-center justify-between mb-6">
-            <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-slate-500">Godišnji Volumen</p>
-            <TrendingUp className="size-4 text-emerald-500" />
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition-all hover:shadow-md">
+          <div className="flex items-center justify-between mb-4">
+            <p className="text-sm font-semibold uppercase tracking-wider text-slate-500">Godišnji Volumen</p>
+            <div className="flex size-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
+              <TrendingUp className="size-5" />
+            </div>
           </div>
-          <p className="font-mono text-4xl font-light text-emerald-400">{formatKM(yearTotalValue)}</p>
-          <p className="mt-2 font-mono text-[10px] text-slate-500">PERIOD: YTD_{now.getFullYear()}</p>
+          <p className="font-heading text-4xl font-bold text-slate-900">{formatKM(yearTotalValue)}</p>
+          <p className="mt-2 text-sm text-slate-500">Dodijeljeno u {now.getFullYear()}.</p>
         </div>
 
-        <div className="bg-[#020611] p-6 relative overflow-hidden group hover:bg-[#060b17] transition-colors">
-          <div className="flex items-center justify-between mb-6">
-            <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-slate-500">Model_Confidence</p>
-            <BarChart3 className="size-4 text-purple-500" />
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition-all hover:shadow-md">
+          <div className="flex items-center justify-between mb-4">
+            <p className="text-sm font-semibold uppercase tracking-wider text-slate-500">Pokrivenost Tržišta</p>
+            <div className="flex size-10 items-center justify-center rounded-xl bg-purple-50 text-purple-600">
+              <BarChart3 className="size-5" />
+            </div>
           </div>
-          <p className="font-mono text-4xl font-light text-slate-400">94.2%</p>
-          <p className="mt-2 font-mono text-[10px] text-slate-500">DATA_ACCURACY_RATING</p>
+          <p className="font-heading text-4xl font-bold text-slate-900">100%</p>
+          <p className="mt-2 text-sm text-slate-500">Indeksirani podaci s ejn.gov.ba</p>
         </div>
       </div>
 
       {/* Bar chart: tenderi po kategoriji */}
-      <div className="border border-slate-800 bg-[#060b17] p-6">
-        <div className="flex items-center justify-between border-b border-slate-800 pb-4 mb-6">
-          <h2 className="font-mono text-xs font-bold text-white">CATEGORY_DISTRIBUTION</h2>
-          <p className="font-mono text-[10px] text-slate-500">PERIOD: YTD_{now.getFullYear()}</p>
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-6">
+          <h2 className="font-heading text-lg font-bold text-slate-900">Raspodjela Ugovora Po Kategorijama</h2>
+          <p className="text-sm text-slate-500">Podaci od 01.01.{now.getFullYear()}.</p>
         </div>
         <CategoryChart data={categoryData} />
       </div>
@@ -157,37 +160,42 @@ export default async function IntelligencePage() {
       {/* Dva panela */}
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Top naručioci */}
-        <div className="border border-slate-800 bg-[#060b17] flex flex-col">
-          <div className="flex items-center justify-between border-b border-slate-800 bg-[#020611] p-4">
+        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm flex flex-col">
+          <div className="flex items-center justify-between border-b border-slate-100 p-6">
             <div>
-              <h2 className="font-mono text-xs font-bold text-white">TOP_BUYERS</h2>
-              <p className="mt-1 font-mono text-[9px] text-slate-500">RANKED_BY_VOLUME // CURRENT_MONTH</p>
+              <h2 className="font-heading text-lg font-bold text-slate-900">Najaktivniji Naručioci</h2>
+              <p className="mt-1 text-sm text-slate-500">Top 10 po broju raspisanih tendera u ovom mjesecu</p>
             </div>
-            <Database className="size-4 text-slate-600" />
+            <div className="flex size-10 items-center justify-center rounded-xl bg-slate-50 text-slate-400">
+              <Database className="size-5" />
+            </div>
           </div>
           
-          <div className="flex-1 p-4">
+          <div className="flex-1 p-6">
             {topAuthorities.length === 0 ? (
-              <div className="flex h-full items-center justify-center">
-                <p className="font-mono text-[10px] text-slate-500">NO_DATA_AVAILABLE</p>
+              <div className="flex h-full items-center justify-center py-12">
+                <p className="text-sm text-slate-500">Nema dovoljno podataka za ovaj mjesec.</p>
               </div>
             ) : (
-              <div className="space-y-1">
+              <div className="space-y-3">
                 {topAuthorities.map((a, i) => (
-                  <div key={a.name} className="flex items-center justify-between border border-slate-800/50 bg-[#020611] px-4 py-3 hover:border-blue-500/30 transition-colors group">
+                  <div key={a.name} className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50 px-4 py-3 hover:border-blue-200 hover:bg-blue-50 transition-colors group">
                     <div className="flex items-center gap-4 min-w-0">
-                      <span className="font-mono text-[10px] text-slate-600 w-4">
-                        {String(i + 1).padStart(2, '0')}
+                      <span className="flex size-6 items-center justify-center rounded-full bg-white text-xs font-bold text-slate-500 shadow-sm">
+                        {i + 1}
                       </span>
                       {a.jib ? (
-                        <Link href={`/dashboard/intelligence/authority/${a.jib}`} className="truncate text-xs font-bold text-slate-300 group-hover:text-blue-400 transition-colors">
-                          {a.name.toUpperCase()}
+                        <Link href={`/dashboard/intelligence/authority/${a.jib}`} className="truncate text-sm font-semibold text-slate-700 group-hover:text-primary transition-colors">
+                          {a.name}
                         </Link>
                       ) : (
-                        <span className="truncate text-xs font-bold text-slate-300">{a.name.toUpperCase()}</span>
+                        <span className="truncate text-sm font-semibold text-slate-700">{a.name}</span>
                       )}
                     </div>
-                    <span className="shrink-0 font-mono text-xs text-blue-500 ml-4">{a.count}</span>
+                    <div className="flex items-center gap-2 ml-4">
+                      <span className="text-xs text-slate-500">Tendera:</span>
+                      <span className="font-semibold text-primary">{a.count}</span>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -196,34 +204,36 @@ export default async function IntelligencePage() {
         </div>
 
         {/* Top pobjednici */}
-        <div className="border border-slate-800 bg-[#060b17] flex flex-col">
-          <div className="flex items-center justify-between border-b border-slate-800 bg-[#020611] p-4">
+        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm flex flex-col">
+          <div className="flex items-center justify-between border-b border-slate-100 p-6">
             <div>
-              <h2 className="font-mono text-xs font-bold text-white">TOP_SUPPLIERS</h2>
-              <p className="mt-1 font-mono text-[9px] text-slate-500">RANKED_BY_WON_VALUE // YTD_{now.getFullYear()}</p>
+              <h2 className="font-heading text-lg font-bold text-slate-900">Najuspješniji Ponuđači</h2>
+              <p className="mt-1 text-sm text-slate-500">Top 10 po ukupnoj vrijednosti ugovora u ovoj godini</p>
             </div>
-            <Database className="size-4 text-slate-600" />
+            <div className="flex size-10 items-center justify-center rounded-xl bg-slate-50 text-slate-400">
+              <Database className="size-5" />
+            </div>
           </div>
           
-          <div className="flex-1 p-4">
+          <div className="flex-1 p-6">
             {topWinners.length === 0 ? (
-              <div className="flex h-full items-center justify-center">
-                <p className="font-mono text-[10px] text-slate-500">NO_DATA_AVAILABLE</p>
+              <div className="flex h-full items-center justify-center py-12">
+                <p className="text-sm text-slate-500">Nema dovoljno podataka za ovu godinu.</p>
               </div>
             ) : (
-              <div className="space-y-1">
+              <div className="space-y-3">
                 {topWinners.map((w, i) => (
-                  <div key={w.jib} className="flex items-center justify-between border border-slate-800/50 bg-[#020611] px-4 py-2 hover:border-emerald-500/30 transition-colors">
+                  <div key={w.jib} className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50 px-4 py-3 hover:border-emerald-200 hover:bg-emerald-50 transition-colors group">
                     <div className="flex items-center gap-4 min-w-0">
-                      <span className="font-mono text-[10px] text-slate-600 w-4">
-                        {String(i + 1).padStart(2, '0')}
+                      <span className="flex size-6 items-center justify-center rounded-full bg-white text-xs font-bold text-slate-500 shadow-sm">
+                        {i + 1}
                       </span>
                       <div className="min-w-0">
-                        <p className="truncate text-xs font-bold text-slate-300 mb-1">{w.name.toUpperCase()}</p>
-                        <p className="font-mono text-[9px] text-slate-500">WINS: {w.wins}</p>
+                        <p className="truncate text-sm font-semibold text-slate-700 group-hover:text-emerald-700 mb-0.5">{w.name}</p>
+                        <p className="text-xs text-slate-500">Ugovora: {w.wins}</p>
                       </div>
                     </div>
-                    <span className="shrink-0 font-mono text-xs text-emerald-400 ml-4">{formatKM(w.total_value)}</span>
+                    <span className="shrink-0 text-sm font-bold text-emerald-600 ml-4">{formatKM(w.total_value)}</span>
                   </div>
                 ))}
               </div>

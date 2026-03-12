@@ -52,36 +52,36 @@ export function DocumentGrid({ documents }: DocumentGridProps) {
     <div className="space-y-6">
       {/* Banner upozorenja za dokumente koji ističu */}
       {expiringDocs.length > 0 && (
-        <div className="flex items-center gap-4 border border-red-900/50 bg-red-950/20 p-4">
-          <div className="flex size-10 shrink-0 items-center justify-center bg-red-500/10">
-            <AlertTriangle className="size-5 text-red-500 animate-pulse" />
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4 rounded-2xl border border-red-200 bg-red-50 p-5 shadow-sm">
+          <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-red-100 text-red-600">
+            <AlertTriangle className="size-6 animate-pulse" />
           </div>
           <div>
-            <p className="font-mono text-xs font-bold text-red-500">
-              SYSTEM_ALERT: {expiringDocs.length === 1 ? "1_DOCUMENT_EXPIRING" : `${expiringDocs.length}_DOCUMENTS_EXPIRING`}
+            <p className="font-heading text-base font-bold text-red-900">
+              {expiringDocs.length === 1 ? "1 dokument ističe uskoro" : `${expiringDocs.length} dokumenta ističu uskoro`}
             </p>
-            <p className="mt-1 font-mono text-[10px] text-red-400/70">
-              TARGETS: {expiringDocs.map((d) => d.name.toUpperCase()).join(" | ")}
+            <p className="mt-1 text-sm text-red-700">
+              Obavezno ažurirajte: {expiringDocs.map((d) => d.name).join(", ")}
             </p>
           </div>
         </div>
       )}
 
       {/* Filteri */}
-      <div className="flex flex-wrap gap-4 border-b border-slate-800 pb-6">
+      <div className="flex flex-wrap gap-4 border-b border-slate-200 pb-6">
         <div className="space-y-2">
-          <label className="font-mono text-[9px] font-bold uppercase tracking-widest text-slate-500">
-            FILTER_BY_TYPE
+          <label className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+            Tip Dokumenta
           </label>
           <Select value={typeFilter} onValueChange={setTypeFilter}>
-            <SelectTrigger className="w-[240px] rounded-none border-slate-800 bg-[#060b17] font-mono text-xs focus:ring-0 focus:border-blue-500">
-              <SelectValue placeholder="SVI_TIPOVI" />
+            <SelectTrigger className="w-[240px] rounded-xl border-slate-200 bg-white text-sm focus:ring-primary focus:border-primary">
+              <SelectValue placeholder="Svi tipovi" />
             </SelectTrigger>
-            <SelectContent className="rounded-none border-slate-800 bg-[#060b17] font-mono text-xs">
-              <SelectItem value="all" className="focus:bg-blue-500/20 focus:text-white">SVI_TIPOVI</SelectItem>
+            <SelectContent className="rounded-xl border-slate-200">
+              <SelectItem value="all" className="focus:bg-blue-50 focus:text-primary rounded-lg cursor-pointer">Svi tipovi</SelectItem>
               {DOCUMENT_TYPES.map((dt) => (
-                <SelectItem key={dt} value={dt} className="focus:bg-blue-500/20 focus:text-white">
-                  {dt.toUpperCase()}
+                <SelectItem key={dt} value={dt} className="focus:bg-blue-50 focus:text-primary rounded-lg cursor-pointer">
+                  {dt}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -89,19 +89,19 @@ export function DocumentGrid({ documents }: DocumentGridProps) {
         </div>
 
         <div className="space-y-2">
-          <label className="font-mono text-[9px] font-bold uppercase tracking-widest text-slate-500">
-            FILTER_BY_STATUS
+          <label className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+            Status Isteka
           </label>
           <Select value={expiryFilter} onValueChange={setExpiryFilter}>
-            <SelectTrigger className="w-[240px] rounded-none border-slate-800 bg-[#060b17] font-mono text-xs focus:ring-0 focus:border-blue-500">
-              <SelectValue placeholder="SVI_STATUSI" />
+            <SelectTrigger className="w-[240px] rounded-xl border-slate-200 bg-white text-sm focus:ring-primary focus:border-primary">
+              <SelectValue placeholder="Svi statusi" />
             </SelectTrigger>
-            <SelectContent className="rounded-none border-slate-800 bg-[#060b17] font-mono text-xs">
-              <SelectItem value="all" className="focus:bg-blue-500/20 focus:text-white">SVI_STATUSI</SelectItem>
-              <SelectItem value="danger" className="text-red-400 focus:bg-red-500/20 focus:text-red-300">CRITICAL_(&lt;30d)</SelectItem>
-              <SelectItem value="warning" className="text-amber-400 focus:bg-amber-500/20 focus:text-amber-300">WARNING_(30-60d)</SelectItem>
-              <SelectItem value="ok" className="text-emerald-400 focus:bg-emerald-500/20 focus:text-emerald-300">OPTIMAL_(&gt;60d)</SelectItem>
-              <SelectItem value="none" className="focus:bg-blue-500/20 focus:text-white">NO_EXPIRY</SelectItem>
+            <SelectContent className="rounded-xl border-slate-200">
+              <SelectItem value="all" className="focus:bg-blue-50 focus:text-primary rounded-lg cursor-pointer">Svi statusi</SelectItem>
+              <SelectItem value="danger" className="text-red-600 focus:bg-red-50 focus:text-red-700 rounded-lg cursor-pointer">Kritično (&lt;30 dana)</SelectItem>
+              <SelectItem value="warning" className="text-amber-600 focus:bg-amber-50 focus:text-amber-700 rounded-lg cursor-pointer">Upozorenje (30-60 dana)</SelectItem>
+              <SelectItem value="ok" className="text-emerald-600 focus:bg-emerald-50 focus:text-emerald-700 rounded-lg cursor-pointer">U redu (&gt;60 dana)</SelectItem>
+              <SelectItem value="none" className="focus:bg-blue-50 focus:text-primary rounded-lg cursor-pointer">Bez roka</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -109,16 +109,21 @@ export function DocumentGrid({ documents }: DocumentGridProps) {
 
       {/* Grid */}
       {filtered.length === 0 ? (
-        <div className="flex flex-col items-center justify-center border border-dashed border-slate-800 bg-[#020611] py-20">
-          <Database className="size-8 text-slate-800 mb-4" />
-          <p className="font-mono text-xs text-slate-500">
+        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-slate-50 py-24">
+          <div className="flex size-16 items-center justify-center rounded-full bg-blue-50 text-blue-500 mb-4 shadow-sm shadow-blue-500/20">
+            <Database className="size-6" />
+          </div>
+          <h3 className="text-lg font-heading font-bold text-slate-900 mb-2">
+            {documents.length === 0 ? "Vaš trezor je prazan" : "Nema rezultata za odabrane filtere"}
+          </h3>
+          <p className="text-sm text-slate-500 text-center max-w-sm">
             {documents.length === 0
-              ? "VAULT_EMPTY // NO_DOCUMENTS_FOUND"
-              : "QUERY_RETURNED_0_RESULTS"}
+              ? "Dodajte prvi dokument klikom na dugme iznad kako biste započeli."
+              : "Pokušajte sa drugačijim filterima ili dodajte novi dokument."}
           </p>
         </div>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {filtered.map((doc) => (
             <DocumentCard key={doc.id} document={doc} />
           ))}

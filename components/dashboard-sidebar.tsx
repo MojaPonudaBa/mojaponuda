@@ -16,9 +16,8 @@ import {
   Calendar,
   LogOut,
   ChevronRight,
-  Building2,
   Activity,
-  Terminal,
+  Box,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -30,20 +29,20 @@ interface NavItem {
 }
 
 const coreItems: NavItem[] = [
-  { href: "/dashboard", label: "Pregled_Sistema", icon: LayoutDashboard },
-  { href: "/dashboard/vault", label: "Trezor_Dokumenata", icon: FileText },
-  { href: "/dashboard/bids", label: "Radne_Ponude", icon: Briefcase },
-  { href: "/dashboard/tenders", label: "Tender_Skener", icon: Search },
+  { href: "/dashboard", label: "Pregled", icon: LayoutDashboard },
+  { href: "/dashboard/vault", label: "Trezor", icon: FileText },
+  { href: "/dashboard/bids", label: "Ponude", icon: Briefcase },
+  { href: "/dashboard/tenders", label: "Skener", icon: Search },
 ];
 
 const intelligenceItems: NavItem[] = [
-  { href: "/dashboard/intelligence", label: "Tržišna_Analitika", icon: BarChart3, pro: true },
-  { href: "/dashboard/intelligence/competitors", label: "Praćenje_Konkurencije", icon: Swords, pro: true },
-  { href: "/dashboard/intelligence/upcoming", label: "Planirane_Nabavke", icon: Calendar, pro: true },
+  { href: "/dashboard/intelligence", label: "Analitika", icon: BarChart3, pro: true },
+  { href: "/dashboard/intelligence/competitors", label: "Konkurencija", icon: Swords, pro: true },
+  { href: "/dashboard/intelligence/upcoming", label: "Planirano", icon: Calendar, pro: true },
 ];
 
 const accountItems: NavItem[] = [
-  { href: "/dashboard/subscription", label: "Licenca_i_Naplata", icon: CreditCard },
+  { href: "/dashboard/subscription", label: "Pretplata", icon: CreditCard },
 ];
 
 interface DashboardSidebarProps {
@@ -68,72 +67,68 @@ export function DashboardSidebar({ userEmail, companyName }: DashboardSidebarPro
       (item.href !== "/dashboard" && pathname.startsWith(item.href));
 
     return (
-      <Link href={item.href}>
+      <Link href={item.href} className="block px-2">
         <span
           className={cn(
-            "group flex items-center gap-3 rounded-none px-3 py-2 transition-all duration-150 border-l-2",
+            "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
             isActive
-              ? "border-blue-500 bg-[#0a1628] text-white"
-              : "border-transparent text-slate-400 hover:bg-[#0a1628]/50 hover:text-slate-200"
+              ? "bg-blue-50 text-primary"
+              : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
           )}
         >
-          <item.icon className={cn("size-3.5 shrink-0", isActive ? "text-blue-500" : "text-slate-500 group-hover:text-slate-400")} />
-          <span className="flex-1 font-mono text-[10px] tracking-wider uppercase truncate">{item.label}</span>
+          <item.icon className={cn("size-4 shrink-0 transition-colors", isActive ? "text-primary" : "text-slate-400 group-hover:text-slate-600")} />
+          <span className="flex-1 truncate">{item.label}</span>
           {item.pro && (
             <span className={cn(
-              "font-mono text-[9px] font-bold uppercase tracking-widest",
+              "rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide",
               isActive
-                ? "text-blue-400"
-                : "text-slate-600"
+                ? "bg-blue-100 text-primary"
+                : "bg-slate-100 text-slate-500"
             )}>
-              [PRO]
+              Pro
             </span>
           )}
-          {isActive && <ChevronRight className="size-3 text-blue-500" />}
         </span>
       </Link>
     );
   }
 
   return (
-    <aside className="flex w-[260px] flex-col border-r border-slate-800 bg-[#020611]">
+    <aside className="flex w-[280px] flex-col border-r border-slate-200 bg-white">
       {/* Brand */}
-      <div className="flex flex-col px-5 py-6">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <Terminal className="size-4 text-blue-500" />
-            <span className="font-mono text-xs font-bold text-white tracking-widest">
-              MP<span className="text-blue-500">.OS</span>
-            </span>
+      <div className="flex flex-col px-6 py-6 border-b border-slate-100">
+        <div className="flex items-center gap-2 mb-6">
+          <div className="flex size-8 items-center justify-center rounded-lg bg-primary text-white shadow-sm shadow-blue-500/20">
+            <Box className="size-5" />
           </div>
-          <div className="flex items-center gap-1.5">
-            <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="font-mono text-[9px] text-emerald-500">SYS_ON</span>
+          <div className="flex items-baseline gap-0.5">
+            <span className="font-heading text-lg font-bold tracking-tight text-slate-900">
+              MojaPonuda
+            </span>
+            <span className="font-heading text-lg font-bold text-primary">.ba</span>
           </div>
         </div>
+        
         {companyName ? (
-          <div className="border border-slate-800 bg-[#060b17] p-2">
-            <p className="font-mono text-[9px] text-slate-500 mb-0.5">ACTIVE_ENTITY:</p>
-            <p className="truncate font-mono text-[11px] font-bold text-white uppercase" title={companyName}>
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 mb-1">Aktivna firma</p>
+            <p className="truncate text-sm font-bold text-slate-900" title={companyName}>
               {companyName}
             </p>
           </div>
         ) : (
-          <div className="border border-amber-900/30 bg-amber-950/10 p-2 text-amber-500">
-            <p className="font-mono text-[9px]">ENTITY_MISSING</p>
+          <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-amber-800">
+            <p className="text-xs font-medium">Firma nije dodana</p>
           </div>
         )}
       </div>
 
       {/* Core Navigation */}
-      <nav className="flex-1 space-y-8 overflow-y-auto px-2 py-2">
+      <nav className="flex-1 space-y-6 overflow-y-auto px-2 py-6">
         <div>
-          <div className="mb-2 flex items-center gap-2 px-3">
-            <Activity className="size-3 text-slate-600" />
-            <p className="font-mono text-[9px] font-bold uppercase tracking-widest text-slate-600">
-              Operacije
-            </p>
-          </div>
+          <p className="mb-2 px-4 text-xs font-semibold text-slate-400">
+            GLAVNI MENI
+          </p>
           <div className="space-y-0.5">
             {coreItems.map((item) => (
               <NavLink key={item.href} item={item} />
@@ -142,12 +137,9 @@ export function DashboardSidebar({ userEmail, companyName }: DashboardSidebarPro
         </div>
 
         <div>
-          <div className="mb-2 flex items-center gap-2 px-3">
-            <Activity className="size-3 text-slate-600" />
-            <p className="font-mono text-[9px] font-bold uppercase tracking-widest text-slate-600">
-              Analitika
-            </p>
-          </div>
+          <p className="mb-2 px-4 text-xs font-semibold text-slate-400">
+            TRŽIŠTE
+          </p>
           <div className="space-y-0.5">
             {intelligenceItems.map((item) => (
               <NavLink key={item.href} item={item} />
@@ -156,12 +148,9 @@ export function DashboardSidebar({ userEmail, companyName }: DashboardSidebarPro
         </div>
 
         <div>
-          <div className="mb-2 flex items-center gap-2 px-3">
-            <Activity className="size-3 text-slate-600" />
-            <p className="font-mono text-[9px] font-bold uppercase tracking-widest text-slate-600">
-              Sistem
-            </p>
-          </div>
+          <p className="mb-2 px-4 text-xs font-semibold text-slate-400">
+            PODEŠAVANJA
+          </p>
           <div className="space-y-0.5">
             {accountItems.map((item) => (
               <NavLink key={item.href} item={item} />
@@ -171,22 +160,24 @@ export function DashboardSidebar({ userEmail, companyName }: DashboardSidebarPro
       </nav>
 
       {/* User footer */}
-      <div className="border-t border-slate-800 p-4 bg-[#060b17]">
-        <div className="flex items-center justify-between mb-3">
-          <p className="font-mono text-[9px] text-slate-500">USER_SESSION</p>
-          <p className="font-mono text-[9px] text-emerald-500">SECURE</p>
+      <div className="border-t border-slate-100 p-4 bg-slate-50/50">
+        <div className="flex items-center gap-3 px-2 mb-4">
+          <div className="flex size-8 items-center justify-center rounded-full bg-blue-100 text-primary font-semibold text-sm">
+            {userEmail.charAt(0).toUpperCase()}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-xs font-medium text-slate-900" title={userEmail}>
+              {userEmail}
+            </p>
+          </div>
         </div>
-        <p className="truncate font-mono text-[10px] text-slate-300 mb-3" title={userEmail}>
-          {userEmail}
-        </p>
         <Button
-          variant="ghost"
-          size="sm"
-          className="w-full justify-center gap-2 rounded-none border border-slate-800 bg-[#020611] font-mono text-[10px] text-slate-400 hover:bg-red-950/20 hover:text-red-400 hover:border-red-900/50"
+          variant="outline"
+          className="w-full justify-center gap-2 rounded-xl border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900"
           onClick={handleSignOut}
         >
-          <LogOut className="size-3.5" />
-          TERMINATE_SESSION
+          <LogOut className="size-4" />
+          Odjava
         </Button>
       </div>
     </aside>

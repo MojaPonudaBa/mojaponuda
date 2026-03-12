@@ -15,19 +15,19 @@ import {
 import { Search, RotateCcw } from "lucide-react";
 
 const CONTRACT_TYPES = [
-  { value: "all", label: "SVI_TIPOVI" },
-  { value: "Robe", label: "ROBE" },
-  { value: "Usluge", label: "USLUGE" },
-  { value: "Radovi", label: "RADOVI" },
+  { value: "all", label: "Svi tipovi" },
+  { value: "Robe", label: "Robe" },
+  { value: "Usluge", label: "Usluge" },
+  { value: "Radovi", label: "Radovi" },
 ];
 
 const PROCEDURE_TYPES = [
-  { value: "all", label: "SVE_PROCEDURE" },
-  { value: "Otvoreni postupak", label: "OTVORENI" },
-  { value: "Ograničeni postupak", label: "OGRANIČENI" },
-  { value: "Pregovarački postupak", label: "PREGOVARAČKI" },
-  { value: "Konkurentski zahtjev", label: "KONKURENTSKI" },
-  { value: "Direktni sporazum", label: "DIREKTNI" },
+  { value: "all", label: "Sve procedure" },
+  { value: "Otvoreni postupak", label: "Otvoreni" },
+  { value: "Ograničeni postupak", label: "Ograničeni" },
+  { value: "Pregovarački postupak", label: "Pregovarački" },
+  { value: "Konkurentski zahtjev", label: "Konkurentski" },
+  { value: "Direktni sporazum", label: "Direktni" },
 ];
 
 export function TenderFilters() {
@@ -83,57 +83,52 @@ export function TenderFilters() {
   }
 
   return (
-    <div className="space-y-4 border border-slate-800 bg-[#060b17] p-5">
-      <div className="mb-2 flex items-center justify-between border-b border-slate-800 pb-2">
-        <p className="font-mono text-[9px] text-slate-500">QUERY_PARAMETERS</p>
-        <p className="font-mono text-[9px] text-blue-500">LIVE_SEARCH</p>
-      </div>
-
+    <div className="space-y-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
       {/* Red 1: Keyword + tipovi */}
-      <div className="flex flex-wrap items-end gap-3">
-        <div className="min-w-[200px] flex-1 space-y-1.5">
-          <Label className="font-mono text-[9px] font-semibold uppercase tracking-widest text-slate-500">
-            KLJUČNA_RIJEČ
+      <div className="flex flex-wrap items-end gap-4">
+        <div className="min-w-[200px] flex-1 space-y-2">
+          <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+            Pretraga
           </Label>
           <div className="relative">
-            <Search className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-slate-500" />
+            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
             <Input
-              placeholder="SEARCH_QUERY..."
+              placeholder="Ključna riječ u naslovu..."
               value={keyword}
               onChange={(e) => setKeyword(e.target.value)}
               onKeyDown={handleKeyDown}
-              className="rounded-none border-slate-800 bg-[#020611] pl-9 font-mono text-xs placeholder:text-slate-600 focus-visible:border-blue-500 focus-visible:ring-0"
+              className="rounded-xl border-slate-200 pl-9 text-sm focus-visible:ring-primary focus-visible:border-primary"
             />
           </div>
         </div>
-        <div className="w-[160px] space-y-1.5">
-          <Label className="font-mono text-[9px] font-semibold uppercase tracking-widest text-slate-500">
-            TIP_UGOVORA
+        <div className="w-[160px] space-y-2">
+          <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+            Tip Ugovora
           </Label>
           <Select value={contractType} onValueChange={setContractType}>
-            <SelectTrigger className="rounded-none border-slate-800 bg-[#020611] font-mono text-xs focus:ring-0 focus:border-blue-500">
+            <SelectTrigger className="rounded-xl border-slate-200 text-sm focus:ring-primary focus:border-primary">
               <SelectValue />
             </SelectTrigger>
-            <SelectContent className="rounded-none border-slate-800 bg-[#020611] font-mono text-xs">
+            <SelectContent className="rounded-xl border-slate-200">
               {CONTRACT_TYPES.map((ct) => (
-                <SelectItem key={ct.value} value={ct.value} className="focus:bg-blue-500/20 focus:text-white">
+                <SelectItem key={ct.value} value={ct.value} className="focus:bg-blue-50 focus:text-primary rounded-lg cursor-pointer">
                   {ct.label}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
-        <div className="w-[180px] space-y-1.5">
-          <Label className="font-mono text-[9px] font-semibold uppercase tracking-widest text-slate-500">
-            PROCEDURA
+        <div className="w-[180px] space-y-2">
+          <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+            Procedura
           </Label>
           <Select value={procedureType} onValueChange={setProcedureType}>
-            <SelectTrigger className="rounded-none border-slate-800 bg-[#020611] font-mono text-xs focus:ring-0 focus:border-blue-500">
+            <SelectTrigger className="rounded-xl border-slate-200 text-sm focus:ring-primary focus:border-primary">
               <SelectValue />
             </SelectTrigger>
-            <SelectContent className="rounded-none border-slate-800 bg-[#020611] font-mono text-xs">
+            <SelectContent className="rounded-xl border-slate-200">
               {PROCEDURE_TYPES.map((pt) => (
-                <SelectItem key={pt.value} value={pt.value} className="focus:bg-blue-500/20 focus:text-white">
+                <SelectItem key={pt.value} value={pt.value} className="focus:bg-blue-50 focus:text-primary rounded-lg cursor-pointer">
                   {pt.label}
                 </SelectItem>
               ))}
@@ -143,68 +138,68 @@ export function TenderFilters() {
       </div>
 
       {/* Red 2: Datumi + vrijednosti + dugmad */}
-      <div className="flex flex-wrap items-end gap-3 pt-2">
-        <div className="w-[140px] space-y-1.5">
-          <Label className="font-mono text-[9px] font-semibold uppercase tracking-widest text-slate-500">
-            ROK_OD
+      <div className="flex flex-wrap items-end gap-4 border-t border-slate-100 pt-5 mt-2">
+        <div className="w-[140px] space-y-2">
+          <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+            Rok od
           </Label>
           <Input
             type="date"
             value={deadlineFrom}
             onChange={(e) => setDeadlineFrom(e.target.value)}
-            className="rounded-none border-slate-800 bg-[#020611] font-mono text-xs text-slate-300 focus-visible:border-blue-500 focus-visible:ring-0 [&::-webkit-calendar-picker-indicator]:invert"
+            className="rounded-xl border-slate-200 text-sm focus-visible:ring-primary focus-visible:border-primary"
           />
         </div>
-        <div className="w-[140px] space-y-1.5">
-          <Label className="font-mono text-[9px] font-semibold uppercase tracking-widest text-slate-500">
-            ROK_DO
+        <div className="w-[140px] space-y-2">
+          <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+            Rok do
           </Label>
           <Input
             type="date"
             value={deadlineTo}
             onChange={(e) => setDeadlineTo(e.target.value)}
-            className="rounded-none border-slate-800 bg-[#020611] font-mono text-xs text-slate-300 focus-visible:border-blue-500 focus-visible:ring-0 [&::-webkit-calendar-picker-indicator]:invert"
+            className="rounded-xl border-slate-200 text-sm focus-visible:ring-primary focus-visible:border-primary"
           />
         </div>
-        <div className="w-[130px] space-y-1.5">
-          <Label className="font-mono text-[9px] font-semibold uppercase tracking-widest text-slate-500">
-            VRIJEDNOST_MIN
+        <div className="w-[130px] space-y-2">
+          <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+            Min (KM)
           </Label>
           <Input
             type="number"
             placeholder="0"
             value={valueMin}
             onChange={(e) => setValueMin(e.target.value)}
-            className="rounded-none border-slate-800 bg-[#020611] font-mono text-xs placeholder:text-slate-600 focus-visible:border-blue-500 focus-visible:ring-0"
+            className="rounded-xl border-slate-200 text-sm focus-visible:ring-primary focus-visible:border-primary"
           />
         </div>
-        <div className="w-[130px] space-y-1.5">
-          <Label className="font-mono text-[9px] font-semibold uppercase tracking-widest text-slate-500">
-            VRIJEDNOST_MAX
+        <div className="w-[130px] space-y-2">
+          <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+            Max (KM)
           </Label>
           <Input
             type="number"
             placeholder="∞"
             value={valueMax}
             onChange={(e) => setValueMax(e.target.value)}
-            className="rounded-none border-slate-800 bg-[#020611] font-mono text-xs placeholder:text-slate-600 focus-visible:border-blue-500 focus-visible:ring-0"
+            className="rounded-xl border-slate-200 text-sm focus-visible:ring-primary focus-visible:border-primary"
           />
         </div>
-        <div className="flex gap-2 flex-1 justify-end">
+        <div className="flex gap-3 flex-1 justify-end">
           <Button 
             variant="outline" 
             onClick={resetFilters} 
             title="Resetuj filtere"
-            className="rounded-none border-slate-700 bg-transparent hover:bg-slate-800 hover:text-white"
+            className="rounded-xl border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900"
           >
             <RotateCcw className="size-4" />
           </Button>
           <Button 
             onClick={applyFilters} 
-            className="rounded-none bg-blue-600 font-mono text-[10px] font-bold tracking-widest hover:bg-blue-500"
+            className="rounded-xl bg-primary text-white hover:bg-blue-700 shadow-sm shadow-blue-500/20"
           >
-            <Search className="mr-2 size-3.5" />
-            EXECUTE_QUERY
+            <Search className="mr-2 size-4" />
+            Pretraži
           </Button>
         </div>
       </div>

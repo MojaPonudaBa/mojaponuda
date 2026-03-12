@@ -39,17 +39,14 @@ export default async function VaultPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between border-b border-slate-800 pb-4">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between border-b border-slate-200 pb-4">
         <div>
-          <div className="flex items-center gap-2 mb-2">
-            <span className="size-1.5 bg-blue-500" />
-            <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-slate-500">
-              Module_Active // Secure_Vault
-            </p>
-          </div>
-          <h2 className="text-2xl font-serif font-bold text-white tracking-tight">
+          <h1 className="text-3xl font-heading font-bold text-slate-900 tracking-tight">
             Trezor Dokumenata
-          </h2>
+          </h1>
+          <p className="mt-1.5 text-base text-slate-500">
+            Upravljajte dokumentima firme i pratite rokove isteka.
+          </p>
         </div>
         <AddDocumentModal />
       </div>

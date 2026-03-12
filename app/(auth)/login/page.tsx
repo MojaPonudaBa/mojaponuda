@@ -7,18 +7,18 @@ import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, Terminal } from "lucide-react";
+import { Loader2, ArrowRight } from "lucide-react";
 
 const errorMessages: Record<string, string> = {
-  "Invalid login credentials": "AUTH_FAILED // POGREŠAN EMAIL ILI LOZINKA",
-  "Email not confirmed": "AUTH_FAILED // EMAIL NIJE POTVRĐEN",
-  "Invalid email or password": "AUTH_FAILED // POGREŠAN EMAIL ILI LOZINKA",
-  "Too many requests": "SYS_BLOCK // PREVIŠE POKUŠAJA. RATE_LIMIT_ACTIVE",
-  "User not found": "AUTH_FAILED // KORISNIK NE POSTOJI",
+  "Invalid login credentials": "Pogrešan email ili lozinka.",
+  "Email not confirmed": "Email adresa nije potvrđena. Provjerite inbox.",
+  "Invalid email or password": "Pogrešan email ili lozinka.",
+  "Too many requests": "Previše pokušaja. Pokušajte ponovo za nekoliko minuta.",
+  "User not found": "Korisnik s ovim emailom ne postoji.",
 };
 
 function translateError(message: string): string {
-  return errorMessages[message] || "SYS_ERROR // GREŠKA PRI PRIJAVI";
+  return errorMessages[message] || "Greška pri prijavi. Pokušajte ponovo.";
 }
 
 export default function LoginPage() {
@@ -50,97 +50,87 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="w-full border border-slate-800 bg-[#060b17] shadow-2xl">
-      <div className="flex items-center justify-between border-b border-slate-800 bg-[#020611] px-4 py-3">
-        <div className="flex items-center gap-3">
-          <Terminal className="size-4 text-blue-500" />
-          <span className="font-mono text-xs font-bold text-white tracking-widest">
-            SECURE_LOGIN
+    <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-8 sm:p-10 shadow-xl shadow-blue-500/5">
+      <div className="mb-10 text-center">
+        <Link href="/" className="inline-flex items-baseline gap-0.5 mb-6">
+          <span className="font-heading text-2xl font-bold tracking-tight text-slate-900">
+            MojaPonuda
           </span>
-        </div>
-        <div className="flex gap-1.5">
-          <div className="size-2 rounded-sm bg-slate-700" />
-          <div className="size-2 rounded-sm bg-slate-700" />
-          <div className="size-2 rounded-sm bg-slate-700" />
-        </div>
+          <span className="font-heading text-2xl font-bold text-primary">.ba</span>
+        </Link>
+        <h1 className="font-heading text-2xl font-bold text-slate-900">
+          Dobrodošli nazad
+        </h1>
+        <p className="mt-2 text-sm text-slate-500">
+          Unesite svoje podatke za pristup platformi
+        </p>
       </div>
 
-      <div className="p-8">
-        <div className="mb-8 text-center">
-          <h1 className="font-serif text-2xl font-bold tracking-tight text-white">
-            MojaPonuda<span className="text-blue-500">.ba</span>
-          </h1>
-          <p className="mt-2 font-mono text-[10px] text-slate-500 uppercase tracking-widest">
-            Autentifikacija korisnika
+      <form onSubmit={handleLogin} className="space-y-6">
+        {error && (
+          <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-600">
+            {error}
+          </div>
+        )}
+        
+        <div className="space-y-2">
+          <Label htmlFor="email" className="text-sm font-semibold text-slate-700">
+            Email adresa
+          </Label>
+          <Input
+            id="email"
+            type="email"
+            placeholder="vas@email.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            disabled={loading}
+            className="rounded-xl border-slate-200 bg-white px-4 py-2 text-sm focus-visible:ring-primary focus-visible:border-primary transition-all"
+          />
+        </div>
+        
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <Label htmlFor="password" className="text-sm font-semibold text-slate-700">
+              Lozinka
+            </Label>
+            <Link
+              href="/reset-password"
+              className="text-sm font-semibold text-primary hover:text-blue-700 transition-colors"
+            >
+              Zaboravili ste lozinku?
+            </Link>
+          </div>
+          <Input
+            id="password"
+            type="password"
+            placeholder="••••••••"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            disabled={loading}
+            className="rounded-xl border-slate-200 bg-white px-4 py-2 text-sm focus-visible:ring-primary focus-visible:border-primary transition-all"
+          />
+        </div>
+
+        <Button 
+          type="submit" 
+          className="w-full h-12 rounded-full bg-primary text-base font-bold text-white shadow-lg shadow-blue-500/30 transition-all hover:bg-blue-700 hover:shadow-blue-500/40 hover:-translate-y-0.5" 
+          disabled={loading}
+        >
+          {loading ? <Loader2 className="mr-2 size-5 animate-spin" /> : null}
+          Prijavi se
+        </Button>
+
+        <div className="text-center pt-2">
+          <p className="text-sm text-slate-500">
+            Nemate korisnički račun?{" "}
+            <Link href="/signup" className="font-semibold text-primary hover:text-blue-700 transition-colors">
+              Isprobajte besplatno
+            </Link>
           </p>
         </div>
-
-        <form onSubmit={handleLogin} className="space-y-6">
-          {error && (
-            <div className="border border-red-900/50 bg-red-950/20 p-3 font-mono text-xs font-bold text-red-500">
-              {error}
-            </div>
-          )}
-          
-          <div className="space-y-2">
-            <Label htmlFor="email" className="font-mono text-[10px] font-bold uppercase tracking-widest text-slate-500">
-              USER_IDENTIFIER (EMAIL)
-            </Label>
-            <Input
-              id="email"
-              type="email"
-              placeholder="vas@email.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              disabled={loading}
-              className="rounded-none border-slate-800 bg-[#020611] font-mono text-xs text-white focus-visible:border-blue-500 focus-visible:ring-0"
-            />
-          </div>
-          
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="password" className="font-mono text-[10px] font-bold uppercase tracking-widest text-slate-500">
-                ACCESS_KEY (PASSWORD)
-              </Label>
-              <Link
-                href="/reset-password"
-                className="font-mono text-[9px] text-slate-500 hover:text-blue-400 transition-colors"
-              >
-                RECOVERY_PROTOCOL
-              </Link>
-            </div>
-            <Input
-              id="password"
-              type="password"
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              disabled={loading}
-              className="rounded-none border-slate-800 bg-[#020611] font-mono text-xs text-white focus-visible:border-blue-500 focus-visible:ring-0"
-            />
-          </div>
-
-          <Button 
-            type="submit" 
-            className="w-full rounded-none bg-blue-600 font-mono text-xs font-bold uppercase tracking-widest text-white hover:bg-blue-500" 
-            disabled={loading}
-          >
-            {loading ? <Loader2 className="mr-2 size-4 animate-spin" /> : null}
-            INITIATE_SESSION
-          </Button>
-
-          <div className="border-t border-slate-800 pt-6 text-center">
-            <p className="font-mono text-[10px] text-slate-500">
-              NO_ACTIVE_LICENSE?{" "}
-              <Link href="/signup" className="text-blue-500 hover:text-blue-400 font-bold transition-colors">
-                REQUEST_ACCESS
-              </Link>
-            </p>
-          </div>
-        </form>
-      </div>
+      </form>
     </div>
   );
 }

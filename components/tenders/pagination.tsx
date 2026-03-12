@@ -23,9 +23,9 @@ export function Pagination({ currentPage, totalPages, basePath }: PaginationProp
   }
 
   return (
-    <div className="flex items-center justify-between border-t border-slate-800 pt-4">
-      <div className="font-mono text-[9px] text-slate-500">
-        PAGE_INDEX // {currentPage}_{totalPages}
+    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-slate-200 pt-6">
+      <div className="text-sm text-slate-500 font-medium">
+        Stranica {currentPage} od {totalPages}
       </div>
       <div className="flex items-center gap-2">
         <Button
@@ -33,25 +33,21 @@ export function Pagination({ currentPage, totalPages, basePath }: PaginationProp
           size="sm"
           onClick={() => goToPage(currentPage - 1)}
           disabled={currentPage <= 1}
-          className="rounded-none border-slate-800 bg-[#060b17] font-mono text-[10px] text-slate-400 hover:bg-slate-800 hover:text-white disabled:opacity-50"
+          className="rounded-xl border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900 disabled:opacity-50"
         >
-          <ChevronLeft className="mr-1 size-3" />
-          PREV
+          <ChevronLeft className="mr-1 size-4" />
+          Prethodna
         </Button>
-
-        <div className="flex items-center justify-center border border-slate-800 bg-[#020611] px-4 py-2 font-mono text-xs text-white">
-          {currentPage} <span className="mx-2 text-slate-700">/</span> {totalPages}
-        </div>
 
         <Button
           variant="outline"
           size="sm"
           onClick={() => goToPage(currentPage + 1)}
           disabled={currentPage >= totalPages}
-          className="rounded-none border-slate-800 bg-[#060b17] font-mono text-[10px] text-slate-400 hover:bg-slate-800 hover:text-white disabled:opacity-50"
+          className="rounded-xl border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900 disabled:opacity-50"
         >
-          NEXT
-          <ChevronRight className="ml-1 size-3" />
+          Sljedeća
+          <ChevronRight className="ml-1 size-4" />
         </Button>
       </div>
     </div>

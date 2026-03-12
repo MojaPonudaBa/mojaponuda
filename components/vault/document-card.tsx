@@ -38,17 +38,17 @@ export function DocumentCard({ document }: DocumentCardProps) {
 
   const expiryStatus = getExpiryStatus(document.expires_at);
   
-  // Custom classes for the new dark theme
+  // Custom classes for the new light theme
   const getCustomBadgeClasses = (status: string) => {
     switch (status) {
       case "danger":
-        return "text-red-500 bg-red-500/10 border-red-500/20";
+        return "text-red-600 bg-red-50 border-red-200";
       case "warning":
-        return "text-amber-500 bg-amber-500/10 border-amber-500/20";
+        return "text-amber-600 bg-amber-50 border-amber-200";
       case "ok":
-        return "text-emerald-500 bg-emerald-500/10 border-emerald-500/20";
+        return "text-emerald-600 bg-emerald-50 border-emerald-200";
       default:
-        return "text-slate-500 bg-slate-500/10 border-slate-500/20";
+        return "text-slate-600 bg-slate-50 border-slate-200";
     }
   };
   
@@ -104,45 +104,45 @@ export function DocumentCard({ document }: DocumentCardProps) {
 
   return (
     <>
-      <div className="group relative overflow-hidden border border-slate-800 bg-[#060b17] transition-colors hover:border-slate-700 hover:bg-[#0a1628]/50">
-        {/* Colored left border stripe based on expiry status */}
+      <div className="group relative overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-all hover:border-blue-300 hover:shadow-md">
+        {/* Colored top border stripe based on expiry status */}
         <div
-          className={`absolute inset-y-0 left-0 w-1 ${
+          className={`absolute inset-x-0 top-0 h-1 ${
             expiryStatus === "danger"
               ? "bg-red-500 animate-pulse"
               : expiryStatus === "warning"
               ? "bg-amber-500"
               : expiryStatus === "ok"
               ? "bg-emerald-500"
-              : "bg-slate-700"
+              : "bg-slate-300"
           }`}
         />
         
-        <div className="flex flex-col h-full p-4 pl-5">
+        <div className="flex flex-col h-full p-6 pt-7">
           {/* Ikona i naziv */}
-          <div className="flex items-start gap-4 mb-4">
-            <div className="flex size-10 shrink-0 items-center justify-center border border-slate-800 bg-[#020611]">
-              <FileText className="size-5 text-blue-500" />
+          <div className="flex items-start gap-4 mb-6">
+            <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-blue-50">
+              <FileText className="size-6 text-primary" />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-bold text-white mb-1" title={document.name}>
+              <p className="truncate text-base font-bold text-slate-900 mb-1" title={document.name}>
                 {document.name}
               </p>
               {document.type && (
-                <p className="truncate font-mono text-[9px] uppercase tracking-widest text-slate-500" title={document.type}>
-                  TYPE: {document.type}
+                <p className="truncate text-xs font-semibold uppercase tracking-wider text-slate-500" title={document.type}>
+                  {document.type}
                 </p>
               )}
             </div>
           </div>
 
-          <div className="mt-auto space-y-4">
+          <div className="mt-auto space-y-5">
             {/* Status isteka */}
             <div
-              className={`inline-flex w-full items-center gap-2 border px-2 py-1.5 font-mono text-[10px] font-bold uppercase tracking-widest ${expiryBadgeClasses}`}
+              className={`inline-flex w-full items-center gap-2 rounded-lg border px-3 py-2 text-xs font-bold ${expiryBadgeClasses}`}
             >
               {expiryStatus === "danger" && (
-                <AlertTriangle className="size-3 shrink-0" />
+                <AlertTriangle className="size-4 shrink-0" />
               )}
               <span className="truncate">{expiryText}</span>
             </div>
@@ -154,31 +154,31 @@ export function DocumentCard({ document }: DocumentCardProps) {
                 size="sm"
                 onClick={handlePreview}
                 disabled={previewLoading}
-                className="flex-1 rounded-none border-slate-800 bg-[#020611] font-mono text-[10px] tracking-widest text-slate-400 hover:bg-blue-900/20 hover:text-blue-400 hover:border-blue-900/50"
+                className="flex-1 rounded-xl border-slate-200 text-slate-700 hover:bg-blue-50 hover:text-primary hover:border-blue-200"
               >
                 {previewLoading ? (
-                  <Loader2 className="mr-2 size-3 animate-spin" />
+                  <Loader2 className="mr-2 size-4 animate-spin" />
                 ) : (
-                  <Eye className="mr-2 size-3" />
+                  <Eye className="mr-2 size-4" />
                 )}
-                VIEW
+                Pregled
               </Button>
               <Button 
                 variant="outline" 
                 size="sm" 
                 onClick={handleDownload} 
-                className="flex-1 rounded-none border-slate-800 bg-[#020611] font-mono text-[10px] tracking-widest text-slate-400 hover:bg-emerald-900/20 hover:text-emerald-400 hover:border-emerald-900/50"
+                className="flex-1 rounded-xl border-slate-200 text-slate-700 hover:bg-blue-50 hover:text-primary hover:border-blue-200"
               >
-                <Download className="mr-2 size-3" />
-                GET
+                <Download className="mr-2 size-4" />
+                Preuzmi
               </Button>
               <Button
-                variant="destructive"
+                variant="outline"
                 size="sm"
                 onClick={() => setDeleteOpen(true)}
-                className="shrink-0 rounded-none bg-red-950/30 text-red-500 hover:bg-red-900 hover:text-white"
+                className="shrink-0 rounded-xl border-slate-200 text-slate-400 hover:bg-red-50 hover:text-red-600 hover:border-red-200"
               >
-                <Trash2 className="size-3" />
+                <Trash2 className="size-4" />
               </Button>
             </div>
           </div>
@@ -187,33 +187,33 @@ export function DocumentCard({ document }: DocumentCardProps) {
 
       {/* Dialog za potvrdu brisanja */}
       <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-        <DialogContent className="rounded-none border border-slate-800 bg-[#060b17] sm:max-w-md">
+        <DialogContent className="rounded-2xl border-none shadow-xl sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="font-mono text-sm text-red-500">SYSTEM_WARNING: FILE_DELETION</DialogTitle>
-            <DialogDescription className="text-slate-400">
+            <DialogTitle className="text-xl font-heading font-bold text-slate-900">Brisanje dokumenta</DialogTitle>
+            <DialogDescription className="text-base text-slate-600 mt-2">
               Da li ste sigurni da želite obrisati dokument{" "}
-              <strong className="text-white">{document.name}</strong>? Ova akcija se ne može poništiti i dokument će biti uklonjen iz svih povezanih ponuda.
+              <strong className="text-slate-900">{document.name}</strong>? Ova akcija se ne može poništiti i dokument će biti uklonjen iz svih povezanih ponuda.
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter className="mt-4 gap-2 sm:gap-0">
+          <DialogFooter className="mt-6 gap-3 sm:gap-0">
             <Button
               variant="outline"
               onClick={() => setDeleteOpen(false)}
               disabled={deleting}
-              className="rounded-none border-slate-800 bg-transparent font-mono text-xs text-slate-400 hover:bg-slate-800 hover:text-white"
+              className="rounded-xl border-slate-200 text-slate-700 hover:bg-slate-50"
             >
-              ABORT
+              Odustani
             </Button>
             <Button
               variant="destructive"
               onClick={handleDelete}
               disabled={deleting}
-              className="rounded-none font-mono text-xs"
+              className="rounded-xl bg-red-600 hover:bg-red-700"
             >
               {deleting ? (
-                <Loader2 className="mr-2 size-3 animate-spin" />
+                <Loader2 className="mr-2 size-4 animate-spin" />
               ) : null}
-              CONFIRM_DELETE
+              Obriši dokument
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -78,37 +78,37 @@ async function TendersContent({ searchParams }: TendersPageProps) {
   return (
     <>
       <div className="mb-4 flex items-center justify-between">
-        <p className="font-mono text-xs text-muted-foreground">
-          {totalCount} {totalCount === 1 ? "tender" : "tendera"}
+        <p className="text-sm font-medium text-slate-500">
+          Pronađeno {totalCount} {totalCount === 1 ? "tender" : "tendera"}
           {hasFilters && " (filtrirano)"}
         </p>
       </div>
 
       {tenders.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-card/50 py-20">
-          <div className="flex size-14 items-center justify-center rounded-2xl bg-primary/5">
-            <Search className="size-6 text-primary/40" />
+        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-slate-50 py-20">
+          <div className="flex size-16 items-center justify-center rounded-full bg-blue-50 text-blue-500 mb-4 shadow-sm shadow-blue-500/20">
+            <Search className="size-6" />
           </div>
-          <p className="mt-4 text-sm font-medium text-foreground/80">
+          <h3 className="text-lg font-heading font-bold text-slate-900 mb-2">
             {hasFilters
               ? "Nema tendera koji odgovaraju filterima"
               : "Nema tendera u bazi"}
-          </p>
-          <p className="mt-1 text-xs text-muted-foreground">
+          </h3>
+          <p className="text-sm text-slate-500 text-center max-w-sm">
             {hasFilters
               ? "Pokušajte sa drugačijim filterima ili resetujte pretragu."
               : "Podaci se automatski sinhronizuju sa e-Nabavke portala."}
           </p>
         </div>
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-3">
           {tenders.map((tender) => (
             <TenderCard key={tender.id} tender={tender} />
           ))}
         </div>
       )}
 
-      <div className="mt-6">
+      <div className="mt-8">
         <Pagination
           currentPage={page}
           totalPages={totalPages}
@@ -122,22 +122,13 @@ async function TendersContent({ searchParams }: TendersPageProps) {
 export default async function TendersPage(props: TendersPageProps) {
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between border-b border-slate-800 pb-4">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <div className="flex items-center gap-2 mb-2">
-            <span className="size-1.5 bg-emerald-500" />
-            <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-slate-500">
-              Module_Active // Market_Scanner
-            </p>
-          </div>
-          <h2 className="text-2xl font-serif font-bold text-white tracking-tight">
-            Tenderi
-          </h2>
-        </div>
-        <div className="text-right">
-          <p className="font-mono text-[10px] text-emerald-400">DATA_STREAM: CONNECTED</p>
-          <p className="mt-1 font-mono text-[10px] text-slate-500">
-            SOURCE: ejn.gov.ba
+          <h1 className="text-3xl font-heading font-bold text-slate-900 tracking-tight">
+            Tender Skener
+          </h1>
+          <p className="mt-1.5 text-base text-slate-500">
+            Pretražite aktivne tendere iz BiH e-Procurement portala.
           </p>
         </div>
       </div>
@@ -148,11 +139,9 @@ export default async function TendersPage(props: TendersPageProps) {
 
       <Suspense
         fallback={
-          <div className="flex items-center justify-center py-16">
-            <div className="flex flex-col items-center gap-3">
-              <div className="size-6 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />
-              <p className="font-mono text-[10px] text-slate-500">FETCHING_MARKET_DATA...</p>
-            </div>
+          <div className="flex flex-col items-center justify-center py-24">
+            <div className="size-8 animate-spin rounded-full border-4 border-slate-200 border-t-primary mb-4" />
+            <p className="text-sm font-medium text-slate-500">Učitavanje tendera...</p>
           </div>
         }
       >
