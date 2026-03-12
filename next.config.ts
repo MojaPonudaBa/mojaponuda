@@ -6,6 +6,7 @@ const nextConfig: NextConfig = {
     "@supabase/supabase-js",
     "openai",
   ],
+  turbopack: {},
 };
 
 export default nextConfig;
