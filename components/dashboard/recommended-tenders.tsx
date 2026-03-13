@@ -11,10 +11,10 @@ export async function RecommendedTenders() {
 
   if (!user) return null;
 
-  // Get company keywords
+  // Get company keywords and regions
   const { data: company } = await supabase
     .from("companies")
-    .select("keywords")
+    .select("keywords, operating_regions")
     .eq("user_id", user.id)
     .single();
 
@@ -49,18 +49,38 @@ export async function RecommendedTenders() {
   }
 
   // Find matching tenders
+  let query = supabase
+    .from("tenders")
+    .select("id, title, deadline, estimated_value, contracting_authority")
+    .gt("deadline", new Date().toISOString());
+
   // Construct OR filter for keywords
-  const orConditions = company.keywords
+  const keywordConditions = company.keywords
     .map((kw) => `title.ilike.%${kw}%,raw_description.ilike.%${kw}%`)
     .join(",");
 
-  if (!orConditions) return null;
+  if (keywordConditions) {
+    query = query.or(keywordConditions);
+  } else {
+    return null;
+  }
 
-  const { data: tenders } = await supabase
-    .from("tenders")
-    .select("id, title, deadline, estimated_value, contracting_authority")
-    .or(orConditions)
-    .gt("deadline", new Date().toISOString())
+  // If company has specified regions, also filter by those regions
+  const regions = company.operating_regions || [];
+  if (regions.length > 0) {
+    const regionConditions = regions
+      .map(
+        (reg) =>
+          `title.ilike.%${reg}%,raw_description.ilike.%${reg}%,contracting_authority.ilike.%${reg}%`
+      )
+      .join(",");
+    
+    if (regionConditions) {
+      query = query.or(regionConditions);
+    }
+  }
+
+  const { data: tenders } = await query
     .order("deadline", { ascending: true })
     .limit(3);
 
