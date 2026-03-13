@@ -23,6 +23,9 @@ export interface Database {
           contact_email: string | null;
           contact_phone: string | null;
           industry: string | null;
+          cpv_codes: string[] | null;
+          keywords: string[] | null;
+          operating_regions: string[] | null;
           created_at: string;
         };
         Insert: {
@@ -35,6 +38,9 @@ export interface Database {
           contact_email?: string | null;
           contact_phone?: string | null;
           industry?: string | null;
+          cpv_codes?: string[] | null;
+          keywords?: string[] | null;
+          operating_regions?: string[] | null;
           created_at?: string;
         };
         Update: {
@@ -47,6 +53,9 @@ export interface Database {
           contact_email?: string | null;
           contact_phone?: string | null;
           industry?: string | null;
+          cpv_codes?: string[] | null;
+          keywords?: string[] | null;
+          operating_regions?: string[] | null;
           created_at?: string;
         };
         Relationships: [];

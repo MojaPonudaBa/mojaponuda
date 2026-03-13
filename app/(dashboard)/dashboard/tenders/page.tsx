@@ -4,7 +4,10 @@ import type { Tender } from "@/types/database";
 import { TenderFilters } from "@/components/tenders/tender-filters";
 import { TenderCard } from "@/components/tenders/tender-card";
 import { Pagination } from "@/components/tenders/pagination";
-import { Search } from "lucide-react";
+import { Search, Sparkles } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
 
 const PAGE_SIZE = 20;
 
@@ -18,6 +21,71 @@ async function TendersContent({ searchParams }: TendersPageProps) {
 
   const page = Math.max(1, parseInt(params.page || "1", 10));
   const offset = (page - 1) * PAGE_SIZE;
+  const activeTab = params.tab || "all";
+
+  // Get current user and company for recommendations
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  let companyKeywords: string[] = [];
+  let hasProfile = false;
+
+  if (activeTab === "recommended" && user) {
+    const { data: company } = await supabase
+      .from("companies")
+      .select("keywords")
+      .eq("user_id", user.id)
+      .single();
+
+    if (company) {
+      hasProfile = true;
+      companyKeywords = company.keywords || [];
+    }
+  }
+
+  // If tab is recommended but no keywords/profile, show empty state immediately
+  if (activeTab === "recommended") {
+    if (!user) {
+      return (
+        <div className="flex flex-col items-center justify-center py-20 text-center">
+          <div className="mb-4 flex size-16 items-center justify-center rounded-full bg-blue-50 text-blue-600">
+            <Sparkles className="size-8" />
+          </div>
+          <h3 className="mb-2 text-xl font-bold text-slate-900">
+            Prijavite se za preporuke
+          </h3>
+          <p className="mb-6 max-w-md text-slate-500">
+            Prijavite se da bismo mogli analizirati vaš profil i preporučiti vam
+            najbolje tendere.
+          </p>
+          <Button asChild>
+            <Link href="/login">Prijavi se</Link>
+          </Button>
+        </div>
+      );
+    }
+
+    if (!hasProfile || companyKeywords.length === 0) {
+      return (
+        <div className="flex flex-col items-center justify-center py-20 text-center">
+          <div className="mb-4 flex size-16 items-center justify-center rounded-full bg-amber-50 text-amber-600">
+            <Sparkles className="size-8" />
+          </div>
+          <h3 className="mb-2 text-xl font-bold text-slate-900">
+            Podesite svoj profil
+          </h3>
+          <p className="mb-6 max-w-md text-slate-500">
+            Da bismo vam mogli preporučiti tendere, trebamo znati čime se bavi
+            vaša firma. Unesite ključne riječi u postavkama profila.
+          </p>
+          <Button asChild>
+            <Link href="/dashboard/settings">Uredi Profil</Link>
+          </Button>
+        </div>
+      );
+    }
+  }
 
   // Build query
   let query = supabase
@@ -25,7 +93,20 @@ async function TendersContent({ searchParams }: TendersPageProps) {
     .select("*", { count: "exact" })
     .gt("deadline", new Date().toISOString());
 
-  // Keyword filter (title or description)
+  // Apply recommendation filter
+  if (activeTab === "recommended" && companyKeywords.length > 0) {
+    // Construct OR filter for keywords in title or description
+    // Syntax: title.ilike.%kw1%,raw_description.ilike.%kw1%,title.ilike.%kw2%...
+    const orConditions = companyKeywords
+      .map((kw) => `title.ilike.%${kw}%,raw_description.ilike.%${kw}%`)
+      .join(",");
+    
+    if (orConditions) {
+      query = query.or(orConditions);
+    }
+  }
+
+  // Keyword filter (search bar overrides recommendations or adds to them)
   if (params.q) {
     const kw = `%${params.q}%`;
     query = query.or(`title.ilike.${kw},raw_description.ilike.${kw}`);
@@ -80,7 +161,8 @@ async function TendersContent({ searchParams }: TendersPageProps) {
     <>
       <div className="mb-4 flex items-center justify-between">
         <p className="text-sm font-medium text-slate-500">
-          Pronađeno {totalCount} {totalCount === 1 ? "tender" : "tendera"}
+          {activeTab === "recommended" ? "Preporučeno" : "Pronađeno"} {totalCount}{" "}
+          {totalCount === 1 ? "tender" : "tendera"}
           {hasFilters && " (filtrirano)"}
         </p>
       </div>
@@ -91,15 +173,24 @@ async function TendersContent({ searchParams }: TendersPageProps) {
             <Search className="size-6" />
           </div>
           <h3 className="text-lg font-heading font-bold text-slate-900 mb-2">
-            {hasFilters
+            {activeTab === "recommended"
+              ? "Nema preporučenih tendera"
+              : hasFilters
               ? "Nema tendera koji odgovaraju filterima"
               : "Nema tendera u bazi"}
           </h3>
           <p className="text-sm text-slate-500 text-center max-w-sm">
-            {hasFilters
+            {activeTab === "recommended"
+              ? "Pokušajte dodati više ključnih riječi u profil ili promijenite filtere."
+              : hasFilters
               ? "Pokušajte sa drugačijim filterima ili resetujte pretragu."
               : "Podaci se automatski sinhronizuju sa e-Nabavke portala."}
           </p>
+          {activeTab === "recommended" && (
+            <Button variant="outline" className="mt-4" asChild>
+               <Link href="/dashboard/settings">Ažuriraj ključne riječi</Link>
+            </Button>
+          )}
         </div>
       ) : (
         <div className="space-y-3">
@@ -121,6 +212,9 @@ async function TendersContent({ searchParams }: TendersPageProps) {
 }
 
 export default async function TendersPage(props: TendersPageProps) {
+  const params = await props.searchParams;
+  const activeTab = params.tab || "all";
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
@@ -134,20 +228,44 @@ export default async function TendersPage(props: TendersPageProps) {
         </div>
       </div>
 
-      <Suspense fallback={null}>
-        <TenderFilters />
-      </Suspense>
+      <Tabs defaultValue={activeTab} className="w-full">
+        <TabsList className="grid w-full grid-cols-2 lg:w-[400px]">
+          <TabsTrigger value="all" asChild>
+            <Link href={{ query: { ...params, tab: "all", page: "1" } }}>
+              Svi tenderi
+            </Link>
+          </TabsTrigger>
+          <TabsTrigger value="recommended" asChild>
+            <Link
+              href={{ query: { ...params, tab: "recommended", page: "1" } }}
+              className="flex items-center gap-2"
+            >
+              <Sparkles className="size-3.5 text-blue-500" />
+              Preporučeno
+            </Link>
+          </TabsTrigger>
+        </TabsList>
 
-      <Suspense
-        fallback={
-          <div className="flex flex-col items-center justify-center py-24">
-            <div className="size-8 animate-spin rounded-full border-4 border-slate-200 border-t-primary mb-4" />
-            <p className="text-sm font-medium text-slate-500">Učitavanje tendera...</p>
-          </div>
-        }
-      >
-        <TendersContent searchParams={props.searchParams} />
-      </Suspense>
+        <div className="mt-6">
+          <Suspense fallback={null}>
+            <TenderFilters />
+          </Suspense>
+
+          <Suspense
+            key={activeTab + JSON.stringify(params)}
+            fallback={
+              <div className="flex flex-col items-center justify-center py-24">
+                <div className="size-8 animate-spin rounded-full border-4 border-slate-200 border-t-primary mb-4" />
+                <p className="text-sm font-medium text-slate-500">
+                  Učitavanje tendera...
+                </p>
+              </div>
+            }
+          >
+            <TendersContent searchParams={props.searchParams} />
+          </Suspense>
+        </div>
+      </Tabs>
     </div>
   );
 }

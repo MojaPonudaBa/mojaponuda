@@ -21,6 +21,9 @@ CREATE TABLE companies (
   contact_email text,
   contact_phone text,
   industry      text,
+  cpv_codes     text[] DEFAULT '{}',
+  keywords      text[] DEFAULT '{}',
+  operating_regions text[] DEFAULT '{}',
   created_at    timestamptz NOT NULL DEFAULT now()
 );
 

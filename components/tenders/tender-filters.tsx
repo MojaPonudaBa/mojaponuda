@@ -56,6 +56,13 @@ export function TenderFilters() {
 
   const applyFilters = useCallback(() => {
     const params = new URLSearchParams();
+    
+    // Preserve current tab if it exists
+    const currentTab = searchParams.get("tab");
+    if (currentTab) {
+      params.set("tab", currentTab);
+    }
+
     if (keyword.trim()) params.set("q", keyword.trim());
     if (contractType !== "all") params.set("contract_type", contractType);
     if (procedureType !== "all") params.set("procedure_type", procedureType);
@@ -65,7 +72,7 @@ export function TenderFilters() {
     if (valueMax) params.set("value_max", valueMax);
     params.set("page", "1");
     router.push(`/dashboard/tenders?${params.toString()}`);
-  }, [keyword, contractType, procedureType, deadlineFrom, deadlineTo, valueMin, valueMax, router]);
+  }, [keyword, contractType, procedureType, deadlineFrom, deadlineTo, valueMin, valueMax, router, searchParams]);
 
   function resetFilters() {
     setKeyword("");
@@ -75,7 +82,13 @@ export function TenderFilters() {
     setDeadlineTo("");
     setValueMin("");
     setValueMax("");
-    router.push("/dashboard/tenders");
+    
+    // Keep the current tab when resetting filters
+    const currentTab = searchParams.get("tab");
+    const params = new URLSearchParams();
+    if (currentTab) params.set("tab", currentTab);
+    
+    router.push(`/dashboard/tenders?${params.toString()}`);
   }
 
   function handleKeyDown(e: React.KeyboardEvent) {

@@ -17,6 +17,7 @@ import {
   LogOut,
   ChevronDown,
   Box,
+  Settings,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -42,6 +43,7 @@ const intelligenceItems: NavItem[] = [
 
 const accountItems: NavItem[] = [
   { href: "/dashboard/subscription", label: "Pretplata", icon: CreditCard },
+  { href: "/dashboard/settings", label: "Postavke", icon: Settings },
 ];
 
 interface DashboardSidebarProps {

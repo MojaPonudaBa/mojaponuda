@@ -64,6 +64,9 @@ export default async function OnboardingPage() {
           initialAddress={company?.address ?? demoDefaults?.address ?? ""}
           initialContactEmail={company?.contact_email ?? demoDefaults?.contactEmail ?? user.email ?? ""}
           initialContactPhone={company?.contact_phone ?? demoDefaults?.contactPhone ?? ""}
+          initialCpvCodes={company?.cpv_codes ?? []}
+          initialKeywords={company?.keywords ?? []}
+          initialRegions={company?.operating_regions ?? []}
         />
       </div>
     </div>
