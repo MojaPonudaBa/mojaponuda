@@ -227,7 +227,7 @@ async function TendersContent({ searchParams }: TendersPageProps) {
 
 export default async function TendersPage(props: TendersPageProps) {
   const params = await props.searchParams;
-  const activeTab = params.tab || "all";
+  const activeTab = params.tab === "all" ? "all" : "recommended";
 
   return (
     <div className="space-y-6">
@@ -244,18 +244,18 @@ export default async function TendersPage(props: TendersPageProps) {
 
       <Tabs defaultValue={activeTab} className="w-full">
         <TabsList className="grid w-full grid-cols-2 lg:w-[400px]">
-          <TabsTrigger value="all" asChild>
-            <Link href={{ query: { ...params, tab: "all", page: "1" } }}>
-              Svi tenderi
-            </Link>
-          </TabsTrigger>
           <TabsTrigger value="recommended" asChild>
             <Link
               href={{ query: { ...params, tab: "recommended", page: "1" } }}
               className="flex items-center gap-2"
             >
-              <Sparkles className="size-3.5 text-blue-500" />
+              <Sparkles className="size-3.5" />
               Preporučeno
+            </Link>
+          </TabsTrigger>
+          <TabsTrigger value="all" asChild>
+            <Link href={{ query: { ...params, tab: "all", page: "1" } }}>
+              Svi tenderi
             </Link>
           </TabsTrigger>
         </TabsList>
