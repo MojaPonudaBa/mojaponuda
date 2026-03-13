@@ -204,7 +204,7 @@ export function DocumentCard({ document }: DocumentCardProps) {
               variant="destructive"
               onClick={handleDelete}
               disabled={deleting}
-              className="rounded-sm bg-red-600 hover:bg-red-700"
+              className="rounded-sm bg-red-600 text-white hover:bg-red-700 hover:text-white"
             >
               {deleting ? (
                 <Loader2 className="mr-2 size-4 animate-spin" />

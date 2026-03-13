@@ -93,6 +93,10 @@ export const DEFAULT_PLAN = PLANS.basic;
 
 export function getPlanFromVariantId(variantId: string | null): Plan {
   if (!variantId) return DEFAULT_PLAN;
+
+  if (variantId in PLANS) {
+    return PLANS[variantId as PlanTier];
+  }
   
   const plan = Object.values(PLANS).find(
     (p) => p.lemonSqueezyVariantId === variantId

@@ -37,7 +37,7 @@ export async function getSubscriptionStatus(
     // Default za admina ako nema ništa u bazi je Agencijski paket
     const demoSub = getDemoSubscription(userId);
     const agencyPlan = PLANS.agency;
-    demoSub.lemonsqueezy_variant_id = agencyPlan.lemonSqueezyVariantId;
+    demoSub.lemonsqueezy_variant_id = "agency";
 
     return {
       isSubscribed: true,

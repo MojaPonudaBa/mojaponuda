@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createCheckout } from "@/lib/lemonsqueezy";
 import { PLANS, type PlanTier } from "@/lib/plans";
 import { isDemoUser } from "@/lib/demo";
@@ -31,16 +32,21 @@ export async function POST(req: Request) {
 
     // Za admin/demo nalog, direktno ažuriramo pretplatu bez plaćanja
     if (isDemoUser(user.email)) {
-      const { error } = await supabase
+      const admin = createAdminClient();
+      const { error } = await admin
         .from("subscriptions")
-        .upsert({
-          user_id: user.id,
-          lemonsqueezy_customer_id: "demo-customer",
-          lemonsqueezy_subscription_id: "demo-subscription-id",
-          lemonsqueezy_variant_id: variantId,
-          status: "active",
-          current_period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-        }, { onConflict: "user_id" });
+        .upsert(
+          {
+            user_id: user.id,
+            lemonsqueezy_customer_id: "demo-customer",
+            lemonsqueezy_subscription_id: "demo-subscription-id",
+            // Za demo korisnika spremamo planId direktno da ne ovisimo o LS variant ID env varovima
+            lemonsqueezy_variant_id: planId,
+            status: "active",
+            current_period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+          },
+          { onConflict: "user_id" }
+        );
 
       if (error) {
         throw error;
