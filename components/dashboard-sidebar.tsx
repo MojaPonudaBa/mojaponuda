@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -54,6 +55,7 @@ interface DashboardSidebarProps {
 export function DashboardSidebar({ userEmail, companyName }: DashboardSidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   async function handleSignOut() {
     const supabase = createClient();
@@ -122,21 +124,34 @@ export function DashboardSidebar({ userEmail, companyName }: DashboardSidebarPro
 
       {/* User info at bottom — click chevron to sign out */}
       <div className="mt-auto border-t border-white/10 px-3 py-4">
-        <div className="flex items-center gap-2 rounded-xl px-2 py-2">
-          <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-white/20 text-sm font-bold text-white">
-            {userEmail.charAt(0).toUpperCase()}
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-xs font-semibold text-white" title={companyName ?? userEmail}>
-              {companyName ?? userEmail.split("@")[0]}
-            </p>
-          </div>
+        <div className="relative">
+          {isMenuOpen && (
+            <div className="absolute bottom-full left-0 right-0 mb-2 rounded-xl bg-white p-1.5 shadow-[0_18px_40px_-20px_rgba(15,23,42,0.35)]">
+              <button
+                onClick={handleSignOut}
+                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-100"
+              >
+                <LogOut className="size-4" />
+                Odjava
+              </button>
+            </div>
+          )}
           <button
-            onClick={handleSignOut}
-            title="Odjava"
-            className="flex shrink-0 items-center justify-center rounded-lg p-1 text-white/60 transition-all hover:bg-white/15 hover:text-white"
+            type="button"
+            onClick={() => setIsMenuOpen((open) => !open)}
+            className="flex w-full items-center gap-2 rounded-xl px-2 py-2 text-left transition-all hover:bg-white/10"
           >
-            <ChevronDown className="size-4" />
+            <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-white/20 text-sm font-bold text-white">
+              {userEmail.charAt(0).toUpperCase()}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-xs font-semibold text-white" title={companyName ?? userEmail}>
+                {companyName ?? userEmail.split("@")[0]}
+              </p>
+            </div>
+            <div className="flex shrink-0 items-center justify-center rounded-lg p-1 text-white/60">
+              <ChevronDown className={cn("size-4 transition-transform", isMenuOpen && "rotate-180 text-white")} />
+            </div>
           </button>
         </div>
       </div>
