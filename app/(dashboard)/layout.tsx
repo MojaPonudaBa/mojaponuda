@@ -23,18 +23,16 @@ export default async function DashboardLayout({
     .maybeSingle();
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center bg-[#f8fafc] p-4 sm:p-6 lg:p-8 overflow-hidden">
-      {/* Soft background glows to match the reference aesthetic */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[600px] bg-blue-400/20 blur-[120px] rounded-full pointer-events-none" />
-      <div className="absolute bottom-0 left-1/4 w-[500px] h-[400px] bg-blue-300/20 blur-[100px] rounded-full pointer-events-none" />
-      
-      <div className="relative flex h-[calc(100vh-2rem)] sm:h-[calc(100vh-4rem)] w-full max-w-[1600px] overflow-hidden rounded-[2rem] bg-white shadow-[0_20px_60px_-15px_rgba(37,99,235,0.15)] ring-1 ring-slate-200/50">
+    <div className="relative min-h-screen overflow-hidden bg-[linear-gradient(180deg,#eef3fb_0%,#f8fafc_22%,#f8fafc_100%)]">
+      <div className="pointer-events-none absolute inset-y-0 left-0 w-[420px] bg-[radial-gradient(circle_at_top_left,rgba(37,99,235,0.2),transparent_55%)]" />
+      <div className="pointer-events-none absolute right-[-120px] top-[-120px] size-[420px] rounded-full bg-[radial-gradient(circle,rgba(148,163,184,0.18),transparent_65%)] blur-3xl" />
+      <div className="relative flex min-h-screen w-full">
         <DashboardSidebar
           userEmail={user.email ?? ""}
           companyName={company?.name}
         />
-        <main className="flex-1 overflow-auto bg-slate-50/30 relative">
-          <div className="mx-auto h-full max-w-7xl p-6 lg:p-10">
+        <main className="relative min-w-0 flex-1 overflow-auto">
+          <div className="mx-auto min-h-screen w-full max-w-[1680px] px-5 py-6 sm:px-8 lg:px-10 lg:py-8 xl:px-14 xl:py-10">
             {children}
           </div>
         </main>

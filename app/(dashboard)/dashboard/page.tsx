@@ -16,9 +16,6 @@ import {
   Clock,
   Plus,
   TrendingUp,
-  Eye,
-  PenLine,
-  Trash2,
   Upload
 } from "lucide-react";
 import type { BidStatus, Document as DocType } from "@/types/database";
@@ -136,28 +133,28 @@ export default async function DashboardPage() {
   const greeting = now.getHours() < 12 ? "Dobro jutro" : now.getHours() < 18 ? "Dobar dan" : "Dobra večer";
   
   return (
-    <div className="space-y-8 max-w-[1200px] mx-auto">
+    <div className="space-y-10">
       {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
         <div>
-          <h1 className="text-3xl font-heading font-bold text-slate-900 tracking-tight">
+          <h1 className="text-4xl font-heading font-bold text-slate-950 tracking-tight lg:text-5xl">
             {greeting}, {resolvedCompany.name.split(" ")[0]}
           </h1>
-          <p className="mt-1 text-base text-slate-500">
+          <p className="mt-2 max-w-2xl text-base leading-7 text-slate-600 lg:text-lg">
             Evo pregleda vaših aktivnosti i ponuda danas.
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <Link
             href="/dashboard/tenders"
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-white px-5 text-sm font-bold text-slate-700 border border-slate-200 shadow-sm transition-all hover:bg-slate-50 hover:text-primary hover:border-blue-200"
+            className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 text-sm font-bold text-slate-700 shadow-sm transition-all hover:-translate-y-0.5 hover:border-blue-200 hover:bg-slate-50 hover:text-primary"
           >
             <Search className="size-4" />
             Pronađi tender
           </Link>
           <Link
             href="/dashboard/bids"
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-primary px-5 text-sm font-bold text-white shadow-lg shadow-blue-500/30 transition-all hover:bg-blue-700 hover:shadow-blue-500/40 hover:-translate-y-0.5"
+            className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-primary px-5 text-sm font-bold text-white shadow-[0_18px_40px_-20px_rgba(15,23,42,0.8)] transition-all hover:-translate-y-0.5 hover:bg-blue-700"
           >
             <Plus className="size-4" />
           </Link>
@@ -170,95 +167,95 @@ export default async function DashboardPage() {
       </Suspense>
 
       {/* Top Metrics Row */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
         {/* Large Metric Card */}
-        <div className="col-span-1 sm:col-span-2 lg:col-span-1 rounded-[1.5rem] bg-white p-6 shadow-sm border border-slate-100 flex flex-col justify-center relative overflow-hidden group">
-          <div className="absolute right-0 top-0 w-32 h-32 bg-blue-50 rounded-full blur-3xl -mr-10 -mt-10 transition-all group-hover:bg-blue-100" />
-          <div className="flex items-center gap-3 mb-2 relative z-10">
-            <div className="flex size-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+        <div className="group relative col-span-1 overflow-hidden rounded-[1.75rem] border border-slate-200/80 bg-white p-7 shadow-[0_24px_50px_-30px_rgba(15,23,42,0.22)] sm:col-span-2 xl:col-span-1">
+          <div className="absolute right-0 top-0 h-36 w-36 -translate-y-8 translate-x-8 rounded-full bg-blue-100/80 blur-3xl transition-all group-hover:bg-blue-200/70" />
+          <div className="relative z-10 flex items-center gap-3 mb-3">
+            <div className="flex size-11 items-center justify-center rounded-2xl bg-blue-50 text-blue-700 ring-1 ring-blue-100">
               <FileText className="size-5" />
             </div>
             <p className="text-sm font-bold text-slate-500">Ukupno ponuda</p>
           </div>
-          <p className="font-heading text-4xl font-extrabold text-slate-900 relative z-10 mt-2">
+          <p className="relative z-10 mt-4 font-heading text-5xl font-extrabold text-slate-950">
             {displayTotalBids}
           </p>
         </div>
 
         {/* Small Metric Cards */}
-        <div className="rounded-[1.5rem] bg-white p-5 shadow-sm border border-slate-100 flex flex-col justify-center transition-all hover:shadow-md hover:border-blue-100">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="flex size-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+        <div className="flex flex-col justify-center rounded-[1.75rem] border border-slate-200/80 bg-white p-6 shadow-[0_20px_40px_-30px_rgba(15,23,42,0.2)] transition-all hover:-translate-y-0.5 hover:border-blue-100 hover:shadow-[0_28px_50px_-32px_rgba(37,99,235,0.28)]">
+          <div className="mb-4 flex items-center gap-3">
+            <div className="flex size-11 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 ring-1 ring-blue-100">
               <Clock className="size-5" />
             </div>
             <p className="text-sm font-bold text-slate-600">U pripremi</p>
           </div>
-          <p className="font-heading text-3xl font-bold text-slate-900 ml-1">
+          <p className="ml-1 font-heading text-4xl font-bold text-slate-950">
             {displayDraftBids}
           </p>
         </div>
 
-        <div className="rounded-[1.5rem] bg-white p-5 shadow-sm border border-slate-100 flex flex-col justify-center transition-all hover:shadow-md hover:border-emerald-100">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="flex size-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
+        <div className="flex flex-col justify-center rounded-[1.75rem] border border-slate-200/80 bg-white p-6 shadow-[0_20px_40px_-30px_rgba(15,23,42,0.2)] transition-all hover:-translate-y-0.5 hover:border-emerald-100 hover:shadow-[0_28px_50px_-32px_rgba(16,185,129,0.24)]">
+          <div className="mb-4 flex items-center gap-3">
+            <div className="flex size-11 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600 ring-1 ring-emerald-100">
               <Award className="size-5" />
             </div>
             <p className="text-sm font-bold text-slate-600">Pobijeđeno</p>
           </div>
-          <p className="font-heading text-3xl font-bold text-slate-900 ml-1">
+          <p className="ml-1 font-heading text-4xl font-bold text-slate-950">
             {displayWonBids}
           </p>
         </div>
 
-        <div className="rounded-[1.5rem] bg-white p-5 shadow-sm border border-slate-100 flex flex-col justify-center transition-all hover:shadow-md hover:border-red-100">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="flex size-10 items-center justify-center rounded-xl bg-red-50 text-red-600">
+        <div className="flex flex-col justify-center rounded-[1.75rem] border border-slate-200/80 bg-white p-6 shadow-[0_20px_40px_-30px_rgba(15,23,42,0.2)] transition-all hover:-translate-y-0.5 hover:border-red-100 hover:shadow-[0_28px_50px_-32px_rgba(239,68,68,0.22)]">
+          <div className="mb-4 flex items-center gap-3">
+            <div className="flex size-11 items-center justify-center rounded-2xl bg-red-50 text-red-600 ring-1 ring-red-100">
               <TrendingUp className="size-5 rotate-180" />
             </div>
             <p className="text-sm font-bold text-slate-600">Izgubljeno</p>
           </div>
-          <p className="font-heading text-3xl font-bold text-slate-900 ml-1">
+          <p className="ml-1 font-heading text-4xl font-bold text-slate-950">
             {displayLostBids}
           </p>
         </div>
       </div>
 
-      <div className="grid gap-8 lg:grid-cols-3">
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.7fr)_minmax(320px,0.9fr)]">
         {/* Main Content Area - Active Tenders */}
-        <div className="lg:col-span-2 space-y-6">
-          <div className="rounded-[1.5rem] bg-white shadow-sm border border-slate-100 overflow-hidden flex flex-col h-full">
-            <div className="flex items-center justify-between p-6 border-b border-slate-50">
+        <div className="space-y-6">
+          <div className="flex h-full flex-col overflow-hidden rounded-[1.75rem] border border-slate-200/80 bg-white shadow-[0_24px_50px_-30px_rgba(15,23,42,0.18)]">
+            <div className="flex flex-col gap-4 border-b border-slate-100 p-7 lg:flex-row lg:items-center lg:justify-between">
               <h2 className="font-heading text-xl font-bold text-slate-900">Aktivne ponude</h2>
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-3">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
                   <input 
                     type="text" 
                     placeholder="Pretraži ponude..." 
-                    className="h-9 pl-9 pr-4 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all w-48 sm:w-64"
+                    className="h-11 w-56 rounded-2xl border border-slate-200 pl-10 pr-4 text-sm transition-all focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 sm:w-72"
                   />
                 </div>
-                <Link href="/dashboard/bids" className="hidden sm:flex h-9 items-center justify-center px-4 rounded-xl bg-blue-50 text-sm font-bold text-primary hover:bg-blue-100 transition-colors">
+                <Link href="/dashboard/bids" className="hidden h-11 items-center justify-center rounded-2xl bg-blue-50 px-4 text-sm font-bold text-primary transition-colors hover:bg-blue-100 sm:flex">
                   Sve ponude
                 </Link>
               </div>
             </div>
 
             <div className="flex-1 overflow-x-auto">
-              <table className="w-full text-left border-collapse min-w-[600px]">
+              <table className="min-w-[680px] w-full border-collapse text-left">
                 <thead>
-                  <tr className="border-b border-slate-100 text-xs font-bold text-slate-400 uppercase tracking-wider bg-slate-50/50">
-                    <th className="p-4 pl-6 font-medium w-[40%]">Naziv tendera</th>
-                    <th className="p-4 font-medium">Rok za predaju</th>
-                    <th className="p-4 font-medium">Budžet</th>
-                    <th className="p-4 font-medium">Status</th>
-                    <th className="p-4 pr-6 text-right font-medium">Akcije</th>
+                  <tr className="border-b border-slate-100 bg-slate-50/70 text-xs font-bold uppercase tracking-wider text-slate-400">
+                    <th className="w-[40%] p-5 pl-7 font-medium">Naziv tendera</th>
+                    <th className="p-5 font-medium">Rok za predaju</th>
+                    <th className="p-5 font-medium">Budžet</th>
+                    <th className="p-5 font-medium">Status</th>
+                    <th className="p-5 pr-7 text-right font-medium">Akcije</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
                   {bids.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="p-12 text-center">
+                      <td colSpan={5} className="p-16 text-center">
                         <div className="flex flex-col items-center justify-center">
                           <div className="flex size-16 items-center justify-center rounded-full bg-slate-50 mb-4 text-slate-300">
                             <Briefcase className="size-8" />
@@ -281,23 +278,23 @@ export default async function DashboardPage() {
                       const status = STATUS_CONFIG[bid.status] || STATUS_CONFIG.draft;
                       return (
                         <tr key={bid.id} className="hover:bg-slate-50/80 transition-colors group">
-                          <td className="p-4 pl-6">
+                          <td className="p-5 pl-7">
                             <Link href={`/dashboard/bids/${bid.id}`} className="font-semibold text-slate-900 hover:text-primary transition-colors line-clamp-1 pr-4" title={bid.tenders?.title}>
                               {bid.tenders?.title ?? "Nepoznat tender"}
                             </Link>
                           </td>
-                          <td className="p-4 text-sm text-slate-600 font-medium">
+                          <td className="p-5 text-sm text-slate-600 font-medium">
                             {formatDate(bid.tenders?.deadline)}
                           </td>
-                          <td className="p-4 text-sm font-bold text-slate-700">
+                          <td className="p-5 text-sm font-bold text-slate-700">
                             {bid.tenders?.estimated_value ? `${bid.tenders.estimated_value.toLocaleString("bs-BA")} KM` : "—"}
                           </td>
-                          <td className="p-4">
+                          <td className="p-5">
                             <span className={`inline-flex items-center justify-center rounded-full border px-2.5 py-0.5 text-xs font-bold ${status.colors}`}>
                               {status.label}
                             </span>
                           </td>
-                          <td className="p-4 pr-6">
+                          <td className="p-5 pr-7">
                             <BidQuickActions bidId={bid.id} currentStatus={bid.status} />
                           </td>
                         </tr>
@@ -314,11 +311,11 @@ export default async function DashboardPage() {
         <div className="space-y-6">
           {/* Expiring Documents Widget */}
           {expiring.length > 0 && (
-            <div className="rounded-[1.5rem] border border-amber-200 bg-amber-50 p-6 shadow-sm relative overflow-hidden">
+            <div className="relative overflow-hidden rounded-[1.75rem] border border-amber-200 bg-[linear-gradient(180deg,#fff8e6_0%,#fffef8_100%)] p-7 shadow-[0_22px_44px_-30px_rgba(245,158,11,0.35)]">
               <div className="absolute right-0 top-0 w-32 h-32 bg-amber-100 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none" />
               
               <div className="flex items-center gap-3 mb-5 relative z-10">
-                <div className="flex size-10 items-center justify-center rounded-xl bg-amber-100 text-amber-600">
+                <div className="flex size-11 items-center justify-center rounded-2xl bg-amber-100 text-amber-700 ring-1 ring-amber-200/70">
                   <AlertTriangle className="size-5" />
                 </div>
                 <h3 className="font-heading text-lg font-bold text-amber-900">
@@ -331,7 +328,7 @@ export default async function DashboardPage() {
                   const days = daysUntil(doc.expires_at!);
                   const urgent = days <= 7;
                   return (
-                    <div key={doc.id} className="flex items-center justify-between rounded-xl bg-white p-3 border border-amber-100/50 shadow-sm">
+                    <div key={doc.id} className="flex items-center justify-between rounded-2xl border border-amber-100/60 bg-white p-4 shadow-sm">
                       <div className="min-w-0 pr-3">
                         <p className="text-sm font-bold text-slate-900 truncate" title={doc.name}>{doc.name}</p>
                         <p className="text-xs text-slate-500 mt-0.5 truncate">{doc.type}</p>
@@ -346,20 +343,19 @@ export default async function DashboardPage() {
 
               <Link 
                 href="/dashboard/vault" 
-                className="flex w-full items-center justify-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-bold text-amber-700 border border-amber-200 shadow-sm transition-all hover:bg-amber-100/50 relative z-10"
+                className="relative z-10 flex w-full items-center justify-center gap-2 rounded-2xl border border-amber-200 bg-white px-4 py-3 text-sm font-bold text-amber-700 shadow-sm transition-all hover:bg-amber-100/50"
               >
                 Ažuriraj trezor
               </Link>
             </div>
           )}
 
-          {/* Quick Actions */}
-          <div className="rounded-[1.5rem] bg-white border border-slate-100 p-6 shadow-sm">
+          <div className="rounded-[1.75rem] border border-slate-200/80 bg-white p-7 shadow-[0_24px_50px_-30px_rgba(15,23,42,0.18)]">
             <h2 className="font-heading text-lg font-bold text-slate-900 mb-5">Brze akcije</h2>
             
             <div className="space-y-3">
-              <Link href="/dashboard/vault" className="group flex items-center gap-4 rounded-xl border border-slate-100 bg-slate-50 p-3 transition-all hover:border-blue-200 hover:bg-white hover:shadow-sm">
-                <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-white text-slate-400 group-hover:bg-blue-50 group-hover:text-primary transition-colors shadow-sm border border-slate-100">
+              <Link href="/dashboard/vault" className="group flex items-center gap-4 rounded-2xl border border-slate-100 bg-slate-50/80 p-4 transition-all hover:border-blue-200 hover:bg-white hover:shadow-sm">
+                <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-white text-slate-400 group-hover:bg-blue-50 group-hover:text-primary transition-colors shadow-sm border border-slate-100">
                   <Upload className="size-5" />
                 </div>
                 <div>
@@ -368,8 +364,8 @@ export default async function DashboardPage() {
                 </div>
               </Link>
 
-              <Link href="/dashboard/intelligence" className="group flex items-center gap-4 rounded-xl border border-slate-100 bg-slate-50 p-3 transition-all hover:border-purple-200 hover:bg-white hover:shadow-sm">
-                <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-white text-slate-400 group-hover:bg-purple-50 group-hover:text-purple-600 transition-colors shadow-sm border border-slate-100">
+              <Link href="/dashboard/intelligence" className="group flex items-center gap-4 rounded-2xl border border-slate-100 bg-slate-50/80 p-4 transition-all hover:border-purple-200 hover:bg-white hover:shadow-sm">
+                <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-white text-slate-400 group-hover:bg-purple-50 group-hover:text-purple-600 transition-colors shadow-sm border border-slate-100">
                   <TrendingUp className="size-5" />
                 </div>
                 <div>
