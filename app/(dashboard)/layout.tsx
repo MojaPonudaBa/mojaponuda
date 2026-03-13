@@ -31,8 +31,8 @@ export default async function DashboardLayout({
         userEmail={user.email ?? ""}
         companyName={company?.name}
       />
-      <main className="relative z-10 min-h-screen pl-[232px]">
-        <div className="mx-auto min-h-screen w-full max-w-[1640px] px-8 py-8 lg:px-10 lg:py-10 xl:px-12">
+      <main className="relative z-10 min-h-screen pl-[244px]">
+        <div className="mx-auto min-h-screen w-full max-w-[1680px] px-6 py-6 sm:px-8 sm:py-8 lg:px-10 lg:py-10 xl:px-12 xl:py-12">
           {children}
         </div>
       </main>

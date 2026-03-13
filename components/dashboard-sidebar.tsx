@@ -73,9 +73,9 @@ export function DashboardSidebar({ userEmail, companyName }: DashboardSidebarPro
       <Link href={item.href} className="block">
         <span
           className={cn(
-            "flex items-center gap-3 rounded-2xl px-3.5 py-3 text-[13px] font-medium transition-all",
+            "flex items-center gap-3 rounded-2xl px-3.5 py-3 text-[13px] font-medium transition-all duration-200",
             isActive
-              ? "bg-white/12 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18)]"
+              ? "bg-white/12 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_10px_25px_-18px_rgba(15,23,42,0.95)]"
               : "text-slate-300 hover:bg-white/6 hover:text-white"
           )}
         >
@@ -92,8 +92,8 @@ export function DashboardSidebar({ userEmail, companyName }: DashboardSidebarPro
   }
 
   return (
-    <aside className="fixed inset-y-0 left-0 z-40 flex h-screen w-[232px] flex-col border-r border-slate-800 bg-[linear-gradient(180deg,#08111f_0%,#0b1730_52%,#102347_100%)] px-4 py-5 text-white">
-      <div className="mb-8 flex items-center gap-3 px-2">
+    <aside className="fixed inset-y-0 left-0 z-40 flex h-screen w-[244px] flex-col border-r border-slate-800/80 bg-[linear-gradient(180deg,#08111f_0%,#0b1730_52%,#102347_100%)] px-4 py-6 text-white shadow-[20px_0_60px_-40px_rgba(2,6,23,0.85)]">
+      <div className="mb-10 flex items-center gap-3 px-2">
         <Link href="/" className="flex items-center gap-3 transition-opacity hover:opacity-90">
           <div className="flex size-10 items-center justify-center rounded-2xl border border-white/10 bg-white/8 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]">
             <Box className="size-5" />
@@ -150,7 +150,7 @@ export function DashboardSidebar({ userEmail, companyName }: DashboardSidebarPro
           <button
             type="button"
             onClick={() => setIsMenuOpen((open) => !open)}
-            className="flex w-full items-center gap-3 rounded-2xl border border-white/8 bg-white/6 px-3 py-3 text-left transition-all hover:bg-white/10"
+            className="flex w-full items-center gap-3 rounded-2xl border border-white/8 bg-white/6 px-3 py-3.5 text-left transition-all duration-200 hover:bg-white/10"
           >
             <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-white/14 text-sm font-bold text-white">
               {userEmail.charAt(0).toUpperCase()}

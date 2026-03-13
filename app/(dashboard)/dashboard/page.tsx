@@ -142,9 +142,9 @@ export default async function DashboardPage() {
   const displayLostBids = (lostBidsCount ?? 0) > 0 ? (lostBidsCount ?? 0) : bids.filter((bid) => bid.status === "lost").length;
 
   return (
-    <div className="space-y-8">
-      <section className="rounded-[2rem] border border-slate-200/80 bg-white/90 p-8 shadow-[0_24px_55px_-32px_rgba(15,23,42,0.22)] backdrop-blur-sm">
-        <div className="flex flex-col gap-8 xl:flex-row xl:items-start xl:justify-between">
+    <div className="space-y-8 lg:space-y-10">
+      <section className="rounded-[2rem] border border-slate-200/80 bg-white/90 p-6 shadow-[0_24px_55px_-32px_rgba(15,23,42,0.22)] backdrop-blur-sm sm:p-8 lg:p-9">
+        <div className="flex flex-col gap-8 xl:flex-row xl:items-start xl:justify-between xl:gap-10">
           <div className="max-w-3xl space-y-5">
             <div className="inline-flex items-center gap-2 rounded-full border border-blue-100 bg-blue-50/80 px-3 py-1">
               <ShieldCheck className="size-4 text-blue-600" />
@@ -153,36 +153,36 @@ export default async function DashboardPage() {
               </span>
             </div>
             <div className="space-y-3">
-              <h1 className="font-heading text-4xl font-bold tracking-tight text-slate-950 lg:text-[2.8rem]">
+              <h1 className="font-heading text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl lg:text-[2.7rem]">
                 Pregled tender aktivnosti za {resolvedCompany.name}
               </h1>
-              <p className="max-w-2xl text-base leading-7 text-slate-600 lg:text-lg">
+              <p className="max-w-2xl text-sm leading-7 text-slate-600 sm:text-base lg:text-lg">
                 Kontrolna tabla osmišljena da odmah pokaže šta je prioritet, koje su ponude u toku i gdje trebate reagovati bez gubljenja vremena.
               </p>
             </div>
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-5">
+              <div className="rounded-[1.6rem] border border-slate-200 bg-slate-50/70 p-5 lg:p-6">
                 <div className="mb-4 flex size-11 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-lg shadow-blue-600/20">
                   <FileText className="size-5" />
                 </div>
                 <p className="text-sm font-medium text-slate-500">Ukupno ponuda</p>
-                <p className="mt-2 font-heading text-3xl font-bold text-slate-950">{displayTotalBids}</p>
+                <p className="mt-2 font-heading text-3xl font-bold text-slate-950 lg:text-[2rem]">{displayTotalBids}</p>
               </div>
-              <div className="rounded-2xl border border-slate-200 bg-white p-5">
+              <div className="rounded-[1.6rem] border border-slate-200 bg-white p-5 lg:p-6">
                 <div className="mb-4 flex size-10 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
                   <Clock className="size-5" />
                 </div>
                 <p className="text-sm font-medium text-slate-500">U pripremi</p>
                 <p className="mt-2 font-heading text-2xl font-bold text-slate-950">{displayDraftBids}</p>
               </div>
-              <div className="rounded-2xl border border-slate-200 bg-white p-5">
+              <div className="rounded-[1.6rem] border border-slate-200 bg-white p-5 lg:p-6">
                 <div className="mb-4 flex size-10 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600">
                   <Award className="size-5" />
                 </div>
                 <p className="text-sm font-medium text-slate-500">Pobijeđeno</p>
                 <p className="mt-2 font-heading text-2xl font-bold text-slate-950">{displayWonBids}</p>
               </div>
-              <div className="rounded-2xl border border-slate-200 bg-white p-5">
+              <div className="rounded-[1.6rem] border border-slate-200 bg-white p-5 lg:p-6">
                 <div className="mb-4 flex size-10 items-center justify-center rounded-2xl bg-amber-50 text-amber-600">
                   <TrendingUp className="size-5 rotate-180" />
                 </div>
@@ -192,7 +192,7 @@ export default async function DashboardPage() {
             </div>
           </div>
 
-          <div className="w-full max-w-sm rounded-[1.75rem] border border-slate-200 bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-6 shadow-sm">
+          <div className="w-full max-w-sm rounded-[1.75rem] border border-slate-200 bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-6 shadow-sm lg:p-7">
             <div className="mb-6 flex items-start justify-between gap-4">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Brze akcije</p>
@@ -241,7 +241,7 @@ export default async function DashboardPage() {
         </div>
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-[minmax(0,1.8fr)_360px]">
+      <section className="grid gap-6 xl:grid-cols-[minmax(0,1.8fr)_360px] xl:gap-7">
         <div className="rounded-[1.75rem] border border-slate-200/80 bg-white shadow-[0_18px_50px_-34px_rgba(15,23,42,0.18)]">
           <div className="flex flex-col gap-4 border-b border-slate-100 px-7 py-6 sm:flex-row sm:items-center sm:justify-between">
             <div>
@@ -288,8 +288,8 @@ export default async function DashboardPage() {
                   bids.map((bid) => {
                     const status = STATUS_CONFIG[bid.status] || STATUS_CONFIG.draft;
                     return (
-                      <tr key={bid.id} className="border-t border-slate-100 transition-colors hover:bg-slate-50/60">
-                        <td className="px-7 py-5">
+                      <tr key={bid.id} className="border-t border-slate-100 transition-colors duration-150 hover:bg-slate-50/60">
+                        <td className="px-7 py-4.5">
                           <div className="flex items-start gap-4">
                             <div className="mt-0.5 flex size-11 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-slate-500">
                               <FileText className="size-4" />
@@ -302,33 +302,33 @@ export default async function DashboardPage() {
                             </div>
                           </div>
                         </td>
-                        <td className="px-7 py-5 text-sm font-medium text-slate-700">
+                        <td className="px-7 py-4.5 text-sm font-medium text-slate-700">
                           {formatDate(bid.tenders?.deadline)}
                         </td>
-                        <td className="px-7 py-5 text-sm font-semibold text-slate-950">
+                        <td className="px-7 py-4.5 text-sm font-semibold text-slate-950">
                           {formatCurrency(bid.tenders?.estimated_value)}
                         </td>
-                        <td className="px-7 py-5">
+                        <td className="px-7 py-4.5">
                           <span className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold ${status.colors}`}>
                             {status.label}
                           </span>
                         </td>
-                        <td className="px-7 py-5">
+                        <td className="px-7 py-4.5">
                           <div className="flex items-center justify-end gap-2">
                             <Link
                               href={`/dashboard/bids/${bid.id}`}
-                              className="flex size-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-400 transition-all hover:border-slate-300 hover:text-slate-700"
+                              className="flex size-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-400 transition-all duration-150 hover:border-slate-300 hover:text-slate-700"
                             >
                               <Eye className="size-4" />
                             </Link>
                             <Link
                               href={`/dashboard/bids/${bid.id}`}
-                              className="flex size-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-400 transition-all hover:border-slate-300 hover:text-slate-700"
+                              className="flex size-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-400 transition-all duration-150 hover:border-slate-300 hover:text-slate-700"
                             >
                               <Pencil className="size-4" />
                             </Link>
                             <button
-                              className="flex size-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-400 transition-all hover:border-red-200 hover:bg-red-50 hover:text-red-500"
+                              className="flex size-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-400 transition-all duration-150 hover:border-red-200 hover:bg-red-50 hover:text-red-500"
                             >
                               <Trash2 className="size-4" />
                             </button>
