@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import type { Subscription } from "@/types/database";
+import { getSubscriptionStatus } from "@/lib/subscription";
 import { SubscriptionCard } from "@/components/subscription/subscription-card";
 
 export default async function SubscriptionPage() {
@@ -12,16 +12,7 @@ export default async function SubscriptionPage() {
 
   if (!user) redirect("/login");
 
-  const { data: subData } = await supabase
-    .from("subscriptions")
-    .select("*")
-    .eq("user_id", user.id)
-    .maybeSingle();
-
-  const subscription = subData as Subscription | null;
-
-  const isActive =
-    subscription?.status === "active" || subscription?.status === "past_due";
+  const { isSubscribed: isActive, subscription } = await getSubscriptionStatus(user.id, user.email);
 
   return (
     <div className="mx-auto max-w-2xl space-y-8">

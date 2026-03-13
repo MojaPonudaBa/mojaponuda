@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { demoCompetitors, isCompanyProfileComplete, isDemoUser } from "@/lib/demo";
 import { getSubscriptionStatus } from "@/lib/subscription";
 import { ProGate } from "@/components/subscription/pro-gate";
 import type { Company } from "@/types/database";
@@ -18,23 +19,26 @@ export default async function CompetitorsPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { isSubscribed } = await getSubscriptionStatus(user.id);
+  const isDemoAccount = isDemoUser(user.email);
+  const { isSubscribed } = await getSubscriptionStatus(user.id, user.email);
   if (!isSubscribed) return <ProGate />;
 
   const { data: companyData } = await supabase
     .from("companies")
     .select("id, jib")
     .eq("user_id", user.id)
-    .single();
+    .maybeSingle();
 
   const company = companyData as Company | null;
-  if (!company) redirect("/onboarding");
+  if (!isCompanyProfileComplete(company)) redirect("/onboarding");
+
+  const resolvedCompany = company as Company;
 
   // Naše kategorije
   const { data: ourAwards } = await supabase
     .from("award_decisions")
     .select("contract_type")
-    .eq("winner_jib", company.jib)
+    .eq("winner_jib", resolvedCompany.jib)
     .not("contract_type", "is", null);
 
   const ourCategories = [...new Set((ourAwards ?? []).map((a) => a.contract_type!))];
@@ -64,7 +68,7 @@ export default async function CompetitorsPage() {
     }>();
 
     for (const a of catAwards ?? []) {
-      if (a.winner_jib === company.jib) continue;
+      if (a.winner_jib === resolvedCompany.jib) continue;
       const key = a.winner_jib!;
       const price = Number(a.winning_price) || 0;
       const cat = a.contract_type ?? "";
@@ -101,6 +105,8 @@ export default async function CompetitorsPage() {
       .slice(0, 20);
   }
 
+  const displayCompetitors = competitors.length > 0 ? competitors : isDemoAccount ? demoCompetitors : [];
+
   return (
     <div className="space-y-8 max-w-[1200px]">
       <div>
@@ -115,7 +121,7 @@ export default async function CompetitorsPage() {
         </p>
       </div>
 
-      {competitors.length === 0 ? (
+      {displayCompetitors.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-[2rem] border border-dashed border-slate-200 bg-slate-50 py-24 text-center">
           <div className="size-16 rounded-full bg-slate-100 flex items-center justify-center mb-4">
              <Swords className="size-8 text-slate-300" />
@@ -143,7 +149,7 @@ export default async function CompetitorsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
-                {competitors.map((c, i) => (
+                {displayCompetitors.map((c, i) => (
                   <tr key={c.jib} className="hover:bg-blue-50/30 transition-colors group">
                     <td className="px-6 py-4 font-mono text-slate-400 font-medium">
                       {i + 1}

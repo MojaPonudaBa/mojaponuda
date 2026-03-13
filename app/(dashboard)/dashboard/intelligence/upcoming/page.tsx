@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { demoRecentProcurements, demoUpcomingProcurements, isDemoUser } from "@/lib/demo";
 import { getSubscriptionStatus } from "@/lib/subscription";
 import { ProGate } from "@/components/subscription/pro-gate";
 import { Calendar, TrendingUp, CalendarDays, ArrowUpRight } from "lucide-react";
@@ -17,7 +18,8 @@ export default async function UpcomingPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { isSubscribed } = await getSubscriptionStatus(user.id);
+  const isDemoAccount = isDemoUser(user.email);
+  const { isSubscribed } = await getSubscriptionStatus(user.id, user.email);
   if (!isSubscribed) return <ProGate />;
 
   const today = new Date().toISOString().split("T")[0];
@@ -51,8 +53,10 @@ export default async function UpcomingPage() {
 
   const upcoming = items.filter((p) => p.planned_date && p.planned_date >= today);
   const recent = items.filter((p) => p.planned_date && p.planned_date < today);
+  const displayUpcoming = upcoming.length > 0 ? upcoming : isDemoAccount ? demoUpcomingProcurements : [];
+  const displayRecent = recent.length > 0 ? recent : isDemoAccount ? demoRecentProcurements : [];
 
-  const totalUpcomingValue = upcoming.reduce(
+  const totalUpcomingValue = displayUpcoming.reduce(
     (sum, p) => sum + (Number(p.estimated_value) || 0),
     0
   );
@@ -78,7 +82,7 @@ export default async function UpcomingPage() {
               <CalendarDays className="size-5" />
             </div>
           </div>
-          <p className="text-4xl font-heading font-extrabold text-slate-900">{upcoming.length}</p>
+          <p className="text-4xl font-heading font-extrabold text-slate-900">{displayUpcoming.length}</p>
           <p className="mt-1 text-sm text-slate-500 font-medium">Planirani za budućnost</p>
         </div>
 
@@ -106,7 +110,7 @@ export default async function UpcomingPage() {
           </div>
           <p className="mt-1 text-xs font-medium text-slate-500 pl-4">Planirani tenderi koji još nisu raspisani</p>
         </div>
-        {upcoming.length === 0 ? (
+        {displayUpcoming.length === 0 ? (
           <div className="py-12 text-center">
             <div className="mx-auto size-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 mb-3">
               <Calendar className="size-6" />
@@ -116,7 +120,7 @@ export default async function UpcomingPage() {
           </div>
         ) : (
           <div className="divide-y divide-slate-50">
-            {upcoming.map((p) => (
+            {displayUpcoming.map((p) => (
               <div key={p.id} className="px-6 py-5 hover:bg-slate-50 transition-colors group">
                 <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
                   <div className="space-y-1.5 flex-1">
@@ -164,7 +168,7 @@ export default async function UpcomingPage() {
       </div>
 
       {/* Nedavno planirani (možda već raspisani) */}
-      {recent.length > 0 && (
+      {displayRecent.length > 0 && (
         <div className="rounded-[1.5rem] border border-slate-100 bg-white shadow-sm overflow-hidden opacity-80 hover:opacity-100 transition-opacity">
           <div className="border-b border-slate-100 px-6 py-5 bg-slate-50/50">
             <h2 className="font-heading text-lg font-bold text-slate-700">Nedavno planirani</h2>
@@ -173,7 +177,7 @@ export default async function UpcomingPage() {
             </p>
           </div>
           <div className="divide-y divide-slate-50">
-            {recent.map((p) => (
+            {displayRecent.map((p) => (
               <div key={p.id} className="px-6 py-4 hover:bg-slate-50 transition-colors">
                 <div className="flex justify-between gap-4">
                   <p className="text-sm font-bold text-slate-700 line-clamp-1">

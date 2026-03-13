@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { demoTopAuthorities, demoTopWinners, isDemoUser } from "@/lib/demo";
 import { getSubscriptionStatus } from "@/lib/subscription";
 import { ProGate } from "@/components/subscription/pro-gate";
 import { CategoryChart } from "@/components/intelligence/category-chart";
@@ -19,7 +20,8 @@ export default async function IntelligencePage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { isSubscribed } = await getSubscriptionStatus(user.id);
+  const isDemoAccount = isDemoUser(user.email);
+  const { isSubscribed } = await getSubscriptionStatus(user.id, user.email);
   if (!isSubscribed) return <ProGate />;
 
   const now = new Date();
@@ -58,6 +60,15 @@ export default async function IntelligencePage() {
     }
   }
   const categoryData = [...categoryMap.values()].sort((a, b) => b.count - a.count);
+  const displayCategoryData = categoryData.length > 0
+    ? categoryData
+    : isDemoAccount
+      ? [
+          { category: "Robe", count: 8, total_value: 420000 },
+          { category: "Usluge", count: 5, total_value: 275000 },
+          { category: "Softver", count: 3, total_value: 180000 },
+        ]
+      : [];
 
   // Top 10 naručilaca ovog mjeseca
   const { data: monthTenders } = await supabase
@@ -92,6 +103,8 @@ export default async function IntelligencePage() {
     else winnerMap.set(key, { name: a.winner_name ?? key, jib: key, wins: 1, total_value: price });
   }
   const topWinners = [...winnerMap.values()].sort((a, b) => b.total_value - a.total_value).slice(0, 10);
+  const displayTopAuthorities = topAuthorities.length > 0 ? topAuthorities : isDemoAccount ? demoTopAuthorities : [];
+  const displayTopWinners = topWinners.length > 0 ? topWinners : isDemoAccount ? demoTopWinners : [];
 
   return (
     <div className="space-y-8 max-w-[1200px] mx-auto">
@@ -188,7 +201,7 @@ export default async function IntelligencePage() {
           </div>
         </div>
         <div className="h-[350px] w-full">
-          <CategoryChart data={categoryData} />
+          <CategoryChart data={displayCategoryData} />
         </div>
       </div>
 
@@ -209,13 +222,13 @@ export default async function IntelligencePage() {
           </div>
           
           <div className="flex-1 p-2">
-            {topAuthorities.length === 0 ? (
+            {displayTopAuthorities.length === 0 ? (
               <div className="flex h-64 items-center justify-center">
                 <p className="text-sm font-medium text-slate-400">Nema dovoljno podataka za ovaj mjesec.</p>
               </div>
             ) : (
               <div className="space-y-1">
-                {topAuthorities.map((a, i) => (
+                {displayTopAuthorities.map((a, i) => (
                   <div key={a.name} className="flex items-center justify-between rounded-xl px-4 py-3 hover:bg-slate-50 transition-colors group">
                     <div className="flex items-center gap-4 min-w-0">
                       <div className="flex size-6 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-slate-500 group-hover:bg-blue-100 group-hover:text-blue-600 transition-colors">
@@ -255,13 +268,13 @@ export default async function IntelligencePage() {
           </div>
           
           <div className="flex-1 p-2">
-            {topWinners.length === 0 ? (
+            {displayTopWinners.length === 0 ? (
               <div className="flex h-64 items-center justify-center">
                 <p className="text-sm font-medium text-slate-400">Nema dovoljno podataka za ovu godinu.</p>
               </div>
             ) : (
               <div className="space-y-1">
-                {topWinners.map((w, i) => (
+                {displayTopWinners.map((w, i) => (
                   <div key={w.jib} className="flex items-center justify-between rounded-xl px-4 py-3 hover:bg-slate-50 transition-colors group">
                     <div className="flex items-center gap-4 min-w-0">
                       <div className="flex size-6 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-slate-500 group-hover:bg-emerald-100 group-hover:text-emerald-600 transition-colors">

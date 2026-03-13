@@ -48,7 +48,7 @@ export default async function AuthorityProfilePage({
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { isSubscribed } = await getSubscriptionStatus(user.id);
+  const { isSubscribed } = await getSubscriptionStatus(user.id, user.email);
   if (!isSubscribed) return <ProGate />;
 
   // Info o naručiocu

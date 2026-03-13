@@ -3,6 +3,13 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import {
+  demoBidSummaries,
+  getDemoChecklistItems,
+  getDemoDocumentInserts,
+  getDemoSubscriptionInsert,
+  isDemoUser,
+} from "@/lib/demo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,18 +18,138 @@ import { Loader2 } from "lucide-react";
 interface OnboardingFormProps {
   companyId: string;
   companyName: string;
+  initialJib: string;
+  initialPdv: string;
+  initialAddress: string;
+  initialContactEmail: string;
+  initialContactPhone: string;
 }
 
-export function OnboardingForm({ companyId, companyName }: OnboardingFormProps) {
+export function OnboardingForm({
+  companyId,
+  companyName,
+  initialJib,
+  initialPdv,
+  initialAddress,
+  initialContactEmail,
+  initialContactPhone,
+}: OnboardingFormProps) {
   const router = useRouter();
   const [name, setName] = useState(companyName);
-  const [jib, setJib] = useState("");
-  const [pdv, setPdv] = useState("");
-  const [address, setAddress] = useState("");
-  const [contactEmail, setContactEmail] = useState("");
-  const [contactPhone, setContactPhone] = useState("");
+  const [jib, setJib] = useState(initialJib);
+  const [pdv, setPdv] = useState(initialPdv);
+  const [address, setAddress] = useState(initialAddress);
+  const [contactEmail, setContactEmail] = useState(initialContactEmail);
+  const [contactPhone, setContactPhone] = useState(initialContactPhone);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  async function seedDemoData(userId: string, savedCompanyId: string) {
+    const supabase = createClient();
+
+    const { data: existingSubscription } = await supabase
+      .from("subscriptions")
+      .select("id")
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    if (!existingSubscription) {
+      await supabase.from("subscriptions").insert(getDemoSubscriptionInsert(userId));
+    }
+
+    const { count: existingDocumentsCount } = await supabase
+      .from("documents")
+      .select("id", { count: "exact", head: true })
+      .eq("company_id", savedCompanyId);
+
+    let documentIds: string[] = [];
+
+    if ((existingDocumentsCount ?? 0) === 0) {
+      const demoDocuments = getDemoDocumentInserts(savedCompanyId);
+      const { data: insertedDocuments } = await supabase
+        .from("documents")
+        .insert(demoDocuments)
+        .select("id");
+
+      documentIds =
+        insertedDocuments?.map((document) => document.id) ??
+        demoDocuments.map((document) => document.id ?? "").filter(Boolean);
+    } else {
+      const { data: existingDocuments } = await supabase
+        .from("documents")
+        .select("id")
+        .eq("company_id", savedCompanyId)
+        .limit(3);
+
+      documentIds = existingDocuments?.map((document) => document.id) ?? [];
+    }
+
+    const { count: existingBidsCount } = await supabase
+      .from("bids")
+      .select("id", { count: "exact", head: true })
+      .eq("company_id", savedCompanyId);
+
+    if ((existingBidsCount ?? 0) > 0) {
+      return;
+    }
+
+    const { data: tenders } = await supabase
+      .from("tenders")
+      .select("id")
+      .not("deadline", "is", null)
+      .order("deadline", { ascending: true })
+      .limit(demoBidSummaries.length);
+
+    if (!tenders?.length) {
+      return;
+    }
+
+    const bidPayload = tenders.map((tender, index) => ({
+      company_id: savedCompanyId,
+      tender_id: tender.id,
+      status: demoBidSummaries[index]?.status ?? "draft",
+      notes:
+        index === 0
+          ? "Finalno uskladiti tehničku specifikaciju i potvrditi reference prije predaje."
+          : index === 1
+            ? "Provjeriti SLA i potpisanu izjavu o podršci."
+            : "Sačuvati kao referentni primjer uspješne ponude.",
+      ai_analysis: {
+        risk_flags:
+          index === 0
+            ? ["Ističe porezno uvjerenje", "Nedostaje referentna lista"]
+            : index === 1
+              ? ["Provjeriti rok za podršku"]
+              : [],
+      },
+    }));
+
+    const { data: insertedBids } = await supabase
+      .from("bids")
+      .insert(bidPayload)
+      .select("id");
+
+    if (!insertedBids?.length) {
+      return;
+    }
+
+    for (const bid of insertedBids) {
+      const checklistItems = getDemoChecklistItems(bid.id, documentIds);
+
+      await supabase.from("bid_checklist_items").insert(checklistItems);
+
+      if (documentIds.length > 0) {
+        await supabase.from("bid_documents").insert(
+          documentIds.slice(0, 2).map((documentId, index) => ({
+            bid_id: bid.id,
+            document_id: documentId,
+            checklist_item_name: checklistItems[index]?.title ?? null,
+            is_confirmed: index === 0,
+          }))
+        );
+      }
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -36,26 +163,82 @@ export function OnboardingForm({ companyId, companyName }: OnboardingFormProps) 
     }
 
     const supabase = createClient();
-    const { error: updateError } = await supabase
-      .from("companies")
-      .update({
-        name: name.trim(),
-        jib: jib.trim(),
-        pdv: pdv.trim() || null,
-        address: address.trim() || null,
-        contact_email: contactEmail.trim() || null,
-        contact_phone: contactPhone.trim() || null,
-      })
-      .eq("id", companyId);
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-    if (updateError) {
-      if (updateError.message.includes("duplicate key")) {
+    if (!user) {
+      setError("Sesija je istekla. Prijavite se ponovo.");
+      setLoading(false);
+      return;
+    }
+
+    const payload = {
+      name: name.trim(),
+      jib: jib.trim(),
+      pdv: pdv.trim() || null,
+      address: address.trim() || null,
+      contact_email: contactEmail.trim() || null,
+      contact_phone: contactPhone.trim() || null,
+    };
+
+    let savedCompanyId = companyId;
+    let saveError: { message: string } | null = null;
+
+    if (companyId) {
+      const { error: updateError } = await supabase
+        .from("companies")
+        .update(payload)
+        .eq("id", companyId);
+
+      saveError = updateError;
+    } else {
+      const { data: existingCompany } = await supabase
+        .from("companies")
+        .select("id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (existingCompany?.id) {
+        savedCompanyId = existingCompany.id;
+
+        const { error: updateError } = await supabase
+          .from("companies")
+          .update(payload)
+          .eq("id", existingCompany.id);
+
+        saveError = updateError;
+      } else {
+        const { data: insertedCompany, error: insertError } = await supabase
+          .from("companies")
+          .insert({
+            user_id: user.id,
+            ...payload,
+          })
+          .select("id")
+          .single();
+
+        savedCompanyId = insertedCompany?.id ?? "";
+        saveError = insertError;
+      }
+    }
+
+    if (saveError) {
+      if (saveError.message.includes("duplicate key")) {
         setError("Firma s ovim JIB-om već postoji u sistemu.");
       } else {
         setError("Greška pri spremanju podataka. Molimo pokušajte ponovo.");
       }
       setLoading(false);
       return;
+    }
+
+    if (isDemoUser(user.email) && savedCompanyId) {
+      try {
+        await seedDemoData(user.id, savedCompanyId);
+      } catch (seedError) {
+        console.error("Demo seed error:", seedError);
+      }
     }
 
     router.push("/dashboard");

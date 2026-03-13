@@ -2,6 +2,12 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import {
+  demoBidSummaries,
+  getDemoDocuments,
+  isCompanyProfileComplete,
+  isDemoUser,
+} from "@/lib/demo";
+import {
   FileText,
   Briefcase,
   Search,
@@ -47,13 +53,16 @@ export default async function DashboardPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
+  const isDemoAccount = isDemoUser(user.email);
   const { data: company } = await supabase
     .from("companies")
-    .select("id, name")
+    .select("id, name, jib")
     .eq("user_id", user.id)
-    .single();
+    .maybeSingle();
 
-  if (!company) redirect("/onboarding");
+  if (!isCompanyProfileComplete(company)) redirect("/onboarding");
+
+  const resolvedCompany = company as { id: string; name: string; jib: string };
 
   // Calculate dates outside of query builder to avoid impure function warnings
   const now = new Date();
@@ -68,14 +77,14 @@ export default async function DashboardPage() {
     { data: expiringDocs },
     { data: recentBids },
   ] = await Promise.all([
-    supabase.from("documents").select("*", { count: "exact", head: true }).eq("company_id", company.id),
-    supabase.from("bids").select("*", { count: "exact", head: true }).eq("company_id", company.id).in("status", ["draft", "in_review", "submitted"]),
-    supabase.from("bids").select("*", { count: "exact", head: true }).eq("company_id", company.id).eq("status", "won"),
-    supabase.from("bids").select("*", { count: "exact", head: true }).eq("company_id", company.id).eq("status", "lost"),
+    supabase.from("documents").select("*", { count: "exact", head: true }).eq("company_id", resolvedCompany.id),
+    supabase.from("bids").select("*", { count: "exact", head: true }).eq("company_id", resolvedCompany.id).in("status", ["draft", "in_review", "submitted"]),
+    supabase.from("bids").select("*", { count: "exact", head: true }).eq("company_id", resolvedCompany.id).eq("status", "won"),
+    supabase.from("bids").select("*", { count: "exact", head: true }).eq("company_id", resolvedCompany.id).eq("status", "lost"),
     supabase
       .from("documents")
       .select("id, name, type, expires_at")
-      .eq("company_id", company.id)
+      .eq("company_id", resolvedCompany.id)
       .not("expires_at", "is", null)
       .lte("expires_at", sixtyDaysFromNow)
       .gte("expires_at", nowIso)
@@ -84,18 +93,41 @@ export default async function DashboardPage() {
     supabase
       .from("bids")
       .select("id, status, created_at, tenders(title, deadline, estimated_value)")
-      .eq("company_id", company.id)
+      .eq("company_id", resolvedCompany.id)
       .order("created_at", { ascending: false })
       .limit(6),
   ]);
 
-  const expiring = (expiringDocs ?? []) as Pick<DocType, "id" | "name" | "type" | "expires_at">[];
-  const bids = (recentBids ?? []) as {
+  const demoDocuments = isDemoAccount ? getDemoDocuments(resolvedCompany.id) : [];
+  const expiring = ((expiringDocs ?? []) as Pick<DocType, "id" | "name" | "type" | "expires_at">[]).length > 0
+    ? ((expiringDocs ?? []) as Pick<DocType, "id" | "name" | "type" | "expires_at">[])
+    : demoDocuments;
+  const realBids = (recentBids ?? []) as {
     id: string;
     status: BidStatus;
     created_at: string;
     tenders: { title: string; deadline: string | null; estimated_value: number | null };
   }[];
+  const bids = realBids.length > 0
+    ? realBids
+    : isDemoAccount
+      ? demoBidSummaries.map((bid) => ({
+        id: bid.id,
+        status: bid.status,
+        created_at: bid.created_at,
+        tenders: {
+          title: bid.tender.title,
+          deadline: bid.tender.deadline,
+          estimated_value: bid.tender.estimated_value,
+        },
+      }))
+      : [];
+
+  const totalActiveBids = (bidsCount ?? 0) + (wonBidsCount ?? 0) + (lostBidsCount ?? 0);
+  const displayTotalBids = totalActiveBids > 0 ? totalActiveBids : bids.length;
+  const displayDraftBids = (bidsCount ?? 0) > 0 ? (bidsCount ?? 0) : bids.filter((bid) => ["draft", "in_review", "submitted"].includes(bid.status)).length;
+  const displayWonBids = (wonBidsCount ?? 0) > 0 ? (wonBidsCount ?? 0) : bids.filter((bid) => bid.status === "won").length;
+  const displayLostBids = (lostBidsCount ?? 0) > 0 ? (lostBidsCount ?? 0) : bids.filter((bid) => bid.status === "lost").length;
 
   const greeting = now.getHours() < 12 ? "Dobro jutro" : now.getHours() < 18 ? "Dobar dan" : "Dobra večer";
   
@@ -105,7 +137,7 @@ export default async function DashboardPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-3xl font-heading font-bold text-slate-900 tracking-tight">
-            {greeting}, {company.name.split(" ")[0]}
+            {greeting}, {resolvedCompany.name.split(" ")[0]}
           </h1>
           <p className="mt-1 text-base text-slate-500">
             Evo pregleda vaših aktivnosti i ponuda danas.
@@ -141,7 +173,7 @@ export default async function DashboardPage() {
             <p className="text-sm font-bold text-slate-500">Ukupno ponuda</p>
           </div>
           <p className="font-heading text-4xl font-extrabold text-slate-900 relative z-10 mt-2">
-            {(bidsCount ?? 0) + (wonBidsCount ?? 0) + (lostBidsCount ?? 0)}
+            {displayTotalBids}
           </p>
         </div>
 
@@ -154,7 +186,7 @@ export default async function DashboardPage() {
             <p className="text-sm font-bold text-slate-600">U pripremi</p>
           </div>
           <p className="font-heading text-3xl font-bold text-slate-900 ml-1">
-            {bidsCount ?? 0}
+            {displayDraftBids}
           </p>
         </div>
 
@@ -166,7 +198,7 @@ export default async function DashboardPage() {
             <p className="text-sm font-bold text-slate-600">Pobijeđeno</p>
           </div>
           <p className="font-heading text-3xl font-bold text-slate-900 ml-1">
-            {wonBidsCount ?? 0}
+            {displayWonBids}
           </p>
         </div>
 
@@ -178,7 +210,7 @@ export default async function DashboardPage() {
             <p className="text-sm font-bold text-slate-600">Izgubljeno</p>
           </div>
           <p className="font-heading text-3xl font-bold text-slate-900 ml-1">
-            {lostBidsCount ?? 0}
+            {displayLostBids}
           </p>
         </div>
       </div>

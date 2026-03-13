@@ -1,11 +1,19 @@
 import { createClient } from "@/lib/supabase/server";
+import { getDemoSubscription, isDemoUser } from "@/lib/demo";
 import type { Subscription } from "@/types/database";
 
-export async function getSubscriptionStatus(userId: string): Promise<{
+export async function getSubscriptionStatus(userId: string, email?: string | null): Promise<{
   isSubscribed: boolean;
   subscription: Subscription | null;
 }> {
   const supabase = await createClient();
+
+  if (isDemoUser(email)) {
+    return {
+      isSubscribed: true,
+      subscription: getDemoSubscription(userId),
+    };
+  }
 
   const { data } = await supabase
     .from("subscriptions")

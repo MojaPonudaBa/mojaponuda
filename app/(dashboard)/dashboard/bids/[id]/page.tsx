@@ -15,6 +15,7 @@ import { ChecklistPanel } from "@/components/bids/workspace/checklist-panel";
 import { DocumentsPanel } from "@/components/bids/workspace/documents-panel";
 import { NotesSection } from "@/components/bids/workspace/notes-section";
 import { PaywallOverlay } from "@/components/subscription/paywall-overlay";
+import { getSubscriptionStatus } from "@/lib/subscription";
 
 const MAX_FREE_BIDS = 3;
 
@@ -100,15 +101,7 @@ export default async function BidWorkspacePage({
   const vaultDocuments = (vaultData ?? []) as Document[];
 
   // Provjera pretplate — paywall
-  const { data: subData } = await supabase
-    .from("subscriptions")
-    .select("*")
-    .eq("user_id", user.id)
-    .maybeSingle();
-
-  const subscription = subData as Subscription | null;
-  const isSubscribed =
-    subscription?.status === "active" || subscription?.status === "past_due";
+  const { isSubscribed } = await getSubscriptionStatus(user.id, user.email);
 
   let showPaywall = false;
   let totalBids = 0;

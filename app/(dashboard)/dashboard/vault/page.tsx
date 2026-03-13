@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getDemoDocuments, isCompanyProfileComplete, isDemoUser } from "@/lib/demo";
 import type { Company, Document } from "@/types/database";
 import { DocumentGrid } from "@/components/vault/document-grid";
 import { AddDocumentModal } from "@/components/vault/add-document-modal";
@@ -15,27 +16,33 @@ export default async function VaultPage() {
     redirect("/login");
   }
 
-  // Dohvati firmu korisnika
+  const isDemoAccount = isDemoUser(user.email);
   const { data: companyData } = await supabase
     .from("companies")
-    .select("id")
+    .select("id, jib")
     .eq("user_id", user.id)
-    .single();
+    .maybeSingle();
 
   const company = companyData as Company | null;
 
-  if (!company) {
+  if (!isCompanyProfileComplete(company)) {
     redirect("/onboarding");
   }
+
+  const resolvedCompany = company as Company;
 
   // Dohvati sve dokumente firme
   const { data: documentsData } = await supabase
     .from("documents")
     .select("*")
-    .eq("company_id", company.id)
+    .eq("company_id", resolvedCompany.id)
     .order("created_at", { ascending: false });
 
-  const documents = (documentsData as Document[] | null) ?? [];
+  const documents = ((documentsData as Document[] | null) ?? []).length > 0
+    ? ((documentsData as Document[] | null) ?? [])
+    : isDemoAccount
+      ? getDemoDocuments(resolvedCompany.id)
+      : [];
 
   return (
     <div className="space-y-8 max-w-[1200px] mx-auto">

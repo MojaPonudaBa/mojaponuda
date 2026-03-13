@@ -75,25 +75,12 @@ export default function SignupPage() {
       return;
     }
 
-    // 2. Ako je korisnik odmah autentificiran (email potvrda isključena),
-    //    kreiraj zapis u companies tabeli i preusmjeri na /onboarding
     if (data.session && data.user) {
-      const { error: companyError } = await supabase.from("companies").insert({
-        user_id: data.user.id,
-        name: companyName.trim(),
-        jib: "",
-      });
-
-      if (companyError) {
-        console.error("Greška pri kreiranju firme:", companyError.message);
-      }
-
       router.push("/onboarding");
       router.refresh();
       return;
     }
 
-    // 3. Ako je email potvrda uključena, prikaži poruku
     setSuccess(true);
     setLoading(false);
   }

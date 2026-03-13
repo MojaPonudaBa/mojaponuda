@@ -21,19 +21,10 @@ export async function GET(request: Request) {
           .from("companies")
           .select("id")
           .eq("user_id", user.id)
-          .single();
+          .maybeSingle();
 
         // Ako nema firme, kreiraj je iz user_metadata
         if (!existingCompany) {
-          const companyName =
-            user.user_metadata?.company_name || "Moja firma";
-
-          await supabase.from("companies").insert({
-            user_id: user.id,
-            name: companyName,
-            jib: "",
-          });
-
           return NextResponse.redirect(`${origin}/onboarding`);
         }
       }

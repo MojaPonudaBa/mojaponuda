@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { demoBidSummaries, isCompanyProfileComplete, isDemoUser } from "@/lib/demo";
 import type { Company, BidStatus } from "@/types/database";
 import { BidsTable } from "@/components/bids/bids-table";
 import { NewBidModal } from "@/components/bids/new-bid-modal";
@@ -27,23 +28,26 @@ export default async function BidsPage() {
     redirect("/login");
   }
 
+  const isDemoAccount = isDemoUser(user.email);
   const { data: companyData } = await supabase
     .from("companies")
-    .select("id")
+    .select("id, jib")
     .eq("user_id", user.id)
-    .single();
+    .maybeSingle();
 
   const company = companyData as Company | null;
 
-  if (!company) {
+  if (!isCompanyProfileComplete(company)) {
     redirect("/onboarding");
   }
+
+  const resolvedCompany = company as Company;
 
   // Dohvati ponude s tender podacima
   const { data: bidsData } = await supabase
     .from("bids")
     .select("id, status, created_at, tenders(id, title, contracting_authority, deadline)")
-    .eq("company_id", company.id)
+    .eq("company_id", resolvedCompany.id)
     .order("created_at", { ascending: false });
 
   const bids = ((bidsData as BidWithTender[] | null) ?? []).map((b) => ({
@@ -52,6 +56,22 @@ export default async function BidsPage() {
     created_at: b.created_at,
     tender: b.tenders,
   }));
+
+  const displayBids = bids.length > 0
+    ? bids
+    : isDemoAccount
+      ? demoBidSummaries.map((bid) => ({
+          id: bid.id,
+          status: bid.status,
+          created_at: bid.created_at,
+          tender: {
+            id: bid.tender.id,
+            title: bid.tender.title,
+            contracting_authority: bid.tender.contracting_authority,
+            deadline: bid.tender.deadline,
+          },
+        }))
+      : [];
 
   // Dohvati sve tendere za modal
   const { data: tendersData } = await supabase
@@ -80,7 +100,7 @@ export default async function BidsPage() {
         <NewBidModal tenders={tenders} />
       </div>
 
-      <BidsTable bids={bids} />
+      <BidsTable bids={displayBids} />
     </div>
   );
 }

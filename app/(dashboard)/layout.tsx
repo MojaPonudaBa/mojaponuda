@@ -20,7 +20,7 @@ export default async function DashboardLayout({
     .from("companies")
     .select("name")
     .eq("user_id", user.id)
-    .single();
+    .maybeSingle();
 
   return (
     <div className="relative flex min-h-screen items-center justify-center bg-[#f8fafc] p-4 sm:p-6 lg:p-8 overflow-hidden">
