@@ -130,257 +130,154 @@ export default async function DashboardPage() {
   const displayWonBids = (wonBidsCount ?? 0) > 0 ? (wonBidsCount ?? 0) : bids.filter((bid) => bid.status === "won").length;
   const displayLostBids = (lostBidsCount ?? 0) > 0 ? (lostBidsCount ?? 0) : bids.filter((bid) => bid.status === "lost").length;
 
-  const greeting = now.getHours() < 12 ? "Dobro jutro" : now.getHours() < 18 ? "Dobar dan" : "Dobra večer";
   
   return (
-    <div className="space-y-8">
-      <section className="rounded-[2rem] border border-slate-200/80 bg-white px-7 py-7 shadow-[0_28px_60px_-36px_rgba(15,23,42,0.22)] lg:px-9 lg:py-8">
-        <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
+    <div className="space-y-6">
+      {/* Top bar with action */}
+      <div className="flex items-center justify-end">
+        <Link
+          href="/dashboard/bids"
+          className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-700"
+        >
+          <Plus className="size-4" />
+          Nova ponuda
+        </Link>
+      </div>
+
+      {/* Stats row: hero stat + 3 compact metrics */}
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-stretch">
+        {/* Hero stat card */}
+        <div className="flex items-center gap-5 rounded-2xl bg-white p-6 shadow-sm lg:min-w-[200px]">
+          <div className="flex size-14 items-center justify-center rounded-2xl bg-blue-100 text-blue-600">
+            <FileText className="size-6" />
+          </div>
           <div>
-            <p className="text-[11px] font-mono font-semibold uppercase tracking-[0.32em] text-slate-400">
-              Kontrolna tabla
-            </p>
-            <h1 className="mt-3 text-4xl font-heading font-bold tracking-tight text-slate-950 lg:text-5xl">
-              {greeting}, {resolvedCompany.name.split(" ")[0]}
-            </h1>
-            <p className="mt-3 max-w-2xl text-base leading-7 text-slate-600 lg:text-lg">
-              Jasniji pregled ponuda, rokova i tržišnih signala za vaš današnji rad.
+            <p className="text-sm font-medium text-slate-500">Ukupno ponuda</p>
+            <p className="mt-1 font-heading text-4xl font-bold text-slate-900">
+              {displayTotalBids}
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <Link
-              href="/dashboard/tenders"
-              className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 text-sm font-bold text-slate-700 shadow-sm transition-all hover:-translate-y-0.5 hover:border-blue-200 hover:bg-slate-50 hover:text-primary"
-            >
-              <Search className="size-4" />
-              Pronađi tender
-            </Link>
-            <Link
-              href="/dashboard/bids"
-              className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-primary px-5 text-sm font-bold text-white shadow-[0_18px_40px_-20px_rgba(15,23,42,0.8)] transition-all hover:-translate-y-0.5 hover:bg-blue-700"
-            >
-              <Plus className="size-4" />
-              Nova ponuda
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      <div className="grid gap-5 lg:grid-cols-4">
-        <div className="group relative overflow-hidden rounded-[1.75rem] border border-slate-200/80 bg-white p-7 shadow-[0_24px_50px_-30px_rgba(15,23,42,0.22)]">
-          <div className="absolute right-0 top-0 h-36 w-36 -translate-y-8 translate-x-8 rounded-full bg-blue-100/80 blur-3xl transition-all group-hover:bg-blue-200/70" />
-          <div className="relative z-10 flex items-center gap-3 mb-3">
-            <div className="flex size-11 items-center justify-center rounded-2xl bg-blue-50 text-blue-700 ring-1 ring-blue-100">
-              <FileText className="size-5" />
-            </div>
-            <p className="text-sm font-bold text-slate-500">Ukupno ponuda</p>
-          </div>
-          <p className="relative z-10 mt-4 font-heading text-5xl font-extrabold text-slate-950">
-            {displayTotalBids}
-          </p>
         </div>
 
-        <div className="flex flex-col justify-center rounded-[1.75rem] border border-slate-200/80 bg-white p-6 shadow-[0_20px_40px_-30px_rgba(15,23,42,0.2)] transition-all hover:-translate-y-0.5 hover:border-blue-100 hover:shadow-[0_28px_50px_-32px_rgba(37,99,235,0.28)]">
-          <div className="mb-4 flex items-center gap-3">
-            <div className="flex size-11 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 ring-1 ring-blue-100">
+        {/* 3 compact metric cards */}
+        <div className="grid flex-1 grid-cols-3 gap-4">
+          <div className="flex items-center gap-4 rounded-2xl bg-white p-5 shadow-sm">
+            <div className="flex size-11 items-center justify-center rounded-xl bg-blue-100 text-blue-600">
               <Clock className="size-5" />
             </div>
-            <p className="text-sm font-bold text-slate-600">U pripremi</p>
+            <div>
+              <p className="text-xs font-medium text-slate-500">U pripremi</p>
+              <p className="mt-0.5 font-heading text-2xl font-bold text-slate-900">
+                {displayDraftBids}
+              </p>
+            </div>
           </div>
-          <p className="ml-1 font-heading text-4xl font-bold text-slate-950">
-            {displayDraftBids}
-          </p>
-        </div>
 
-        <div className="flex flex-col justify-center rounded-[1.75rem] border border-slate-200/80 bg-white p-6 shadow-[0_20px_40px_-30px_rgba(15,23,42,0.2)] transition-all hover:-translate-y-0.5 hover:border-emerald-100 hover:shadow-[0_28px_50px_-32px_rgba(16,185,129,0.24)]">
-          <div className="mb-4 flex items-center gap-3">
-            <div className="flex size-11 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600 ring-1 ring-emerald-100">
+          <div className="flex items-center gap-4 rounded-2xl bg-white p-5 shadow-sm">
+            <div className="flex size-11 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600">
               <Award className="size-5" />
             </div>
-            <p className="text-sm font-bold text-slate-600">Pobijeđeno</p>
+            <div>
+              <p className="text-xs font-medium text-slate-500">Pobijeđeno</p>
+              <p className="mt-0.5 font-heading text-2xl font-bold text-slate-900">
+                {displayWonBids}
+              </p>
+            </div>
           </div>
-          <p className="ml-1 font-heading text-4xl font-bold text-slate-950">
-            {displayWonBids}
-          </p>
-        </div>
 
-        <div className="flex flex-col justify-center rounded-[1.75rem] border border-slate-200/80 bg-white p-6 shadow-[0_20px_40px_-30px_rgba(15,23,42,0.2)] transition-all hover:-translate-y-0.5 hover:border-red-100 hover:shadow-[0_28px_50px_-32px_rgba(239,68,68,0.22)]">
-          <div className="mb-4 flex items-center gap-3">
-            <div className="flex size-11 items-center justify-center rounded-2xl bg-red-50 text-red-600 ring-1 ring-red-100">
+          <div className="flex items-center gap-4 rounded-2xl bg-white p-5 shadow-sm">
+            <div className="flex size-11 items-center justify-center rounded-xl bg-orange-100 text-orange-600">
               <TrendingUp className="size-5 rotate-180" />
             </div>
-            <p className="text-sm font-bold text-slate-600">Izgubljeno</p>
+            <div>
+              <p className="text-xs font-medium text-slate-500">Izgubljeno</p>
+              <p className="mt-0.5 font-heading text-2xl font-bold text-slate-900">
+                {displayLostBids}
+              </p>
+            </div>
           </div>
-          <p className="ml-1 font-heading text-4xl font-bold text-slate-950">
-            {displayLostBids}
-          </p>
         </div>
       </div>
 
-      <div className="grid gap-6 2xl:grid-cols-[minmax(0,1.8fr)_360px]">
-        <section className="space-y-6">
-          <div className="flex h-full flex-col overflow-hidden rounded-[1.75rem] border border-slate-200/80 bg-white shadow-[0_24px_50px_-30px_rgba(15,23,42,0.18)]">
-            <div className="flex flex-col gap-4 border-b border-slate-100 p-7 lg:flex-row lg:items-center lg:justify-between">
-              <div>
-                <h2 className="font-heading text-[2rem] font-bold tracking-tight text-slate-950">Aktivne ponude</h2>
-                <p className="mt-1 text-sm text-slate-500">
-                  Pregled najvažnijih otvorenih ponuda i narednih rokova.
-                </p>
-              </div>
-              <div className="flex flex-wrap items-center gap-3">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
-                  <input 
-                    type="text" 
-                    placeholder="Pretraži ponude..." 
-                    className="h-11 w-56 rounded-2xl border border-slate-200 pl-10 pr-4 text-sm transition-all focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 sm:w-72"
-                  />
-                </div>
-                <Link href="/dashboard/bids" className="hidden h-11 items-center justify-center rounded-2xl bg-blue-50 px-4 text-sm font-bold text-primary transition-colors hover:bg-blue-100 sm:flex">
-                  Sve ponude
-                </Link>
-              </div>
-            </div>
+      {/* Active Tenders Table */}
+      <div className="rounded-2xl bg-white shadow-sm">
+        <div className="flex items-center justify-between border-b border-slate-100 px-6 py-5">
+          <h2 className="font-heading text-xl font-bold text-slate-900">Aktivne ponude</h2>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
+            <input 
+              type="text" 
+              placeholder="Pretraži..." 
+              className="h-9 w-48 rounded-lg border border-slate-200 bg-slate-50 pl-9 pr-3 text-sm transition-all focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+            />
+          </div>
+        </div>
 
-            <div className="flex-1 overflow-x-auto">
-              <table className="w-full min-w-[680px] border-collapse text-left">
-                <thead>
-                  <tr className="border-b border-slate-100 bg-slate-50/70 text-xs font-bold uppercase tracking-wider text-slate-400">
-                    <th className="w-[40%] p-5 pl-7 font-medium">Naziv tendera</th>
-                    <th className="p-5 font-medium">Rok za predaju</th>
-                    <th className="p-5 font-medium">Budžet</th>
-                    <th className="p-5 font-medium">Status</th>
-                    <th className="p-5 pr-7 text-right font-medium">Akcije</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-50">
-                  {bids.length === 0 ? (
-                    <tr>
-                      <td colSpan={5} className="p-16 text-center">
-                        <div className="flex flex-col items-center justify-center">
-                          <div className="mb-4 flex size-16 items-center justify-center rounded-full bg-slate-50 text-slate-300">
-                            <Briefcase className="size-8" />
-                          </div>
-                          <p className="mb-1 text-base font-bold text-slate-900">Nema aktivnih ponuda</p>
-                          <p className="mb-6 max-w-sm text-sm text-slate-500">
-                            Niste započeli pripremu nijedne ponude.
-                          </p>
-                          <Link
-                            href="/dashboard/tenders"
-                            className="inline-flex h-10 items-center justify-center rounded-xl bg-primary px-5 text-sm font-bold text-white shadow-md shadow-blue-500/20 transition-all hover:bg-blue-700"
-                          >
-                            Pretraži tendere
-                          </Link>
-                        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[640px] text-left">
+            <thead>
+              <tr className="border-b border-slate-100 text-xs font-medium uppercase tracking-wider text-slate-400">
+                <th className="px-6 py-4 font-medium">Naziv tendera</th>
+                <th className="px-6 py-4 font-medium">Rok</th>
+                <th className="px-6 py-4 font-medium">Budžet</th>
+                <th className="px-6 py-4 font-medium">Status</th>
+                <th className="px-6 py-4 text-right font-medium">Akcije</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-50">
+              {bids.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="px-6 py-12 text-center">
+                    <div className="flex flex-col items-center">
+                      <Briefcase className="mb-3 size-10 text-slate-300" />
+                      <p className="mb-1 font-semibold text-slate-900">Nema aktivnih ponuda</p>
+                      <p className="mb-4 text-sm text-slate-500">Započnite pripremu ponude za tender.</p>
+                      <Link
+                        href="/dashboard/tenders"
+                        className="inline-flex h-9 items-center rounded-lg bg-blue-600 px-4 text-sm font-medium text-white hover:bg-blue-700"
+                      >
+                        Pretraži tendere
+                      </Link>
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                bids.map((bid) => {
+                  const status = STATUS_CONFIG[bid.status] || STATUS_CONFIG.draft;
+                  return (
+                    <tr key={bid.id} className="transition-colors hover:bg-slate-50">
+                      <td className="px-6 py-4">
+                        <Link href={`/dashboard/bids/${bid.id}`} className="font-medium text-slate-900 hover:text-blue-600" title={bid.tenders?.title}>
+                          {bid.tenders?.title ?? "Nepoznat tender"}
+                        </Link>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-slate-600">
+                        {formatDate(bid.tenders?.deadline)}
+                      </td>
+                      <td className="px-6 py-4 text-sm font-medium text-slate-700">
+                        {bid.tenders?.estimated_value ? `${bid.tenders.estimated_value.toLocaleString("bs-BA")} KM` : "—"}
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold ${status.colors}`}>
+                          {status.label}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <BidQuickActions bidId={bid.id} currentStatus={bid.status} />
                       </td>
                     </tr>
-                  ) : (
-                    bids.map((bid) => {
-                      const status = STATUS_CONFIG[bid.status] || STATUS_CONFIG.draft;
-                      return (
-                        <tr key={bid.id} className="transition-colors hover:bg-slate-50/80 group">
-                          <td className="p-5 pl-7">
-                            <Link href={`/dashboard/bids/${bid.id}`} className="line-clamp-1 pr-4 font-semibold text-slate-900 transition-colors hover:text-primary" title={bid.tenders?.title}>
-                              {bid.tenders?.title ?? "Nepoznat tender"}
-                            </Link>
-                          </td>
-                          <td className="p-5 text-sm font-medium text-slate-600">
-                            {formatDate(bid.tenders?.deadline)}
-                          </td>
-                          <td className="p-5 text-sm font-bold text-slate-700">
-                            {bid.tenders?.estimated_value ? `${bid.tenders.estimated_value.toLocaleString("bs-BA")} KM` : "—"}
-                          </td>
-                          <td className="p-5">
-                            <span className={`inline-flex items-center justify-center rounded-full border px-2.5 py-0.5 text-xs font-bold ${status.colors}`}>
-                              {status.label}
-                            </span>
-                          </td>
-                          <td className="p-5 pr-7">
-                            <BidQuickActions bidId={bid.id} currentStatus={bid.status} />
-                          </td>
-                        </tr>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          <Suspense fallback={<div className="h-64 rounded-[1.75rem] border border-slate-200/80 bg-white animate-pulse" />}>
-            <RecommendedTenders />
-          </Suspense>
-        </section>
-
-        <aside className="space-y-6 2xl:sticky 2xl:top-8 self-start">
-          {expiring.length > 0 && (
-            <div className="relative overflow-hidden rounded-[1.75rem] border border-amber-200 bg-[linear-gradient(180deg,#fff8e6_0%,#fffef8_100%)] p-7 shadow-[0_22px_44px_-30px_rgba(245,158,11,0.35)]">
-              <div className="absolute right-0 top-0 h-32 w-32 -mr-10 -mt-10 rounded-full bg-amber-100 blur-3xl pointer-events-none" />
-              <div className="relative z-10 mb-5 flex items-center gap-3">
-                <div className="flex size-11 items-center justify-center rounded-2xl bg-amber-100 text-amber-700 ring-1 ring-amber-200/70">
-                  <AlertTriangle className="size-5" />
-                </div>
-                <h3 className="font-heading text-lg font-bold text-amber-900">
-                  Dokumenti ističu
-                </h3>
-              </div>
-
-              <div className="relative z-10 mb-5 space-y-3">
-                {expiring.slice(0, 3).map((doc) => {
-                  const days = daysUntil(doc.expires_at!);
-                  const urgent = days <= 7;
-                  return (
-                    <div key={doc.id} className="flex items-center justify-between rounded-2xl border border-amber-100/60 bg-white p-4 shadow-sm">
-                      <div className="min-w-0 pr-3">
-                        <p className="truncate text-sm font-bold text-slate-900" title={doc.name}>{doc.name}</p>
-                        <p className="mt-0.5 truncate text-xs text-slate-500">{doc.type}</p>
-                      </div>
-                      <span className={`shrink-0 inline-flex items-center rounded-full px-2 py-1 text-[10px] font-bold uppercase tracking-wider ${urgent ? "bg-red-50 text-red-600" : "bg-amber-50 text-amber-600"}`}>
-                        {days === 0 ? "Danas" : `${days}d`}
-                      </span>
-                    </div>
                   );
-                })}
-              </div>
-
-              <Link 
-                href="/dashboard/vault" 
-                className="relative z-10 flex w-full items-center justify-center gap-2 rounded-2xl border border-amber-200 bg-white px-4 py-3 text-sm font-bold text-amber-700 shadow-sm transition-all hover:bg-amber-100/50"
-              >
-                Ažuriraj trezor
-              </Link>
-            </div>
-          )}
-
-          <div className="rounded-[1.75rem] border border-slate-200/80 bg-white p-7 shadow-[0_24px_50px_-30px_rgba(15,23,42,0.18)]">
-            <h2 className="mb-1 font-heading text-lg font-bold text-slate-900">Brze akcije</h2>
-            <p className="mb-5 text-sm text-slate-500">
-              Najčešći koraci za pripremu ponuda i tržišni pregled.
-            </p>
-            <div className="space-y-3">
-              <Link href="/dashboard/vault" className="group flex items-center gap-4 rounded-2xl border border-slate-100 bg-slate-50/80 p-4 transition-all hover:border-blue-200 hover:bg-white hover:shadow-sm">
-                <div className="flex size-11 shrink-0 items-center justify-center rounded-xl border border-slate-100 bg-white text-slate-400 shadow-sm transition-colors group-hover:bg-blue-50 group-hover:text-primary">
-                  <Upload className="size-5" />
-                </div>
-                <div>
-                  <p className="text-sm font-bold text-slate-900">Spremi dokument</p>
-                  <p className="mt-0.5 text-xs text-slate-500">Dodajte u sigurni trezor</p>
-                </div>
-              </Link>
-
-              <Link href="/dashboard/intelligence" className="group flex items-center gap-4 rounded-2xl border border-slate-100 bg-slate-50/80 p-4 transition-all hover:border-purple-200 hover:bg-white hover:shadow-sm">
-                <div className="flex size-11 shrink-0 items-center justify-center rounded-xl border border-slate-100 bg-white text-slate-400 shadow-sm transition-colors group-hover:bg-purple-50 group-hover:text-purple-600">
-                  <TrendingUp className="size-5" />
-                </div>
-                <div>
-                  <p className="text-sm font-bold text-slate-900">Analiza tržišta</p>
-                  <p className="mt-0.5 text-xs text-slate-500">Istražite konkurenciju</p>
-                </div>
-              </Link>
-            </div>
-          </div>
-        </aside>
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
+
+      {/* Recommended Tenders */}
+      <Suspense fallback={<div className="h-48 rounded-2xl bg-white shadow-sm animate-pulse" />}>
+        <RecommendedTenders />
+      </Suspense>
     </div>
   );
 }
