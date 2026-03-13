@@ -4,7 +4,7 @@
 // ============================================================
 
 const BASE_URL = process.env.EJN_API_BASE_URL || "https://open.ejn.gov.ba";
-const PAGE_SIZE = 100;
+const PAGE_SIZE = 50;
 const MAX_PAGES = 20;
 
 // --- Normalized types (what our sync module expects) ---
@@ -81,21 +81,24 @@ async function fetchODataPages<T>(
   filter?: string,
 ): Promise<T[]> {
   const all: T[] = [];
+  let nextUrl: string | null = null;
   let skip = 0;
   let pages = 0;
 
   while (pages < MAX_PAGES) {
-    const params = new URLSearchParams({
-      $top: String(PAGE_SIZE),
-      $skip: String(skip),
-      $orderby: orderBy,
-    });
+    const url = nextUrl ?? (() => {
+      const params = new URLSearchParams({
+        $top: String(PAGE_SIZE),
+        $skip: String(skip),
+        $orderby: orderBy,
+      });
 
-    if (filter) {
-      params.set("$filter", filter);
-    }
+      if (filter) {
+        params.set("$filter", filter);
+      }
 
-    const url = `${BASE_URL}${endpoint}?${params.toString()}`;
+      return `${BASE_URL}${endpoint}?${params.toString()}`;
+    })();
 
     const res = await fetch(url, {
       headers: { Accept: "application/json" },
@@ -113,9 +116,16 @@ async function fetchODataPages<T>(
     const items = data.value ?? [];
     all.push(...items);
 
+    pages++;
+
+    const nextLink = data["@odata.nextLink"];
+    if (nextLink) {
+      nextUrl = nextLink.startsWith("http") ? nextLink : `${BASE_URL}${nextLink}`;
+      continue;
+    }
+
     if (items.length < PAGE_SIZE) break;
     skip += PAGE_SIZE;
-    pages++;
   }
 
   return all;
@@ -141,13 +151,12 @@ const PROCEDURE_TYPE_MAP: Record<string, string> = {
 // --- Public API functions ---
 
 export async function fetchProcurementNotices(
-  lastSyncAt?: string | null
+  _lastSyncAt?: string | null
 ): Promise<EjnProcurementNotice[]> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const raw = await fetchODataPages<any>(
     "/ProcurementNotices",
-    "Id desc",
-    lastSyncAt ? `Id gt ${lastSyncAt}` : undefined
+    "Id desc"
   );
 
   return raw.map((r) => ({
