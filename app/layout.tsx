@@ -1,19 +1,22 @@
 import type { Metadata } from "next";
-import { Inter, Plus_Jakarta_Sans, JetBrains_Mono } from "next/font/google";
+import { IBM_Plex_Sans, IBM_Plex_Serif, IBM_Plex_Mono } from "next/font/google";
 import { Toaster } from "@/components/ui/toaster";
 import "./globals.css";
 
-const inter = Inter({
+const ibmPlexSans = IBM_Plex_Sans({
+  weight: ['300', '400', '500', '600', '700'],
   variable: "--font-sans",
   subsets: ["latin", "latin-ext"],
 });
 
-const plusJakarta = Plus_Jakarta_Sans({
+const ibmPlexSerif = IBM_Plex_Serif({
+  weight: ['400', '500', '600', '700'],
   variable: "--font-heading",
   subsets: ["latin", "latin-ext"],
 });
 
-const jetbrainsMono = JetBrains_Mono({
+const ibmPlexMono = IBM_Plex_Mono({
+  weight: ['400', '500', '600'],
   variable: "--font-mono",
   subsets: ["latin", "latin-ext"],
 });
@@ -31,7 +34,7 @@ export default function RootLayout({
   return (
     <html lang="bs">
       <body
-        className={`${inter.variable} ${plusJakarta.variable} ${jetbrainsMono.variable} antialiased`}
+        className={`${ibmPlexSans.variable} ${ibmPlexSerif.variable} ${ibmPlexMono.variable} antialiased`}
       >
         {children}
         <Toaster />

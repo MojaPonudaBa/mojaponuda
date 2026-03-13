@@ -68,30 +68,30 @@ export function DashboardSidebar({ userEmail, companyName }: DashboardSidebarPro
       (item.href !== "/dashboard" && pathname.startsWith(item.href));
 
     return (
-      <Link href={item.href} className="block relative z-10 px-2 py-0.5">
+      <Link href={item.href} className="block relative z-10">
         <span
           className={cn(
-            "group flex items-center gap-3 px-4 py-3 text-sm font-medium transition-all duration-300 relative rounded-2xl",
+            "group flex items-center gap-3 px-4 py-2 text-sm font-medium transition-colors border-l-4",
             isActive
-              ? "text-primary shadow-lg shadow-blue-900/5 bg-white font-bold"
-              : "text-blue-100 hover:text-white hover:bg-white/10"
+              ? "text-white bg-white/10 border-blue-400"
+              : "text-slate-300 border-transparent hover:text-white hover:bg-white/5 hover:border-slate-500"
           )}
         >
           <item.icon 
             className={cn(
-              "size-[18px] shrink-0 transition-colors", 
-              isActive ? "text-primary" : "text-blue-200 group-hover:text-white"
+              "size-4 shrink-0", 
+              isActive ? "text-blue-400" : "text-slate-400 group-hover:text-slate-300"
             )} 
           />
-          <span className="flex-1 truncate">{item.label}</span>
+          <span className="flex-1 truncate tracking-wide">{item.label}</span>
           {item.pro && (
             <span className={cn(
-              "rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider transition-colors",
+              "px-1.5 py-0.5 text-[10px] font-mono font-bold tracking-wider uppercase border",
               isActive
-                ? "bg-blue-100 text-primary"
-                : "bg-white/20 text-white"
+                ? "bg-blue-900/50 text-blue-300 border-blue-400/30"
+                : "bg-slate-800/50 text-slate-400 border-slate-600/50"
             )}>
-              Pro
+              PRO
             </span>
           )}
         </span>
@@ -100,52 +100,46 @@ export function DashboardSidebar({ userEmail, companyName }: DashboardSidebarPro
   }
 
   return (
-    <aside className="flex w-[280px] flex-col bg-primary h-full overflow-hidden shrink-0 relative">
-      {/* Background decoration */}
-      <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 rounded-full bg-white/5 blur-3xl pointer-events-none" />
-      <div className="absolute bottom-0 left-0 -ml-16 -mb-16 w-64 h-64 rounded-full bg-black/10 blur-3xl pointer-events-none" />
-      
+    <aside className="flex w-[260px] flex-col bg-[#0f172a] border-r border-slate-800 h-full overflow-hidden shrink-0">
       {/* Brand */}
-      <div className="flex flex-col px-6 py-8 relative z-10">
-        <Link href="/" className="flex items-center gap-2 mb-8 hover:opacity-80 transition-opacity">
-          <div className="flex size-8 items-center justify-center rounded-xl bg-white text-primary shadow-sm">
-            <Box className="size-5" />
+      <div className="flex flex-col px-6 py-6 border-b border-slate-800">
+        <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+          <div className="flex size-7 items-center justify-center bg-blue-600 text-white rounded-sm">
+            <Box className="size-4" />
           </div>
           <div className="flex items-baseline gap-0.5">
-            <span className="font-heading text-xl font-bold tracking-tight text-white">
+            <span className="font-heading text-lg font-bold tracking-tight text-white">
               MojaPonuda
             </span>
-            <span className="font-heading text-xl font-bold text-blue-200">.ba</span>
+            <span className="font-heading text-lg font-bold text-blue-400">.ba</span>
           </div>
         </Link>
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 space-y-6 overflow-y-auto px-4 py-2 relative z-10 custom-scrollbar">
-        <div>
-          <div className="space-y-1">
-            {coreItems.map((item) => (
-              <NavLink key={item.href} item={item} />
-            ))}
-          </div>
+      <nav className="flex-1 overflow-y-auto py-4 scrollbar-hide">
+        <div className="space-y-0.5 mb-6">
+          {coreItems.map((item) => (
+            <NavLink key={item.href} item={item} />
+          ))}
         </div>
 
-        <div className="pt-2 border-t border-white/10 mx-2">
-          <p className="mb-3 px-4 text-[10px] font-bold uppercase tracking-widest text-blue-200/70">
+        <div className="mb-6">
+          <p className="px-6 mb-2 text-xs font-mono font-semibold tracking-widest text-slate-500 uppercase">
             Tržište
           </p>
-          <div className="space-y-1">
+          <div className="space-y-0.5">
             {intelligenceItems.map((item) => (
               <NavLink key={item.href} item={item} />
             ))}
           </div>
         </div>
 
-        <div className="pt-2 border-t border-white/10 mx-2">
-          <p className="mb-3 px-4 text-[10px] font-bold uppercase tracking-widest text-blue-200/70">
+        <div>
+          <p className="px-6 mb-2 text-xs font-mono font-semibold tracking-widest text-slate-500 uppercase">
             Podešavanja
           </p>
-          <div className="space-y-1">
+          <div className="space-y-0.5">
             {accountItems.map((item) => (
               <NavLink key={item.href} item={item} />
             ))}
@@ -154,39 +148,37 @@ export function DashboardSidebar({ userEmail, companyName }: DashboardSidebarPro
       </nav>
 
       {/* User footer */}
-      <div className="p-4 relative z-10">
-        <div className="rounded-2xl bg-black/10 p-4 border border-white/5 backdrop-blur-sm">
+      <div className="p-4 border-t border-slate-800 bg-[#0b1120]">
+        <div className="mb-3">
           {companyName ? (
-            <div className="mb-3">
-              <p className="truncate text-sm font-bold text-white" title={companyName}>
-                {companyName}
-              </p>
-            </div>
+            <p className="truncate text-sm font-semibold text-slate-200" title={companyName}>
+              {companyName}
+            </p>
           ) : (
-            <div className="mb-3 flex items-center gap-2">
-              <div className="size-2 rounded-full bg-amber-400" />
-              <p className="text-xs font-medium text-amber-200">Firma nije dodana</p>
+            <div className="flex items-center gap-2">
+              <div className="size-1.5 rounded-full bg-amber-500" />
+              <p className="text-xs font-medium text-amber-500/80">Firma nije dodana</p>
             </div>
           )}
-          
-          <div className="flex items-center justify-between border-t border-white/10 pt-3 mt-3">
-            <div className="flex items-center gap-2 min-w-0 flex-1">
-              <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-white/20 text-white font-bold text-xs">
-                {userEmail.charAt(0).toUpperCase()}
-              </div>
-              <p className="truncate text-xs font-medium text-blue-100" title={userEmail}>
-                {userEmail}
-              </p>
+        </div>
+        
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 min-w-0 flex-1">
+            <div className="flex size-6 shrink-0 items-center justify-center bg-slate-800 text-slate-300 font-mono text-xs border border-slate-700">
+              {userEmail.charAt(0).toUpperCase()}
             </div>
-            
-            <button
-              onClick={handleSignOut}
-              className="flex size-7 shrink-0 items-center justify-center rounded-full bg-white/10 text-white hover:bg-red-500/20 hover:text-red-300 transition-colors"
-              title="Odjava"
-            >
-              <LogOut className="size-3.5" />
-            </button>
+            <p className="truncate text-xs font-mono text-slate-400" title={userEmail}>
+              {userEmail}
+            </p>
           </div>
+          
+          <button
+            onClick={handleSignOut}
+            className="flex size-7 shrink-0 items-center justify-center text-slate-400 hover:text-red-400 hover:bg-red-400/10 transition-colors border border-transparent hover:border-red-400/20"
+            title="Odjava"
+          >
+            <LogOut className="size-3.5" />
+          </button>
         </div>
       </div>
     </aside>

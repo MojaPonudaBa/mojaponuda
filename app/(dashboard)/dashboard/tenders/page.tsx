@@ -21,7 +21,7 @@ async function TendersContent({ searchParams }: TendersPageProps) {
 
   const page = Math.max(1, parseInt(params.page || "1", 10));
   const offset = (page - 1) * PAGE_SIZE;
-  const activeTab = params.tab || "all";
+  const activeTab = params.tab === "all" ? "all" : "recommended";
 
   // Get current user and company for recommendations
   const {

@@ -38,17 +38,17 @@ export function DocumentCard({ document }: DocumentCardProps) {
 
   const expiryStatus = getExpiryStatus(document.expires_at);
   
-  // Custom classes for the new light theme
+  // Sleek theme badge classes
   const getCustomBadgeClasses = (status: string) => {
     switch (status) {
       case "danger":
-        return "text-red-600 bg-red-50 border-red-200";
+        return "text-red-700 bg-red-50 border border-red-200";
       case "warning":
-        return "text-amber-600 bg-amber-50 border-amber-200";
+        return "text-amber-700 bg-amber-50 border border-amber-200";
       case "ok":
-        return "text-emerald-600 bg-emerald-50 border-emerald-200";
+        return "text-emerald-700 bg-emerald-50 border border-emerald-200";
       default:
-        return "text-slate-600 bg-slate-50 border-slate-200";
+        return "text-slate-700 bg-slate-50 border border-slate-200";
     }
   };
   
@@ -104,12 +104,12 @@ export function DocumentCard({ document }: DocumentCardProps) {
 
   return (
     <>
-      <div className="group relative overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-all hover:border-blue-300 hover:shadow-md">
-        {/* Colored top border stripe based on expiry status */}
+      <div className="group relative overflow-hidden rounded bg-white shadow-sm border border-slate-200 hover:border-slate-300 transition-colors flex flex-col">
+        {/* Top status indicator line */}
         <div
-          className={`absolute inset-x-0 top-0 h-1 ${
+          className={`h-0.5 w-full ${
             expiryStatus === "danger"
-              ? "bg-red-500 animate-pulse"
+              ? "bg-red-600"
               : expiryStatus === "warning"
               ? "bg-amber-500"
               : expiryStatus === "ok"
@@ -118,48 +118,45 @@ export function DocumentCard({ document }: DocumentCardProps) {
           }`}
         />
         
-        <div className="flex flex-col h-full p-6 pt-7">
-          {/* Ikona i naziv */}
-          <div className="flex items-start gap-4 mb-6">
-            <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-blue-50">
-              <FileText className="size-6 text-primary" />
+        <div className="flex flex-col flex-1 p-5">
+          <div className="flex items-start gap-4 mb-4">
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-sm bg-slate-100 border border-slate-200">
+              <FileText className="size-5 text-slate-600" />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-base font-bold text-slate-900 mb-1" title={document.name}>
+              <p className="text-sm font-semibold text-slate-900 leading-snug break-words" title={document.name}>
                 {document.name}
               </p>
               {document.type && (
-                <p className="truncate text-xs font-semibold uppercase tracking-wider text-slate-500" title={document.type}>
+                <p className="text-[11px] font-mono font-bold uppercase tracking-wider text-slate-500 mt-1" title={document.type}>
                   {document.type}
                 </p>
               )}
             </div>
           </div>
 
-          <div className="mt-auto space-y-5">
-            {/* Status isteka */}
+          <div className="mt-auto space-y-4">
             <div
-              className={`inline-flex w-full items-center gap-2 rounded-lg border px-3 py-2 text-xs font-bold ${expiryBadgeClasses}`}
+              className={`inline-flex w-full items-center gap-2 rounded-sm px-2.5 py-1.5 text-xs font-medium ${expiryBadgeClasses}`}
             >
               {expiryStatus === "danger" && (
-                <AlertTriangle className="size-4 shrink-0" />
+                <AlertTriangle className="size-3.5 shrink-0" />
               )}
               <span className="truncate">{expiryText}</span>
             </div>
 
-            {/* Akcije */}
             <div className="flex gap-2">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={handlePreview}
                 disabled={previewLoading}
-                className="flex-1 rounded-xl border-slate-200 text-slate-700 hover:bg-blue-50 hover:text-primary hover:border-blue-200"
+                className="flex-1 rounded-sm border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-slate-900 shadow-none"
               >
                 {previewLoading ? (
-                  <Loader2 className="mr-2 size-4 animate-spin" />
+                  <Loader2 className="mr-1.5 size-3.5 animate-spin" />
                 ) : (
-                  <Eye className="mr-2 size-4" />
+                  <Eye className="mr-1.5 size-3.5" />
                 )}
                 Pregled
               </Button>
@@ -167,40 +164,39 @@ export function DocumentCard({ document }: DocumentCardProps) {
                 variant="outline" 
                 size="sm" 
                 onClick={handleDownload} 
-                className="flex-1 rounded-xl border-slate-200 text-slate-700 hover:bg-blue-50 hover:text-primary hover:border-blue-200"
+                className="flex-1 rounded-sm border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-slate-900 shadow-none"
               >
-                <Download className="mr-2 size-4" />
+                <Download className="mr-1.5 size-3.5" />
                 Preuzmi
               </Button>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => setDeleteOpen(true)}
-                className="shrink-0 rounded-xl border-slate-200 text-slate-400 hover:bg-red-50 hover:text-red-600 hover:border-red-200"
+                className="shrink-0 rounded-sm border-slate-200 text-slate-400 hover:bg-red-50 hover:text-red-600 hover:border-red-200 shadow-none px-2.5"
               >
-                <Trash2 className="size-4" />
+                <Trash2 className="size-3.5" />
               </Button>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Dialog za potvrdu brisanja */}
       <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-        <DialogContent className="rounded-2xl border-none shadow-xl sm:max-w-md">
+        <DialogContent className="rounded-md border border-slate-200 shadow-lg sm:max-w-md p-6">
           <DialogHeader>
-            <DialogTitle className="text-xl font-heading font-bold text-slate-900">Brisanje dokumenta</DialogTitle>
-            <DialogDescription className="text-base text-slate-600 mt-2">
+            <DialogTitle className="text-lg font-heading font-semibold text-slate-900">Brisanje dokumenta</DialogTitle>
+            <DialogDescription className="text-sm text-slate-600 mt-2">
               Da li ste sigurni da želite obrisati dokument{" "}
-              <strong className="text-slate-900">{document.name}</strong>? Ova akcija se ne može poništiti i dokument će biti uklonjen iz svih povezanih ponuda.
+              <strong className="text-slate-900 font-medium">{document.name}</strong>? Ova akcija se ne može poništiti.
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter className="mt-6 gap-3 sm:gap-0">
+          <DialogFooter className="mt-6 gap-2 sm:gap-0">
             <Button
               variant="outline"
               onClick={() => setDeleteOpen(false)}
               disabled={deleting}
-              className="rounded-xl border-slate-200 text-slate-700 hover:bg-slate-50"
+              className="rounded-sm border-slate-200 text-slate-700 hover:bg-slate-50"
             >
               Odustani
             </Button>
@@ -208,7 +204,7 @@ export function DocumentCard({ document }: DocumentCardProps) {
               variant="destructive"
               onClick={handleDelete}
               disabled={deleting}
-              className="rounded-xl bg-red-600 hover:bg-red-700"
+              className="rounded-sm bg-red-600 hover:bg-red-700"
             >
               {deleting ? (
                 <Loader2 className="mr-2 size-4 animate-spin" />

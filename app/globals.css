@@ -40,60 +40,60 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
+  --radius-sm: calc(var(--radius) * 0.5);
+  --radius-md: calc(var(--radius) * 0.75);
   --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
+  --radius-xl: calc(var(--radius) * 1.25);
+  --radius-2xl: calc(var(--radius) * 1.5);
+  --radius-3xl: calc(var(--radius) * 2);
+  --radius-4xl: calc(var(--radius) * 2.5);
 }
 
-/* Light SaaS Theme — Clean, airy, professional (Tendium/Altura inspired) */
+/* Serious, professional theme (Bloomberg Terminal inspired) */
 :root {
-  --background: #fafafc; /* Very light slate/gray background */
-  --foreground: #0f172a; /* Slate 900 for high contrast text */
+  --background: #f8f9fa; /* Very light cool gray */
+  --foreground: #111827; /* Near black */
   --card: #ffffff;
-  --card-foreground: #0f172a;
+  --card-foreground: #111827;
   --popover: #ffffff;
-  --popover-foreground: #0f172a;
+  --popover-foreground: #111827;
   
-  /* Primary brand color - vibrant blue */
-  --primary: #2563eb;
+  /* Primary brand color - Dark Professional Blue */
+  --primary: #0f172a; 
   --primary-foreground: #ffffff;
   
-  --secondary: #f1f5f9; /* Slate 100 */
-  --secondary-foreground: #334155; /* Slate 700 */
+  --secondary: #e2e8f0; /* Slate 200 */
+  --secondary-foreground: #0f172a; /* Slate 900 */
   
   --muted: #f1f5f9; /* Slate 100 */
   --muted-foreground: #64748b; /* Slate 500 */
   
-  --accent: #f1f5f9;
+  --accent: #f8fafc;
   --accent-foreground: #0f172a;
   
-  --destructive: #ef4444; /* Red 500 */
+  --destructive: #dc2626; /* Red 600 */
   --destructive-foreground: #ffffff;
   
-  --border: #e2e8f0; /* Slate 200 */
-  --input: #e2e8f0;
-  --ring: #2563eb; /* Primary blue for focus rings */
+  --border: #cbd5e1; /* Slate 300 */
+  --input: #cbd5e1;
+  --ring: #0f172a; /* Dark blue focus */
   
-  --chart-1: #2563eb;
-  --chart-2: #0ea5e9;
-  --chart-3: #8b5cf6;
-  --chart-4: #f59e0b;
-  --chart-5: #10b981;
+  --chart-1: #0f172a;
+  --chart-2: #334155;
+  --chart-3: #475569;
+  --chart-4: #64748b;
+  --chart-5: #94a3b8;
   
-  --radius: 0.75rem; /* Softer, rounder corners common in modern light SaaS */
+  --radius: 0.25rem; /* Sharp, sleek corners */
   
-  --sidebar: #ffffff;
-  --sidebar-foreground: #334155;
-  --sidebar-primary: #2563eb;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #f1f5f9;
-  --sidebar-accent-foreground: #0f172a;
-  --sidebar-border: #e2e8f0;
-  --sidebar-ring: #2563eb;
+  --sidebar: #0f172a; /* Dark blue sidebar */
+  --sidebar-foreground: #f8fafc;
+  --sidebar-primary: #ffffff;
+  --sidebar-primary-foreground: #0f172a;
+  --sidebar-accent: #1e293b;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #1e293b;
+  --sidebar-ring: #cbd5e1;
 }
 
 @layer base {
@@ -108,21 +108,24 @@
   }
   h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-heading);
-    letter-spacing: -0.02em;
+    letter-spacing: -0.01em;
+  }
+  code, pre {
+    font-family: var(--font-mono);
   }
 }
 
-/* Custom utilities for light SaaS theme */
+/* Custom utilities for serious theme */
 @layer utilities {
   .glass-panel {
-    @apply bg-white/70 backdrop-blur-md border border-white/20 shadow-[0_4px_30px_rgba(0,0,0,0.03)];
+    @apply bg-white border border-slate-200 shadow-sm;
   }
   
   .soft-shadow {
-    @apply shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)];
+    @apply shadow-sm;
   }
   
   .hover-lift {
-    @apply transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_10px_40px_-10px_rgba(6,81,237,0.15)];
+    @apply transition-all duration-200 hover:-translate-y-[1px] hover:shadow-md;
   }
 }
