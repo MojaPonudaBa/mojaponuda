@@ -24,37 +24,43 @@ import {
 function ImagePlaceholder({ text, width, height, aspect }: { text: string, width?: string, height?: string, aspect?: string }) {
   return (
     <div 
-      className={`flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-slate-100 text-slate-400 w-full ${aspect ? aspect : 'aspect-[4/3]'} ${width || ''} ${height || ''}`}
+      className={`flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-slate-50 text-slate-400 w-full relative overflow-hidden group ${aspect ? aspect : 'aspect-[4/3]'} ${width || ''} ${height || ''}`}
     >
-      <ImageIcon className="mb-2 size-8 text-slate-300" />
-      <span className="text-sm font-medium text-slate-500 text-center px-4">{text}</span>
-      <span className="text-xs text-slate-400 mt-1">Prompt placeholder</span>
+      <div className="absolute inset-0 bg-slate-100/50 opacity-0 group-hover:opacity-100 transition-opacity" />
+      <ImageIcon className="mb-3 size-10 text-slate-300 group-hover:text-blue-400 transition-colors" />
+      <span className="text-sm font-bold text-slate-500 text-center px-6 relative z-10">{text}</span>
+      <span className="text-[10px] font-mono text-slate-400 mt-2 bg-white/50 px-2 py-1 rounded-md border border-slate-200">1920x1080px</span>
     </div>
   );
 }
 
 function NavBar() {
   return (
-    <nav className="fixed top-0 z-50 w-full border-b border-slate-200 bg-white/80 backdrop-blur-md">
+    <nav className="fixed top-0 z-50 w-full border-b border-slate-200/80 bg-white/80 backdrop-blur-xl">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
-        <Link href="/" className="flex items-baseline gap-0.5">
-          <span className="font-heading text-xl font-bold tracking-tight text-slate-900">
-            MojaPonuda
-          </span>
-          <span className="font-heading text-xl font-bold text-primary">.ba</span>
+        <Link href="/" className="flex items-center gap-2 group">
+          <div className="size-8 rounded-lg bg-primary text-white flex items-center justify-center font-bold text-xl shadow-lg shadow-blue-500/30 group-hover:scale-105 transition-transform">
+            M
+          </div>
+          <div className="flex items-baseline">
+            <span className="font-heading text-xl font-bold tracking-tight text-slate-900">
+              MojaPonuda
+            </span>
+            <span className="font-heading text-xl font-bold text-primary">.ba</span>
+          </div>
         </Link>
 
         <div className="hidden items-center gap-8 md:flex">
-          <a href="#problem" className="text-sm font-medium text-slate-600 transition-colors hover:text-primary">
+          <a href="#problem" className="text-sm font-semibold text-slate-600 transition-colors hover:text-primary">
             Problem
           </a>
-          <a href="#kako-radi" className="text-sm font-medium text-slate-600 transition-colors hover:text-primary">
+          <a href="#kako-radi" className="text-sm font-semibold text-slate-600 transition-colors hover:text-primary">
             Kako radi
           </a>
-          <a href="#rjesenje" className="text-sm font-medium text-slate-600 transition-colors hover:text-primary">
+          <a href="#rjesenje" className="text-sm font-semibold text-slate-600 transition-colors hover:text-primary">
             Platforma
           </a>
-          <a href="#cijene" className="text-sm font-medium text-slate-600 transition-colors hover:text-primary">
+          <a href="#cijene" className="text-sm font-semibold text-slate-600 transition-colors hover:text-primary">
             Cijene
           </a>
         </div>
@@ -62,13 +68,13 @@ function NavBar() {
         <div className="flex items-center gap-4">
           <Link
             href="/login"
-            className="hidden text-sm font-medium text-slate-600 transition-colors hover:text-primary sm:block"
+            className="hidden text-sm font-bold text-slate-600 transition-colors hover:text-primary sm:block"
           >
             Prijava
           </Link>
           <Link
             href="/signup"
-            className="rounded-full bg-primary px-5 py-2 text-sm font-semibold text-white transition-all hover:bg-blue-700 hover:shadow-md hover:-translate-y-0.5"
+            className="rounded-full bg-slate-900 px-5 py-2.5 text-sm font-bold text-white transition-all hover:bg-primary hover:shadow-lg hover:shadow-blue-500/30 hover:-translate-y-0.5"
           >
             Isprobaj besplatno
           </Link>
@@ -80,52 +86,99 @@ function NavBar() {
 
 function HeroSection() {
   return (
-    <section className="relative overflow-hidden bg-slate-50 px-6 pb-20 pt-32 sm:pb-24 sm:pt-40">
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,#e2e8f0_1px,transparent_1px),linear-gradient(to_bottom,#e2e8f0_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] opacity-50" />
+    <section className="relative overflow-hidden bg-white px-6 pb-20 pt-32 sm:pb-32 sm:pt-40">
+      {/* Background Elements */}
+      <div className="absolute inset-0 -z-10 bg-[linear-gradient(to_right,#f1f5f9_1px,transparent_1px),linear-gradient(to_bottom,#f1f5f9_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)]" />
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[500px] bg-blue-500/10 blur-[120px] rounded-full -z-10" />
       
       <div className="relative mx-auto max-w-7xl">
-        <div className="text-center max-w-3xl mx-auto">
-          <div className="inline-flex items-center gap-2 rounded-full border border-blue-200 bg-blue-50 px-3 py-1 mb-8">
-            <span className="flex size-2 rounded-full bg-primary animate-pulse" />
-            <span className="text-xs font-semibold text-primary">
+        <div className="text-center max-w-4xl mx-auto">
+          <div className="inline-flex items-center gap-2 rounded-full border border-blue-100 bg-blue-50/50 px-4 py-1.5 mb-8 animate-fade-in-up">
+            <span className="flex size-2 rounded-full bg-blue-500 animate-pulse shadow-[0_0_10px_rgba(59,130,246,0.5)]" />
+            <span className="text-xs font-bold uppercase tracking-wide text-blue-700">
               Nova era javnih nabavki u BiH
             </span>
           </div>
 
-          <h1 className="font-heading text-4xl font-extrabold leading-[1.1] tracking-tight text-slate-900 sm:text-5xl lg:text-6xl">
-            Pobjeđujte na tenderima, 
-            <br />
-            <span className="text-primary">bez administrativnog stresa.</span>
+          <h1 className="font-heading text-5xl font-extrabold leading-[1.1] tracking-tight text-slate-900 sm:text-6xl lg:text-7xl mb-8">
+            Pobjeđujte na tenderima, <br className="hidden sm:block" />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-blue-400 relative">
+              bez administrativnog stresa.
+              <svg className="absolute w-full h-3 -bottom-1 left-0 text-blue-200 -z-10" viewBox="0 0 100 10" preserveAspectRatio="none">
+                <path d="M0 5 Q 50 10 100 5" stroke="currentColor" strokeWidth="8" fill="none" />
+              </svg>
+            </span>
           </h1>
 
-          <p className="mt-6 text-lg leading-relaxed text-slate-600 sm:text-xl">
+          <p className="mx-auto max-w-2xl text-lg leading-relaxed text-slate-600 sm:text-xl mb-10">
             Sveobuhvatna platforma za upravljanje dokumentacijom, AI analizu tenderskih uslova i praćenje tržišta javnih nabavki.
           </p>
 
-          <div className="mt-10 flex flex-col justify-center gap-4 sm:flex-row sm:items-center">
+          <div className="flex flex-col justify-center gap-4 sm:flex-row sm:items-center">
             <Link
               href="/signup"
-              className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-primary px-8 text-base font-semibold text-white shadow-lg shadow-blue-500/30 transition-all hover:bg-blue-700 hover:shadow-blue-500/40 hover:-translate-y-0.5"
+              className="inline-flex h-14 items-center justify-center gap-2 rounded-full bg-primary px-8 text-base font-bold text-white shadow-xl shadow-blue-500/30 transition-all hover:bg-blue-700 hover:shadow-2xl hover:shadow-blue-500/40 hover:-translate-y-1"
             >
               Započnite besplatno
               <ArrowRight className="size-4" />
             </Link>
             <a
               href="#kako-radi"
-              className="inline-flex h-12 items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-8 text-base font-semibold text-slate-700 transition-all hover:border-slate-300 hover:bg-slate-50"
+              className="inline-flex h-14 items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-8 text-base font-bold text-slate-700 shadow-sm transition-all hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900"
             >
               <PlayCircle className="size-5 text-slate-400" />
               Pogledajte demo
             </a>
           </div>
-          <p className="mt-4 text-sm text-slate-500">Nije potrebna kreditna kartica. 14 dana besplatno.</p>
+          <div className="mt-6 flex items-center justify-center gap-6 text-sm text-slate-500">
+            <div className="flex items-center gap-2">
+              <CheckCircle className="size-4 text-blue-500" />
+              <span>14 dana besplatno</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <CheckCircle className="size-4 text-blue-500" />
+              <span>Bez kreditne kartice</span>
+            </div>
+          </div>
         </div>
 
-        <div className="mt-16 mx-auto max-w-5xl">
-          <div className="relative rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl">
-            <div className="absolute -inset-0.5 rounded-2xl bg-gradient-to-b from-blue-500/20 to-transparent opacity-50 blur-xl -z-10" />
-            <div className="overflow-hidden rounded-xl bg-slate-50 border border-slate-100">
-               <ImagePlaceholder text="Dashboard Mockup (Tenders list, stats, clean white/blue UI)" aspect="aspect-[16/9]" />
+        <div className="mt-20 mx-auto max-w-6xl px-4">
+          <div className="relative rounded-2xl border border-slate-200/60 bg-white/50 p-2 shadow-2xl backdrop-blur-sm">
+            <div className="absolute -inset-1 rounded-3xl bg-gradient-to-b from-blue-500/10 to-transparent opacity-50 blur-2xl -z-10" />
+            <div className="overflow-hidden rounded-xl bg-slate-50 border border-slate-100 shadow-inner relative aspect-[16/9]">
+               <ImagePlaceholder 
+                 text="MAIN DASHBOARD UI: Modern SaaS Dashboard showing 'Active Tenders' table, metrics cards (70% win rate), vibrant blue sidebar, clean white background, Inter font." 
+                 aspect="aspect-[16/9]" 
+               />
+               
+               {/* Floating UI Elements Mockup */}
+               <div className="absolute -right-12 top-12 w-64 rounded-xl border border-slate-100 bg-white p-4 shadow-xl shadow-slate-200/50 hidden lg:block animate-float-slow">
+                 <div className="flex items-center gap-3 mb-3">
+                   <div className="size-8 rounded-full bg-emerald-100 flex items-center justify-center">
+                     <TrendingUp className="size-4 text-emerald-600" />
+                   </div>
+                   <div>
+                     <p className="text-xs text-slate-500 font-medium">Win Rate</p>
+                     <p className="text-lg font-bold text-slate-900">72.4%</p>
+                   </div>
+                 </div>
+                 <div className="h-1 w-full bg-slate-100 rounded-full overflow-hidden">
+                   <div className="h-full w-[72%] bg-emerald-500" />
+                 </div>
+               </div>
+
+               <div className="absolute -left-8 bottom-20 w-72 rounded-xl border border-slate-100 bg-white p-4 shadow-xl shadow-slate-200/50 hidden lg:block animate-float-slower">
+                 <div className="flex items-center gap-3">
+                   <div className="size-10 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600">
+                     <Clock className="size-5" />
+                   </div>
+                   <div>
+                     <p className="text-sm font-bold text-slate-900">Rok ističe uskoro</p>
+                     <p className="text-xs text-slate-500">Nabavka računarske opreme</p>
+                   </div>
+                   <span className="ml-auto text-xs font-bold text-red-500 bg-red-50 px-2 py-1 rounded-md">2 dana</span>
+                 </div>
+               </div>
             </div>
           </div>
         </div>
@@ -157,7 +210,7 @@ const PROBLEMS = [
 
 function ProblemSection() {
   return (
-    <section id="problem" className="bg-white px-6 py-24 sm:py-32">
+    <section id="problem" className="bg-white px-6 py-24 sm:py-32 border-t border-slate-100">
       <div className="mx-auto max-w-7xl">
         <div className="text-center max-w-3xl mx-auto mb-16">
           <h2 className="font-heading text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
@@ -172,12 +225,12 @@ function ProblemSection() {
           {PROBLEMS.map((p, i) => (
             <div
               key={p.title}
-              className="relative rounded-2xl border border-slate-100 bg-slate-50 p-8 transition-all hover:shadow-lg hover:shadow-slate-200/50 hover:-translate-y-1"
+              className="relative rounded-[2rem] border border-slate-100 bg-slate-50/50 p-8 transition-all hover:bg-white hover:shadow-xl hover:shadow-slate-200/40 hover:-translate-y-1 hover:border-slate-200 group"
             >
-              <div className="mb-6 flex size-14 items-center justify-center rounded-xl bg-blue-100 text-primary">
-                <p.icon className="size-6" />
+              <div className="mb-6 flex size-14 items-center justify-center rounded-2xl bg-white border border-slate-100 text-slate-400 shadow-sm group-hover:scale-110 group-hover:border-blue-100 group-hover:bg-blue-50 group-hover:text-blue-600 transition-all duration-300">
+                <p.icon className="size-7" />
               </div>
-              <h3 className="mb-3 font-heading text-xl font-bold text-slate-900">
+              <h3 className="mb-3 font-heading text-xl font-bold text-slate-900 group-hover:text-blue-900 transition-colors">
                 {p.title}
               </h3>
               <p className="text-base leading-relaxed text-slate-600">
@@ -193,19 +246,19 @@ function ProblemSection() {
 
 const HOW_IT_WORKS = [
   {
-    step: "1",
+    step: "01",
     title: "Centralizujte dokumentaciju",
     description: "Spremite sve dokumente firme u siguran trezor. Sistem automatski prepoznaje rokove važenja i šalje vam obavijesti 60, 30 i 7 dana prije isteka.",
     icon: Upload,
   },
   {
-    step: "2",
+    step: "02",
     title: "AI analizira tender za vas",
     description: "Uploadujte tendersku dokumentaciju. Naš AI algoritam u sekundi čita tekst, pronalazi sve uslove kvalifikacije i generiše interaktivnu checklistu.",
     icon: LayoutDashboard,
   },
   {
-    step: "3",
+    step: "03",
     title: "Sklapanje ponude i analiza",
     description: "Sistem uparuje zahtjeve sa vašim dokumentima u trezoru. Pomoću podataka sa tržišta, optimizujte cijenu i izvezite savršenu ponudu.",
     icon: TrendingUp,
@@ -214,9 +267,17 @@ const HOW_IT_WORKS = [
 
 function HowItWorksSection() {
   return (
-    <section id="kako-radi" className="bg-slate-50 px-6 py-24 sm:py-32">
-      <div className="mx-auto max-w-7xl">
-        <div className="text-center max-w-3xl mx-auto mb-16">
+    <section id="kako-radi" className="bg-slate-50 px-6 py-24 sm:py-32 relative overflow-hidden">
+      <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-slate-200 to-transparent" />
+      <div className="absolute bottom-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-slate-200 to-transparent" />
+      
+      <div className="mx-auto max-w-7xl relative z-10">
+        <div className="text-center max-w-3xl mx-auto mb-20">
+          <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 mb-6">
+             <span className="text-xs font-bold uppercase tracking-wide text-slate-500">
+              Jednostavan proces
+             </span>
+          </div>
           <h2 className="font-heading text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
             Kako MojaPonuda <span className="text-primary">ubrzava proces</span>
           </h2>
@@ -227,12 +288,14 @@ function HowItWorksSection() {
 
         <div className="grid gap-8 lg:grid-cols-3">
           {HOW_IT_WORKS.map((s, i) => (
-            <div key={s.step} className="relative bg-white rounded-2xl p-8 border border-slate-200 shadow-sm">
-              <div className="absolute -top-5 left-8 flex size-10 items-center justify-center rounded-full bg-primary font-heading text-lg font-bold text-white shadow-lg shadow-blue-500/30">
-                {s.step}
-              </div>
-              <div className="mt-4 mb-6 flex h-12 items-center text-primary">
-                <s.icon className="size-8" />
+            <div key={s.step} className="relative bg-white rounded-[2rem] p-8 border border-slate-200 shadow-sm transition-all hover:shadow-xl hover:shadow-slate-200/50 hover:-translate-y-1">
+              <div className="mb-6 flex items-center justify-between">
+                <div className="flex size-14 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
+                  <s.icon className="size-7" />
+                </div>
+                <span className="text-6xl font-heading font-black text-slate-100 select-none">
+                  {s.step}
+                </span>
               </div>
               <h3 className="mb-3 font-heading text-xl font-bold text-slate-900">
                 {s.title}
@@ -259,7 +322,7 @@ const FEATURES = [
       "Automatski podsjetnici za istek",
       "Kategorizacija i pretraga",
     ],
-    imagePrompt: "App interface showing a clean 'Document Vault' with folders, lists of PDF files, and small green/yellow/red badges indicating expiry status.",
+    imagePrompt: "UI MOCKUP: Document Vault interface. Clean white table with document list. Status badges (Valid/Expired). Filter sidebar. Blue primary color accents. High fidelity.",
   },
   {
     icon: LayoutDashboard,
@@ -267,11 +330,11 @@ const FEATURES = [
     description:
       "Nema više ručnog podvlačenja uslova markerom. Naš AI čita dokumentaciju i stvara tačnu listu svega što vam treba.",
     details: [
-      "Automatska ekstrakcija uslova iz PDF/Word-a",
-      "Interaktivna provjera (checklist)",
-      "Generisanje finalnog PDF paketa",
+      "Automatska ekstrakcija uslova",
+      "Interaktivna checklist-a",
+      "Generisanje finalnog paketa",
     ],
-    imagePrompt: "App interface showing an AI scanning a legal document on the left, and a neat checklist of requirements on the right.",
+    imagePrompt: "UI MOCKUP: Bid Workspace. Split screen. Left side: PDF viewer with highlighted text. Right side: Checklist with 'Requirement Met' checkmarks. Modern, clean.",
   },
   {
     icon: TrendingUp,
@@ -279,11 +342,11 @@ const FEATURES = [
     description:
       "Podaci pobjeđuju. Analizirajte historiju pobjeda, prosječne cijene i budžetirane nabavke prije nego što budu objavljene.",
     details: [
-      "Baza svih dodijeljenih ugovora",
+      "Baza dodijeljenih ugovora",
       "Profili naručilaca i konkurencije",
       "Predikcija pobjedničke cijene",
     ],
-    imagePrompt: "App interface showing data analytics, beautiful modern charts (bar, line), list of top competitors, white and blue styling.",
+    imagePrompt: "UI MOCKUP: Analytics Dashboard. Bar charts showing monthly revenue. Pie chart for category distribution. Competitor list with win rates. Professional data viz.",
   },
 ] as const;
 
@@ -291,7 +354,7 @@ function SolutionSection() {
   return (
     <section id="rjesenje" className="bg-white px-6 py-24 sm:py-32 overflow-hidden">
       <div className="mx-auto max-w-7xl">
-        <div className="text-center max-w-3xl mx-auto mb-20">
+        <div className="text-center max-w-3xl mx-auto mb-24">
           <h2 className="font-heading text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
             Sve što vam treba, <span className="text-primary">na jednom mjestu</span>
           </h2>
@@ -305,9 +368,9 @@ function SolutionSection() {
                 i % 2 === 1 ? "lg:flex-row-reverse" : ""
               }`}
             >
-              <div className="flex-1 space-y-6">
-                <div className="inline-flex size-12 items-center justify-center rounded-xl bg-blue-50 text-primary">
-                  <f.icon className="size-6" />
+              <div className="flex-1 space-y-8">
+                <div className="inline-flex size-14 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-lg shadow-blue-500/30">
+                  <f.icon className="size-7" />
                 </div>
                 <h3 className="font-heading text-3xl font-bold text-slate-900">
                   {f.title}
@@ -315,20 +378,29 @@ function SolutionSection() {
                 <p className="text-lg leading-relaxed text-slate-600">
                   {f.description}
                 </p>
-                <ul className="mt-8 space-y-4">
+                <div className="grid gap-4 sm:grid-cols-1">
                   {f.details.map((d) => (
-                    <li key={d} className="flex items-center gap-3">
-                      <CheckCircle className="size-5 text-primary" />
-                      <span className="text-base text-slate-700">{d}</span>
-                    </li>
+                    <div key={d} className="flex items-center gap-3 bg-slate-50 p-3 rounded-xl border border-slate-100">
+                      <div className="size-6 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
+                        <CheckCircle className="size-3.5 text-blue-600" />
+                      </div>
+                      <span className="text-base font-medium text-slate-700">{d}</span>
+                    </div>
                   ))}
-                </ul>
+                </div>
               </div>
 
-              <div className="flex-1 w-full relative">
-                <div className={`absolute top-1/2 -translate-y-1/2 ${i % 2 === 0 ? '-right-12' : '-left-12'} size-[400px] rounded-full bg-blue-100/50 blur-3xl -z-10`} />
-                <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 shadow-xl">
-                  <ImagePlaceholder text={f.title + " Illustration"} aspect="aspect-[4/3]" />
+              <div className="flex-1 w-full relative group">
+                <div className={`absolute top-1/2 -translate-y-1/2 ${i % 2 === 0 ? '-right-12' : '-left-12'} size-[500px] rounded-full bg-blue-500/5 blur-[100px] -z-10`} />
+                <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl transition-transform duration-500 group-hover:scale-[1.02]">
+                  <div className="absolute top-0 inset-x-0 h-8 bg-slate-100 border-b border-slate-200 flex items-center px-4 gap-2">
+                    <div className="size-2.5 rounded-full bg-red-400/50" />
+                    <div className="size-2.5 rounded-full bg-amber-400/50" />
+                    <div className="size-2.5 rounded-full bg-emerald-400/50" />
+                  </div>
+                  <div className="pt-8 bg-slate-50">
+                    <ImagePlaceholder text={f.imagePrompt} aspect="aspect-[4/3]" />
+                  </div>
                 </div>
               </div>
             </div>
@@ -348,15 +420,16 @@ function StatsSection() {
   ];
 
   return (
-    <section className="bg-primary px-6 py-20 text-white">
-      <div className="mx-auto max-w-7xl">
-        <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
+    <section className="bg-slate-900 px-6 py-24 text-white relative overflow-hidden">
+      <div className="absolute inset-0 bg-blue-600/10" />
+      <div className="mx-auto max-w-7xl relative z-10">
+        <div className="grid gap-12 sm:grid-cols-2 lg:grid-cols-4">
           {stats.map((s, i) => (
-            <div key={i} className="text-center sm:text-left sm:border-l sm:border-blue-400 sm:pl-8">
-              <p className="font-heading text-4xl font-bold lg:text-5xl">
+            <div key={i} className="text-center sm:text-left">
+              <p className="font-heading text-5xl font-extrabold lg:text-6xl tracking-tight text-white">
                 {s.value}
               </p>
-              <p className="mt-2 text-base font-medium text-blue-100">{s.label}</p>
+              <p className="mt-2 text-lg font-medium text-blue-200">{s.label}</p>
             </div>
           ))}
         </div>
@@ -374,52 +447,54 @@ function PricingSection() {
             Jednostavne i <span className="text-primary">transparentne cijene</span>
           </h2>
           <p className="mt-4 text-lg text-slate-600">
-            Odaberite plan koji odgovara veličini vašeg poslovanja.
+            Bez skrivenih troškova. Otkažite bilo kada.
           </p>
         </div>
 
-        <div className="mx-auto grid max-w-4xl gap-8 lg:grid-cols-2 lg:items-center">
+        <div className="mx-auto grid max-w-5xl gap-8 lg:grid-cols-2 lg:items-center">
           {/* Starter */}
-          <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
-            <h3 className="font-heading text-xl font-bold text-slate-900">Starter</h3>
-            <p className="mt-2 text-sm text-slate-500">Za male firme koje tek kreću sa tenderima.</p>
+          <div className="rounded-[2rem] border border-slate-200 bg-white p-8 shadow-sm hover:shadow-xl transition-all duration-300">
+            <h3 className="font-heading text-2xl font-bold text-slate-900">Starter</h3>
+            <p className="mt-2 text-sm font-medium text-slate-500">Za male firme koje tek kreću sa tenderima.</p>
             <div className="mt-6 flex items-baseline gap-1">
-              <span className="font-heading text-4xl font-bold text-slate-900">0</span>
-              <span className="text-sm font-medium text-slate-500">BAM / mjesečno</span>
+              <span className="font-heading text-5xl font-bold text-slate-900 tracking-tight">0</span>
+              <span className="text-sm font-bold text-slate-500 uppercase">KM / mjesečno</span>
             </div>
             <div className="mt-8 space-y-4">
               {[
                 "Do 3 ponude mjesečno",
-                "Trezor dokumenata",
+                "Trezor dokumenata (1GB)",
                 "Pretraga tendera",
                 "Osnovna analitika",
               ].map((f) => (
-                <div key={f} className="flex items-start gap-3">
-                  <CheckCircle className="size-5 shrink-0 text-slate-400" />
-                  <span className="text-slate-600">{f}</span>
+                <div key={f} className="flex items-center gap-3">
+                  <div className="size-5 rounded-full bg-slate-100 flex items-center justify-center shrink-0">
+                    <CheckCircle className="size-3 text-slate-500" />
+                  </div>
+                  <span className="text-slate-600 font-medium">{f}</span>
                 </div>
               ))}
             </div>
             <Link
               href="/signup"
-              className="mt-8 flex w-full items-center justify-center rounded-full border border-slate-300 bg-white py-3 text-sm font-semibold text-slate-700 transition-all hover:bg-slate-50"
+              className="mt-8 flex w-full items-center justify-center rounded-full border-2 border-slate-200 bg-white py-3.5 text-sm font-bold text-slate-700 transition-all hover:border-slate-300 hover:bg-slate-50"
             >
               Kreni besplatno
             </Link>
           </div>
 
           {/* Pro */}
-          <div className="relative rounded-3xl border-2 border-primary bg-white p-8 shadow-xl shadow-blue-500/10">
-            <div className="absolute -top-4 inset-x-0 flex justify-center">
-              <span className="rounded-full bg-primary px-4 py-1 text-xs font-bold uppercase tracking-wider text-white">
-                Najpopularnije
+          <div className="relative rounded-[2rem] border-2 border-blue-500 bg-white p-8 shadow-2xl shadow-blue-500/20 scale-105 z-10">
+            <div className="absolute -top-5 inset-x-0 flex justify-center">
+              <span className="rounded-full bg-blue-600 px-4 py-1.5 text-xs font-bold uppercase tracking-wider text-white shadow-lg">
+                Preporučeno
               </span>
             </div>
-            <h3 className="font-heading text-xl font-bold text-slate-900">Profesional</h3>
-            <p className="mt-2 text-sm text-slate-500">Puna snaga platforme za redovne ponuđače.</p>
+            <h3 className="font-heading text-2xl font-bold text-slate-900">Profesional</h3>
+            <p className="mt-2 text-sm font-medium text-slate-500">Puna snaga platforme za redovne ponuđače.</p>
             <div className="mt-6 flex items-baseline gap-1">
-              <span className="font-heading text-5xl font-bold text-slate-900">150</span>
-              <span className="text-sm font-medium text-slate-500">BAM / mjesečno</span>
+              <span className="font-heading text-6xl font-extrabold text-slate-900 tracking-tight">150</span>
+              <span className="text-sm font-bold text-slate-500 uppercase">KM / mjesečno</span>
             </div>
             <div className="mt-8 space-y-4">
               {[
@@ -428,20 +503,25 @@ function PricingSection() {
                 "AI analiza tendera i ekstrakcija",
                 "Automatsko generisanje checkliste",
                 "Napredna tržišna analitika",
-                "Upozorenja o rokovima važenja",
+                "Prioritetna podrška",
               ].map((f) => (
-                <div key={f} className="flex items-start gap-3">
-                  <CheckCircle className="size-5 shrink-0 text-primary" />
-                  <span className="text-slate-700 font-medium">{f}</span>
+                <div key={f} className="flex items-center gap-3">
+                  <div className="size-5 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
+                    <CheckCircle className="size-3 text-blue-600" />
+                  </div>
+                  <span className="text-slate-700 font-bold">{f}</span>
                 </div>
               ))}
             </div>
             <Link
               href="/signup"
-              className="mt-8 flex w-full items-center justify-center rounded-full bg-primary py-3.5 text-sm font-bold text-white transition-all hover:bg-blue-700 hover:shadow-lg hover:shadow-blue-500/30"
+              className="mt-8 flex w-full items-center justify-center rounded-full bg-blue-600 py-4 text-sm font-bold text-white transition-all hover:bg-blue-700 hover:shadow-lg hover:shadow-blue-500/30 hover:-translate-y-0.5"
             >
-              Odaberi Profesional
+              Isprobaj 14 dana besplatno
             </Link>
+            <p className="mt-4 text-center text-xs font-medium text-slate-400">
+              Bez obaveze. Otkažite bilo kada.
+            </p>
           </div>
         </div>
       </div>
@@ -482,14 +562,16 @@ function FAQSection() {
           {FAQ_ITEMS.map((item) => (
             <details
               key={item.q}
-              className="group rounded-xl border border-slate-200 bg-slate-50 transition-colors hover:bg-slate-100"
+              className="group rounded-2xl border border-slate-200 bg-white transition-all hover:border-blue-200 hover:shadow-md"
             >
-              <summary className="flex cursor-pointer items-center justify-between p-6 text-base font-semibold text-slate-900 [&::-webkit-details-marker]:hidden">
+              <summary className="flex cursor-pointer items-center justify-between p-6 text-base font-bold text-slate-900 [&::-webkit-details-marker]:hidden select-none">
                 {item.q}
-                <ChevronDown className="size-5 text-slate-500 transition-transform group-open:-rotate-180" />
+                <div className="size-8 rounded-full bg-slate-50 flex items-center justify-center group-open:bg-blue-50 group-open:text-blue-600 transition-colors">
+                  <ChevronDown className="size-5 transition-transform group-open:-rotate-180" />
+                </div>
               </summary>
               <div className="px-6 pb-6 pt-0">
-                <p className="text-base leading-relaxed text-slate-600">
+                <p className="text-base leading-relaxed text-slate-600 border-t border-slate-100 pt-4">
                   {item.a}
                 </p>
               </div>
@@ -504,23 +586,29 @@ function FAQSection() {
 function FinalCTA() {
   return (
     <section className="relative overflow-hidden bg-slate-900 px-6 py-32">
-      <div className="absolute inset-0 bg-primary/10" />
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 size-[600px] rounded-full bg-primary/20 blur-[100px] -z-10" />
+      <div className="absolute inset-0 bg-blue-600/10" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 size-[800px] rounded-full bg-blue-500/20 blur-[120px] -z-10" />
       
-      <div className="relative z-10 mx-auto max-w-3xl text-center">
-        <h2 className="font-heading text-3xl font-bold tracking-tight text-white sm:text-4xl lg:text-5xl">
-          Spremni za pobjeđivanje na tenderima?
+      <div className="relative z-10 mx-auto max-w-4xl text-center">
+        <h2 className="font-heading text-4xl font-extrabold tracking-tight text-white sm:text-5xl lg:text-6xl mb-8">
+          Spremni za pobjeđivanje?
         </h2>
-        <p className="mx-auto mt-6 max-w-xl text-lg text-slate-300">
-          Pridružite se modernim kompanijama koje automatizuju proces javnih nabavki.
+        <p className="mx-auto mt-6 max-w-xl text-xl font-medium text-slate-300 mb-12">
+          Pridružite se modernim kompanijama koje automatizuju proces javnih nabavki i uštedite do 70% vremena.
         </p>
-        <div className="mt-10 flex justify-center">
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
           <Link
             href="/signup"
-            className="inline-flex h-14 items-center justify-center gap-2 rounded-full bg-white px-8 text-base font-bold text-slate-900 transition-all hover:bg-slate-100 hover:scale-105"
+            className="inline-flex h-14 w-full sm:w-auto items-center justify-center gap-2 rounded-full bg-white px-8 text-lg font-bold text-slate-900 transition-all hover:bg-blue-50 hover:scale-105"
           >
             Isprobajte 14 dana besplatno
             <ArrowRight className="size-5" />
+          </Link>
+          <Link
+            href="/contact"
+            className="inline-flex h-14 w-full sm:w-auto items-center justify-center gap-2 rounded-full border border-slate-700 bg-transparent px-8 text-lg font-bold text-white transition-all hover:bg-slate-800"
+          >
+            Kontaktirajte prodaju
           </Link>
         </div>
       </div>
@@ -530,36 +618,57 @@ function FinalCTA() {
 
 function Footer() {
   return (
-    <footer className="border-t border-slate-200 bg-white px-6 py-12">
-      <div className="mx-auto max-w-7xl">
-        <div className="flex flex-col items-center justify-between gap-6 sm:flex-row">
-          <div>
-            <div className="flex items-baseline gap-0.5">
+    <footer className="border-t border-slate-200 bg-white pt-16 pb-8">
+      <div className="mx-auto max-w-7xl px-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
+          <div className="col-span-1 md:col-span-1">
+             <Link href="/" className="flex items-center gap-2 mb-4">
+              <div className="size-8 rounded-lg bg-primary text-white flex items-center justify-center font-bold text-xl">
+                M
+              </div>
               <span className="font-heading text-xl font-bold text-slate-900">
-                MojaPonuda
+                MojaPonuda.ba
               </span>
-              <span className="font-heading text-xl font-bold text-primary">
-                .ba
-              </span>
-            </div>
-            <p className="mt-2 text-sm text-slate-500">
-              © {new Date().getFullYear()} Sva prava zadržana.
+            </Link>
+            <p className="text-sm text-slate-500 leading-relaxed">
+              Napredna platforma za praćenje, analizu i upravljanje javnim nabavkama u Bosni i Hercegovini.
             </p>
           </div>
+          
+          <div>
+            <h4 className="font-bold text-slate-900 mb-4">Proizvod</h4>
+            <ul className="space-y-2 text-sm text-slate-600">
+              <li><a href="#problem" className="hover:text-primary">Rješenja</a></li>
+              <li><a href="#kako-radi" className="hover:text-primary">Kako radi</a></li>
+              <li><a href="#cijene" className="hover:text-primary">Cijene</a></li>
+            </ul>
+          </div>
 
+          <div>
+            <h4 className="font-bold text-slate-900 mb-4">Kompanija</h4>
+            <ul className="space-y-2 text-sm text-slate-600">
+              <li><Link href="/about" className="hover:text-primary">O nama</Link></li>
+              <li><Link href="/blog" className="hover:text-primary">Blog</Link></li>
+              <li><Link href="/contact" className="hover:text-primary">Kontakt</Link></li>
+            </ul>
+          </div>
+
+          <div>
+            <h4 className="font-bold text-slate-900 mb-4">Pravno</h4>
+            <ul className="space-y-2 text-sm text-slate-600">
+              <li><Link href="/privacy" className="hover:text-primary">Politika privatnosti</Link></li>
+              <li><Link href="/terms" className="hover:text-primary">Uslovi korištenja</Link></li>
+              <li><Link href="/cookies" className="hover:text-primary">Kolačići</Link></li>
+            </ul>
+          </div>
+        </div>
+        
+        <div className="border-t border-slate-100 pt-8 flex flex-col md:flex-row items-center justify-between gap-4">
+          <p className="text-sm text-slate-400">
+            © {new Date().getFullYear()} MojaPonuda.ba. Sva prava zadržana.
+          </p>
           <div className="flex items-center gap-6">
-            <Link
-              href="/privacy"
-              className="text-sm font-medium text-slate-500 transition-colors hover:text-slate-900"
-            >
-              Politika privatnosti
-            </Link>
-            <Link
-              href="/terms"
-              className="text-sm font-medium text-slate-500 transition-colors hover:text-slate-900"
-            >
-              Uslovi korištenja
-            </Link>
+             {/* Social icons placeholder */}
           </div>
         </div>
       </div>
@@ -569,7 +678,7 @@ function Footer() {
 
 export function LandingPage() {
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-white font-sans selection:bg-blue-100 selection:text-blue-900">
       <NavBar />
       <HeroSection />
       <ProblemSection />
