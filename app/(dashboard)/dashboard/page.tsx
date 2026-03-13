@@ -7,17 +7,14 @@ import {
   Search,
   Award,
   AlertTriangle,
-  ArrowRight,
   Clock,
   Plus,
   TrendingUp,
-  Building2,
-  Upload,
   Eye,
   PenLine,
-  Trash2
+  Trash2,
+  Upload
 } from "lucide-react";
-import type { LucideIcon } from "lucide-react";
 import type { BidStatus, Document as DocType } from "@/types/database";
 
 function formatDate(dateStr: string | null): string {
@@ -58,8 +55,13 @@ export default async function DashboardPage() {
 
   if (!company) redirect("/onboarding");
 
+  // Calculate dates outside of query builder to avoid impure function warnings
+  const now = new Date();
+  const sixtyDaysFromNow = new Date(now.getTime() + 60 * 24 * 60 * 60 * 1000).toISOString();
+  const nowIso = now.toISOString();
+
   const [
-    { count: documentsCount },
+    , // documentsCount (unused)
     { count: bidsCount },
     { count: wonBidsCount },
     { count: lostBidsCount },
@@ -75,8 +77,8 @@ export default async function DashboardPage() {
       .select("id, name, type, expires_at")
       .eq("company_id", company.id)
       .not("expires_at", "is", null)
-      .lte("expires_at", new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString())
-      .gte("expires_at", new Date().toISOString())
+      .lte("expires_at", sixtyDaysFromNow)
+      .gte("expires_at", nowIso)
       .order("expires_at", { ascending: true })
       .limit(5),
     supabase
@@ -95,7 +97,6 @@ export default async function DashboardPage() {
     tenders: { title: string; deadline: string | null; estimated_value: number | null };
   }[];
 
-  const now = new Date();
   const greeting = now.getHours() < 12 ? "Dobro jutro" : now.getHours() < 18 ? "Dobar dan" : "Dobra večer";
   
   return (

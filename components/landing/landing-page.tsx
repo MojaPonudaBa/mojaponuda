@@ -222,7 +222,7 @@ function ProblemSection() {
         </div>
 
         <div className="grid gap-8 sm:grid-cols-3">
-          {PROBLEMS.map((p, i) => (
+          {PROBLEMS.map((p) => (
             <div
               key={p.title}
               className="relative rounded-[2rem] border border-slate-100 bg-slate-50/50 p-8 transition-all hover:bg-white hover:shadow-xl hover:shadow-slate-200/40 hover:-translate-y-1 hover:border-slate-200 group"
@@ -287,7 +287,7 @@ function HowItWorksSection() {
         </div>
 
         <div className="grid gap-8 lg:grid-cols-3">
-          {HOW_IT_WORKS.map((s, i) => (
+          {HOW_IT_WORKS.map((s) => (
             <div key={s.step} className="relative bg-white rounded-[2rem] p-8 border border-slate-200 shadow-sm transition-all hover:shadow-xl hover:shadow-slate-200/50 hover:-translate-y-1">
               <div className="mb-6 flex items-center justify-between">
                 <div className="flex size-14 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
@@ -361,11 +361,11 @@ function SolutionSection() {
         </div>
 
         <div className="space-y-32">
-          {FEATURES.map((f, i) => (
+          {FEATURES.map((f) => (
             <div
               key={f.title}
               className={`flex flex-col gap-12 lg:items-center lg:flex-row ${
-                i % 2 === 1 ? "lg:flex-row-reverse" : ""
+                f.icon === TrendingUp ? "lg:flex-row-reverse" : ""
               }`}
             >
               <div className="flex-1 space-y-8">
@@ -391,7 +391,7 @@ function SolutionSection() {
               </div>
 
               <div className="flex-1 w-full relative group">
-                <div className={`absolute top-1/2 -translate-y-1/2 ${i % 2 === 0 ? '-right-12' : '-left-12'} size-[500px] rounded-full bg-blue-500/5 blur-[100px] -z-10`} />
+                <div className={`absolute top-1/2 -translate-y-1/2 ${f.icon === TrendingUp ? '-right-12' : '-left-12'} size-[500px] rounded-full bg-blue-500/5 blur-[100px] -z-10`} />
                 <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl transition-transform duration-500 group-hover:scale-[1.02]">
                   <div className="absolute top-0 inset-x-0 h-8 bg-slate-100 border-b border-slate-200 flex items-center px-4 gap-2">
                     <div className="size-2.5 rounded-full bg-red-400/50" />
@@ -447,54 +447,52 @@ function PricingSection() {
             Jednostavne i <span className="text-primary">transparentne cijene</span>
           </h2>
           <p className="mt-4 text-lg text-slate-600">
-            Bez skrivenih troškova. Otkažite bilo kada.
+            Odaberite plan koji odgovara veličini vašeg poslovanja.
           </p>
         </div>
 
         <div className="mx-auto grid max-w-5xl gap-8 lg:grid-cols-2 lg:items-center">
           {/* Starter */}
-          <div className="rounded-[2rem] border border-slate-200 bg-white p-8 shadow-sm hover:shadow-xl transition-all duration-300">
-            <h3 className="font-heading text-2xl font-bold text-slate-900">Starter</h3>
-            <p className="mt-2 text-sm font-medium text-slate-500">Za male firme koje tek kreću sa tenderima.</p>
+          <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
+            <h3 className="font-heading text-xl font-bold text-slate-900">Starter</h3>
+            <p className="mt-2 text-sm text-slate-500">Za male firme koje tek kreću sa tenderima.</p>
             <div className="mt-6 flex items-baseline gap-1">
-              <span className="font-heading text-5xl font-bold text-slate-900 tracking-tight">0</span>
-              <span className="text-sm font-bold text-slate-500 uppercase">KM / mjesečno</span>
+              <span className="font-heading text-4xl font-bold text-slate-900">0</span>
+              <span className="text-sm font-medium text-slate-500">BAM / mjesečno</span>
             </div>
             <div className="mt-8 space-y-4">
               {[
                 "Do 3 ponude mjesečno",
-                "Trezor dokumenata (1GB)",
+                "Trezor dokumenata",
                 "Pretraga tendera",
                 "Osnovna analitika",
               ].map((f) => (
-                <div key={f} className="flex items-center gap-3">
-                  <div className="size-5 rounded-full bg-slate-100 flex items-center justify-center shrink-0">
-                    <CheckCircle className="size-3 text-slate-500" />
-                  </div>
-                  <span className="text-slate-600 font-medium">{f}</span>
+                <div key={f} className="flex items-start gap-3">
+                  <CheckCircle className="size-5 shrink-0 text-slate-400" />
+                  <span className="text-slate-600">{f}</span>
                 </div>
               ))}
             </div>
             <Link
               href="/signup"
-              className="mt-8 flex w-full items-center justify-center rounded-full border-2 border-slate-200 bg-white py-3.5 text-sm font-bold text-slate-700 transition-all hover:border-slate-300 hover:bg-slate-50"
+              className="mt-8 flex w-full items-center justify-center rounded-full border border-slate-300 bg-white py-3 text-sm font-semibold text-slate-700 transition-all hover:bg-slate-50"
             >
               Kreni besplatno
             </Link>
           </div>
 
           {/* Pro */}
-          <div className="relative rounded-[2rem] border-2 border-blue-500 bg-white p-8 shadow-2xl shadow-blue-500/20 scale-105 z-10">
-            <div className="absolute -top-5 inset-x-0 flex justify-center">
-              <span className="rounded-full bg-blue-600 px-4 py-1.5 text-xs font-bold uppercase tracking-wider text-white shadow-lg">
-                Preporučeno
+          <div className="relative rounded-3xl border-2 border-primary bg-white p-8 shadow-2xl shadow-blue-500/10">
+            <div className="absolute -top-4 inset-x-0 flex justify-center">
+              <span className="rounded-full bg-primary px-4 py-1 text-xs font-bold uppercase tracking-wider text-white">
+                Najpopularnije
               </span>
             </div>
-            <h3 className="font-heading text-2xl font-bold text-slate-900">Profesional</h3>
-            <p className="mt-2 text-sm font-medium text-slate-500">Puna snaga platforme za redovne ponuđače.</p>
+            <h3 className="font-heading text-xl font-bold text-slate-900">Profesional</h3>
+            <p className="mt-2 text-sm text-slate-500">Puna snaga platforme za redovne ponuđače.</p>
             <div className="mt-6 flex items-baseline gap-1">
-              <span className="font-heading text-6xl font-extrabold text-slate-900 tracking-tight">150</span>
-              <span className="text-sm font-bold text-slate-500 uppercase">KM / mjesečno</span>
+              <span className="font-heading text-5xl font-bold text-slate-900">150</span>
+              <span className="text-sm font-medium text-slate-500">BAM / mjesečno</span>
             </div>
             <div className="mt-8 space-y-4">
               {[
@@ -503,25 +501,20 @@ function PricingSection() {
                 "AI analiza tendera i ekstrakcija",
                 "Automatsko generisanje checkliste",
                 "Napredna tržišna analitika",
-                "Prioritetna podrška",
+                "Upozorenja o rokovima važenja",
               ].map((f) => (
-                <div key={f} className="flex items-center gap-3">
-                  <div className="size-5 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
-                    <CheckCircle className="size-3 text-blue-600" />
-                  </div>
-                  <span className="text-slate-700 font-bold">{f}</span>
+                <div key={f} className="flex items-start gap-3">
+                  <CheckCircle className="size-5 shrink-0 text-primary" />
+                  <span className="text-slate-700 font-medium">{f}</span>
                 </div>
               ))}
             </div>
             <Link
               href="/signup"
-              className="mt-8 flex w-full items-center justify-center rounded-full bg-blue-600 py-4 text-sm font-bold text-white transition-all hover:bg-blue-700 hover:shadow-lg hover:shadow-blue-500/30 hover:-translate-y-0.5"
+              className="mt-8 flex w-full items-center justify-center rounded-full bg-primary py-3.5 text-sm font-bold text-white transition-all hover:bg-blue-700 hover:shadow-lg hover:shadow-blue-500/30"
             >
-              Isprobaj 14 dana besplatno
+              Odaberi Profesional
             </Link>
-            <p className="mt-4 text-center text-xs font-medium text-slate-400">
-              Bez obaveze. Otkažite bilo kada.
-            </p>
           </div>
         </div>
       </div>
@@ -562,16 +555,14 @@ function FAQSection() {
           {FAQ_ITEMS.map((item) => (
             <details
               key={item.q}
-              className="group rounded-2xl border border-slate-200 bg-white transition-all hover:border-blue-200 hover:shadow-md"
+              className="group rounded-xl border border-slate-200 bg-slate-50 transition-colors hover:bg-slate-100"
             >
-              <summary className="flex cursor-pointer items-center justify-between p-6 text-base font-bold text-slate-900 [&::-webkit-details-marker]:hidden select-none">
+              <summary className="flex cursor-pointer items-center justify-between p-6 text-base font-semibold text-slate-900 [&::-webkit-details-marker]:hidden">
                 {item.q}
-                <div className="size-8 rounded-full bg-slate-50 flex items-center justify-center group-open:bg-blue-50 group-open:text-blue-600 transition-colors">
-                  <ChevronDown className="size-5 transition-transform group-open:-rotate-180" />
-                </div>
+                <ChevronDown className="size-5 text-slate-500 transition-transform group-open:-rotate-180" />
               </summary>
               <div className="px-6 pb-6 pt-0">
-                <p className="text-base leading-relaxed text-slate-600 border-t border-slate-100 pt-4">
+                <p className="text-base leading-relaxed text-slate-600">
                   {item.a}
                 </p>
               </div>
@@ -586,29 +577,23 @@ function FAQSection() {
 function FinalCTA() {
   return (
     <section className="relative overflow-hidden bg-slate-900 px-6 py-32">
-      <div className="absolute inset-0 bg-blue-600/10" />
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 size-[800px] rounded-full bg-blue-500/20 blur-[120px] -z-10" />
+      <div className="absolute inset-0 bg-primary/10" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 size-[600px] rounded-full bg-primary/20 blur-[100px] -z-10" />
       
-      <div className="relative z-10 mx-auto max-w-4xl text-center">
-        <h2 className="font-heading text-4xl font-extrabold tracking-tight text-white sm:text-5xl lg:text-6xl mb-8">
-          Spremni za pobjeđivanje?
+      <div className="relative z-10 mx-auto max-w-3xl text-center">
+        <h2 className="font-heading text-3xl font-bold tracking-tight text-white sm:text-4xl lg:text-5xl">
+          Spremni za pobjeđivanje na tenderima?
         </h2>
-        <p className="mx-auto mt-6 max-w-xl text-xl font-medium text-slate-300 mb-12">
-          Pridružite se modernim kompanijama koje automatizuju proces javnih nabavki i uštedite do 70% vremena.
+        <p className="mx-auto mt-6 max-w-xl text-lg text-slate-300">
+          Pridružite se modernim kompanijama koje automatizuju proces javnih nabavki.
         </p>
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+        <div className="mt-10 flex justify-center">
           <Link
             href="/signup"
-            className="inline-flex h-14 w-full sm:w-auto items-center justify-center gap-2 rounded-full bg-white px-8 text-lg font-bold text-slate-900 transition-all hover:bg-blue-50 hover:scale-105"
+            className="inline-flex h-14 items-center justify-center gap-2 rounded-full bg-white px-8 text-base font-bold text-slate-900 transition-all hover:bg-slate-100 hover:scale-105"
           >
             Isprobajte 14 dana besplatno
             <ArrowRight className="size-5" />
-          </Link>
-          <Link
-            href="/contact"
-            className="inline-flex h-14 w-full sm:w-auto items-center justify-center gap-2 rounded-full border border-slate-700 bg-transparent px-8 text-lg font-bold text-white transition-all hover:bg-slate-800"
-          >
-            Kontaktirajte prodaju
           </Link>
         </div>
       </div>
@@ -618,30 +603,21 @@ function FinalCTA() {
 
 function Footer() {
   return (
-    <footer className="border-t border-slate-200 bg-white pt-16 pb-8">
-      <div className="mx-auto max-w-7xl px-6">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
-          <div className="col-span-1 md:col-span-1">
-             <Link href="/" className="flex items-center gap-2 mb-4">
-              <div className="size-8 rounded-lg bg-primary text-white flex items-center justify-center font-bold text-xl">
-                M
-              </div>
-              <span className="font-heading text-xl font-bold text-slate-900">
-                MojaPonuda.ba
-              </span>
-            </Link>
-            <p className="text-sm text-slate-500 leading-relaxed">
-              Napredna platforma za praćenje, analizu i upravljanje javnim nabavkama u Bosni i Hercegovini.
-            </p>
-          </div>
-          
+    <footer className="border-t border-slate-200 bg-white px-6 py-12">
+      <div className="mx-auto max-w-7xl">
+        <div className="flex flex-col items-center justify-between gap-6 sm:flex-row">
           <div>
-            <h4 className="font-bold text-slate-900 mb-4">Proizvod</h4>
-            <ul className="space-y-2 text-sm text-slate-600">
-              <li><a href="#problem" className="hover:text-primary">Rješenja</a></li>
-              <li><a href="#kako-radi" className="hover:text-primary">Kako radi</a></li>
-              <li><a href="#cijene" className="hover:text-primary">Cijene</a></li>
-            </ul>
+            <div className="flex items-baseline gap-0.5">
+              <span className="font-heading text-xl font-bold text-slate-900">
+                MojaPonuda
+              </span>
+              <span className="font-heading text-xl font-bold text-primary">
+                .ba
+              </span>
+            </div>
+            <p className="mt-2 text-sm text-slate-500">
+              2023 Sva prava zadržana.
+            </p>
           </div>
 
           <div>

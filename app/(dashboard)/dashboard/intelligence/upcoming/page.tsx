@@ -23,7 +23,8 @@ export default async function UpcomingPage() {
   const today = new Date().toISOString().split("T")[0];
 
   // Planirani tenderi — budući ili nedavni (zadnjih 30 dana)
-  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+  const now = new Date();
+  const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
     .toISOString()
     .split("T")[0];
 
