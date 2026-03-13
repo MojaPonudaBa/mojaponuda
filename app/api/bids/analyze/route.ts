@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { openai } from "@/lib/openai";
+import { getSubscriptionStatus } from "@/lib/subscription";
 import type { Bid, Tender, Company, Json } from "@/types/database";
 
 const SYSTEM_PROMPT = `Ti si ekspert za javne nabavke u Bosni i Hercegovini sa dubokim poznavanjem Zakona o javnim nabavkama BiH (Službeni glasnik BiH, br. 39/14).
@@ -158,7 +159,16 @@ export async function POST(request: NextRequest) {
   if (!user) {
     return NextResponse.json({ error: "Niste prijavljeni." }, { status: 401 });
   }
+// Provjera pretplate (AI je premium feature)
+  const { isSubscribed } = await getSubscriptionStatus(user.id, user.email);
+  if (!isSubscribed) {
+    return NextResponse.json(
+      { error: "AI analiza je dostupna samo u Professional paketu." },
+      { status: 403 }
+    );
+  }
 
+  
   const body = await request.json();
   const { bid_id } = body;
 

@@ -21,6 +21,7 @@ interface TopBarProps {
   contractingAuthority: string | null;
   currentStatus: BidStatus;
   initialRiskFlags?: string[];
+  isSubscribed?: boolean;
 }
 
 const STATUS_COLORS = {
@@ -37,6 +38,7 @@ export function TopBar({
   contractingAuthority,
   currentStatus,
   initialRiskFlags = [],
+  isSubscribed = false,
 }: TopBarProps) {
   const router = useRouter();
   const [analyzing, setAnalyzing] = useState(false);
@@ -54,6 +56,11 @@ export function TopBar({
   }
 
   async function handleAnalyze() {
+    if (!isSubscribed) {
+      router.push("/dashboard/subscription");
+      return;
+    }
+
     setAnalyzing(true);
     setAnalyzeError(null);
     try {

@@ -123,6 +123,7 @@ export default async function BidWorkspacePage({
         contractingAuthority={bid.tenders.contracting_authority}
         currentStatus={bid.status as BidStatus}
         initialRiskFlags={extractRiskFlags(bid.ai_analysis)}
+        isSubscribed={isSubscribed}
       />
 
       {showPaywall ? (
