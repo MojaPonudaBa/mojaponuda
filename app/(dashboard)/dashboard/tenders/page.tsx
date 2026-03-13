@@ -22,7 +22,8 @@ async function TendersContent({ searchParams }: TendersPageProps) {
   // Build query
   let query = supabase
     .from("tenders")
-    .select("*", { count: "exact" });
+    .select("*", { count: "exact" })
+    .gt("deadline", new Date().toISOString());
 
   // Keyword filter (title or description)
   if (params.q) {
