@@ -24,11 +24,11 @@ export default async function SubscriptionPage() {
     subscription?.status === "active" || subscription?.status === "past_due";
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6">
+    <div className="mx-auto max-w-2xl space-y-8">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Pretplata</h1>
-        <p className="text-sm text-muted-foreground">
-          Upravljajte svojom pretplatom na MojaPonuda.ba
+        <h1 className="text-3xl font-heading font-bold text-slate-900 tracking-tight">Upravljanje Pretplatom</h1>
+        <p className="mt-2 text-base text-slate-500">
+          Pregled statusa vaše licence i dostupnih funkcionalnosti.
         </p>
       </div>
 

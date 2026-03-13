@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { CreditCard, ExternalLink, Loader2, CheckCircle, XCircle } from "lucide-react";
+import { CreditCard, ExternalLink, Loader2, CheckCircle, XCircle, Sparkles } from "lucide-react";
 
 const STATUS_LABELS: Record<string, string> = {
   active: "Aktivna",
@@ -14,12 +14,12 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 const STATUS_COLORS: Record<string, string> = {
-  active: "text-emerald-400",
-  past_due: "text-amber-400",
-  cancelled: "text-red-400",
-  paused: "text-muted-foreground",
-  unpaid: "text-red-400",
-  inactive: "text-muted-foreground",
+  active: "text-emerald-600 bg-emerald-50 border-emerald-100",
+  past_due: "text-amber-600 bg-amber-50 border-amber-100",
+  cancelled: "text-red-600 bg-red-50 border-red-100",
+  paused: "text-slate-600 bg-slate-50 border-slate-100",
+  unpaid: "text-red-600 bg-red-50 border-red-100",
+  inactive: "text-slate-500 bg-slate-50 border-slate-100",
 };
 
 interface SubscriptionCardProps {
@@ -80,121 +80,144 @@ export function SubscriptionCard({
 
   if (isActive) {
     return (
-      <div className="rounded-md border border-border bg-card p-6">
-        <div className="flex items-center gap-3">
-          <CheckCircle className="size-5 text-emerald-400" />
-          <div>
-            <h2 className="text-lg font-bold tracking-tight">
-              MojaPonuda Pro
-            </h2>
-            <p className={`text-sm font-medium ${STATUS_COLORS[status] ?? "text-muted-foreground"}`}>
-              {STATUS_LABELS[status] ?? status}
-            </p>
+      <div className="rounded-[1.5rem] border border-slate-100 bg-white p-8 shadow-sm">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="flex size-12 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
+              <CheckCircle className="size-6" />
+            </div>
+            <div>
+              <h2 className="font-heading text-xl font-bold text-slate-900">
+                MojaPonuda Pro
+              </h2>
+              <div className={`mt-1 inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-bold uppercase tracking-wider ${STATUS_COLORS[status] ?? "text-slate-500 bg-slate-50 border-slate-100"}`}>
+                {STATUS_LABELS[status] ?? status}
+              </div>
+            </div>
           </div>
         </div>
 
         {currentPeriodEnd && (
-          <p className="mt-3 font-mono text-sm text-muted-foreground">
-            Sljedeća obnova:{" "}
-            <span className="text-foreground">
+          <div className="mt-6 rounded-xl bg-slate-50 p-4 border border-slate-100">
+            <p className="text-sm font-medium text-slate-500">Sljedeća obnova</p>
+            <p className="mt-1 font-mono text-lg font-bold text-slate-900">
               {new Date(currentPeriodEnd).toLocaleDateString("bs-BA", {
                 day: "numeric",
                 month: "long",
                 year: "numeric",
               })}
-            </span>
-          </p>
+            </p>
+          </div>
         )}
 
         {error && (
-          <p className="mt-3 text-xs text-red-400">{error}</p>
+          <p className="mt-4 text-sm font-medium text-red-500 bg-red-50 p-3 rounded-lg border border-red-100">{error}</p>
         )}
 
-        <Button
-          className="mt-4"
-          variant="outline"
-          onClick={handlePortal}
-          disabled={loading || !hasCustomerId}
-        >
-          {loading ? (
-            <Loader2 className="size-4 animate-spin" />
-          ) : (
-            <ExternalLink className="size-4" />
-          )}
-          Upravljaj pretplatom
-        </Button>
+        <div className="mt-8 pt-6 border-t border-slate-100">
+          <Button
+            className="w-full sm:w-auto rounded-xl font-bold h-11"
+            variant="outline"
+            onClick={handlePortal}
+            disabled={loading || !hasCustomerId}
+          >
+            {loading ? (
+              <Loader2 className="mr-2 size-4 animate-spin" />
+            ) : (
+              <ExternalLink className="mr-2 size-4" />
+            )}
+            Upravljaj pretplatom
+          </Button>
+        </div>
       </div>
     );
   }
 
   // Neaktivna pretplata — prikaz ponude
   return (
-    <div className="rounded-md border border-border bg-card p-6">
-      <div className="flex items-center gap-3">
-        <XCircle className="size-5 text-muted-foreground" />
+    <div className="rounded-[1.5rem] border border-slate-100 bg-white p-8 shadow-sm">
+      <div className="flex items-center gap-4 mb-6">
+        <div className="flex size-12 items-center justify-center rounded-xl bg-slate-100 text-slate-500">
+          <XCircle className="size-6" />
+        </div>
         <div>
-          <h2 className="text-lg font-bold tracking-tight">
+          <h2 className="font-heading text-xl font-bold text-slate-900">
             MojaPonuda Pro
           </h2>
-          <p className={`text-sm font-medium ${STATUS_COLORS[status] ?? "text-muted-foreground"}`}>
+          <div className={`mt-1 inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-bold uppercase tracking-wider ${STATUS_COLORS[status] ?? "text-slate-500 bg-slate-50 border-slate-100"}`}>
             {STATUS_LABELS[status] ?? status}
-          </p>
+          </div>
         </div>
       </div>
 
-      <div className="mt-4 rounded-md border border-primary/20 bg-primary/5 p-4">
-        <div className="flex items-baseline gap-2">
-          <span className="text-3xl font-bold tracking-tight">80 EUR</span>
-          <span className="text-sm text-muted-foreground">/ mjesečno</span>
+      <div className="rounded-2xl border-2 border-primary/10 bg-blue-50/30 p-6 relative overflow-hidden">
+        <div className="absolute top-0 right-0 p-4 opacity-10">
+          <Sparkles className="size-24 text-primary" />
         </div>
-        <ul className="mt-3 space-y-1.5 text-sm text-muted-foreground">
-          <li className="flex items-center gap-2">
-            <CheckCircle className="size-3.5 text-emerald-400" />
-            Neograničen broj ponuda
+        
+        <div className="flex items-baseline gap-2 mb-4 relative z-10">
+          <span className="font-heading text-4xl font-extrabold text-slate-900">80 EUR</span>
+          <span className="text-sm font-bold text-slate-500 uppercase">/ mjesečno</span>
+        </div>
+        
+        <ul className="space-y-3 relative z-10">
+          <li className="flex items-center gap-3">
+            <div className="size-5 rounded-full bg-emerald-100 flex items-center justify-center shrink-0">
+              <CheckCircle className="size-3 text-emerald-600" />
+            </div>
+            <span className="text-sm font-medium text-slate-700">Neograničen broj ponuda</span>
           </li>
-          <li className="flex items-center gap-2">
-            <CheckCircle className="size-3.5 text-emerald-400" />
-            AI analiza tendera
+          <li className="flex items-center gap-3">
+            <div className="size-5 rounded-full bg-emerald-100 flex items-center justify-center shrink-0">
+              <CheckCircle className="size-3 text-emerald-600" />
+            </div>
+            <span className="text-sm font-medium text-slate-700">AI analiza tendera i ekstrakcija</span>
           </li>
-          <li className="flex items-center gap-2">
-            <CheckCircle className="size-3.5 text-emerald-400" />
-            Izvoz PDF paketa
+          <li className="flex items-center gap-3">
+            <div className="size-5 rounded-full bg-emerald-100 flex items-center justify-center shrink-0">
+              <CheckCircle className="size-3 text-emerald-600" />
+            </div>
+            <span className="text-sm font-medium text-slate-700">Izvoz kompletnog PDF paketa</span>
           </li>
-          <li className="flex items-center gap-2">
-            <CheckCircle className="size-3.5 text-emerald-400" />
-            Tržišna analitika
+          <li className="flex items-center gap-3">
+            <div className="size-5 rounded-full bg-emerald-100 flex items-center justify-center shrink-0">
+              <CheckCircle className="size-3 text-emerald-600" />
+            </div>
+            <span className="text-sm font-medium text-slate-700">Napredna tržišna analitika</span>
           </li>
         </ul>
       </div>
 
       {error && (
-        <p className="mt-3 text-xs text-red-400">{error}</p>
+        <p className="mt-4 text-sm font-medium text-red-500 bg-red-50 p-3 rounded-lg border border-red-100">{error}</p>
       )}
 
-      <Button
-        className="mt-4 w-full"
-        onClick={handleCheckout}
-        disabled={loading}
-      >
-        {loading ? (
-          <Loader2 className="size-4 animate-spin" />
-        ) : (
-          <CreditCard className="size-4" />
-        )}
-        Pretplatite se
-      </Button>
-
-      {hasCustomerId && (
+      <div className="mt-6 flex flex-col gap-3">
         <Button
-          className="mt-2 w-full"
-          variant="outline"
-          onClick={handlePortal}
+          className="w-full rounded-xl font-bold h-12 text-base shadow-lg shadow-blue-500/20"
+          onClick={handleCheckout}
           disabled={loading}
         >
-          <ExternalLink className="size-4" />
-          Upravljaj pretplatom
+          {loading ? (
+            <Loader2 className="mr-2 size-5 animate-spin" />
+          ) : (
+            <CreditCard className="mr-2 size-5" />
+          )}
+          Aktiviraj Pro pretplatu
         </Button>
-      )}
+
+        {hasCustomerId && (
+          <Button
+            className="w-full rounded-xl font-bold h-11"
+            variant="ghost"
+            onClick={handlePortal}
+            disabled={loading}
+          >
+            <ExternalLink className="mr-2 size-4" />
+            Upravljaj postojećom pretplatom
+          </Button>
+        )}
+      </div>
     </div>
   );
 }
