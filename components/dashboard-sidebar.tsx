@@ -103,7 +103,7 @@ export function DashboardSidebar({ userEmail, companyName }: DashboardSidebarPro
   }
 
   return (
-    <aside className="relative sticky top-0 flex h-screen w-[290px] shrink-0 flex-col overflow-hidden border-r border-slate-800/80 bg-[linear-gradient(180deg,#081121_0%,#0b1629_42%,#0f172a_100%)] shadow-[24px_0_80px_-52px_rgba(15,23,42,0.85)]">
+    <aside className="fixed inset-y-0 left-0 z-40 flex h-screen w-[300px] flex-col overflow-hidden border-r border-slate-800/80 bg-[linear-gradient(180deg,#081121_0%,#0b1629_42%,#0f172a_100%)] shadow-[24px_0_80px_-52px_rgba(15,23,42,0.85)]">
       <div className="pointer-events-none absolute left-0 top-0 h-40 w-full bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.28),transparent_58%)]" />
       <div className="pointer-events-none absolute bottom-0 left-0 h-48 w-full bg-[radial-gradient(circle_at_bottom_left,rgba(14,165,233,0.12),transparent_62%)]" />
       <div className="relative flex flex-col border-b border-white/10 px-7 py-7">
@@ -137,7 +137,7 @@ export function DashboardSidebar({ userEmail, companyName }: DashboardSidebarPro
         </div>
       </div>
 
-      <nav className="relative flex-1 overflow-y-auto px-4 py-6 scrollbar-hide">
+      <nav className="relative min-h-0 flex-1 overflow-y-auto px-4 py-6 scrollbar-hide">
         <div className="space-y-1.5">
           {coreItems.map((item) => (
             <NavLink key={item.href} item={item} />

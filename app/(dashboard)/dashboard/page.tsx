@@ -133,43 +133,41 @@ export default async function DashboardPage() {
   const greeting = now.getHours() < 12 ? "Dobro jutro" : now.getHours() < 18 ? "Dobar dan" : "Dobra večer";
   
   return (
-    <div className="space-y-10">
-      {/* Header */}
-      <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
-        <div>
-          <h1 className="text-4xl font-heading font-bold text-slate-950 tracking-tight lg:text-5xl">
-            {greeting}, {resolvedCompany.name.split(" ")[0]}
-          </h1>
-          <p className="mt-2 max-w-2xl text-base leading-7 text-slate-600 lg:text-lg">
-            Evo pregleda vaših aktivnosti i ponuda danas.
-          </p>
+    <div className="space-y-8">
+      <section className="rounded-[2rem] border border-slate-200/80 bg-white px-7 py-7 shadow-[0_28px_60px_-36px_rgba(15,23,42,0.22)] lg:px-9 lg:py-8">
+        <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
+          <div>
+            <p className="text-[11px] font-mono font-semibold uppercase tracking-[0.32em] text-slate-400">
+              Kontrolna tabla
+            </p>
+            <h1 className="mt-3 text-4xl font-heading font-bold tracking-tight text-slate-950 lg:text-5xl">
+              {greeting}, {resolvedCompany.name.split(" ")[0]}
+            </h1>
+            <p className="mt-3 max-w-2xl text-base leading-7 text-slate-600 lg:text-lg">
+              Jasniji pregled ponuda, rokova i tržišnih signala za vaš današnji rad.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <Link
+              href="/dashboard/tenders"
+              className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 text-sm font-bold text-slate-700 shadow-sm transition-all hover:-translate-y-0.5 hover:border-blue-200 hover:bg-slate-50 hover:text-primary"
+            >
+              <Search className="size-4" />
+              Pronađi tender
+            </Link>
+            <Link
+              href="/dashboard/bids"
+              className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-primary px-5 text-sm font-bold text-white shadow-[0_18px_40px_-20px_rgba(15,23,42,0.8)] transition-all hover:-translate-y-0.5 hover:bg-blue-700"
+            >
+              <Plus className="size-4" />
+              Nova ponuda
+            </Link>
+          </div>
         </div>
-        <div className="flex flex-wrap items-center gap-3">
-          <Link
-            href="/dashboard/tenders"
-            className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 text-sm font-bold text-slate-700 shadow-sm transition-all hover:-translate-y-0.5 hover:border-blue-200 hover:bg-slate-50 hover:text-primary"
-          >
-            <Search className="size-4" />
-            Pronađi tender
-          </Link>
-          <Link
-            href="/dashboard/bids"
-            className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-primary px-5 text-sm font-bold text-white shadow-[0_18px_40px_-20px_rgba(15,23,42,0.8)] transition-all hover:-translate-y-0.5 hover:bg-blue-700"
-          >
-            <Plus className="size-4" />
-          </Link>
-        </div>
-      </div>
+      </section>
 
-      {/* Recommended Tenders Widget */}
-      <Suspense fallback={<div className="h-48 rounded-2xl bg-slate-50 animate-pulse" />}>
-        <RecommendedTenders />
-      </Suspense>
-
-      {/* Top Metrics Row */}
-      <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
-        {/* Large Metric Card */}
-        <div className="group relative col-span-1 overflow-hidden rounded-[1.75rem] border border-slate-200/80 bg-white p-7 shadow-[0_24px_50px_-30px_rgba(15,23,42,0.22)] sm:col-span-2 xl:col-span-1">
+      <div className="grid gap-5 lg:grid-cols-4">
+        <div className="group relative overflow-hidden rounded-[1.75rem] border border-slate-200/80 bg-white p-7 shadow-[0_24px_50px_-30px_rgba(15,23,42,0.22)]">
           <div className="absolute right-0 top-0 h-36 w-36 -translate-y-8 translate-x-8 rounded-full bg-blue-100/80 blur-3xl transition-all group-hover:bg-blue-200/70" />
           <div className="relative z-10 flex items-center gap-3 mb-3">
             <div className="flex size-11 items-center justify-center rounded-2xl bg-blue-50 text-blue-700 ring-1 ring-blue-100">
@@ -182,7 +180,6 @@ export default async function DashboardPage() {
           </p>
         </div>
 
-        {/* Small Metric Cards */}
         <div className="flex flex-col justify-center rounded-[1.75rem] border border-slate-200/80 bg-white p-6 shadow-[0_20px_40px_-30px_rgba(15,23,42,0.2)] transition-all hover:-translate-y-0.5 hover:border-blue-100 hover:shadow-[0_28px_50px_-32px_rgba(37,99,235,0.28)]">
           <div className="mb-4 flex items-center gap-3">
             <div className="flex size-11 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 ring-1 ring-blue-100">
@@ -220,12 +217,16 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.7fr)_minmax(320px,0.9fr)]">
-        {/* Main Content Area - Active Tenders */}
-        <div className="space-y-6">
+      <div className="grid gap-6 2xl:grid-cols-[minmax(0,1.8fr)_360px]">
+        <section className="space-y-6">
           <div className="flex h-full flex-col overflow-hidden rounded-[1.75rem] border border-slate-200/80 bg-white shadow-[0_24px_50px_-30px_rgba(15,23,42,0.18)]">
             <div className="flex flex-col gap-4 border-b border-slate-100 p-7 lg:flex-row lg:items-center lg:justify-between">
-              <h2 className="font-heading text-xl font-bold text-slate-900">Aktivne ponude</h2>
+              <div>
+                <h2 className="font-heading text-[2rem] font-bold tracking-tight text-slate-950">Aktivne ponude</h2>
+                <p className="mt-1 text-sm text-slate-500">
+                  Pregled najvažnijih otvorenih ponuda i narednih rokova.
+                </p>
+              </div>
               <div className="flex flex-wrap items-center gap-3">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
@@ -242,7 +243,7 @@ export default async function DashboardPage() {
             </div>
 
             <div className="flex-1 overflow-x-auto">
-              <table className="min-w-[680px] w-full border-collapse text-left">
+              <table className="w-full min-w-[680px] border-collapse text-left">
                 <thead>
                   <tr className="border-b border-slate-100 bg-slate-50/70 text-xs font-bold uppercase tracking-wider text-slate-400">
                     <th className="w-[40%] p-5 pl-7 font-medium">Naziv tendera</th>
@@ -257,16 +258,16 @@ export default async function DashboardPage() {
                     <tr>
                       <td colSpan={5} className="p-16 text-center">
                         <div className="flex flex-col items-center justify-center">
-                          <div className="flex size-16 items-center justify-center rounded-full bg-slate-50 mb-4 text-slate-300">
+                          <div className="mb-4 flex size-16 items-center justify-center rounded-full bg-slate-50 text-slate-300">
                             <Briefcase className="size-8" />
                           </div>
-                          <p className="text-base font-bold text-slate-900 mb-1">Nema aktivnih ponuda</p>
-                          <p className="text-sm text-slate-500 mb-6 max-w-sm">
+                          <p className="mb-1 text-base font-bold text-slate-900">Nema aktivnih ponuda</p>
+                          <p className="mb-6 max-w-sm text-sm text-slate-500">
                             Niste započeli pripremu nijedne ponude.
                           </p>
                           <Link
                             href="/dashboard/tenders"
-                            className="inline-flex h-10 items-center justify-center rounded-xl bg-primary px-5 text-sm font-bold text-white shadow-md shadow-blue-500/20 hover:bg-blue-700 transition-all"
+                            className="inline-flex h-10 items-center justify-center rounded-xl bg-primary px-5 text-sm font-bold text-white shadow-md shadow-blue-500/20 transition-all hover:bg-blue-700"
                           >
                             Pretraži tendere
                           </Link>
@@ -277,13 +278,13 @@ export default async function DashboardPage() {
                     bids.map((bid) => {
                       const status = STATUS_CONFIG[bid.status] || STATUS_CONFIG.draft;
                       return (
-                        <tr key={bid.id} className="hover:bg-slate-50/80 transition-colors group">
+                        <tr key={bid.id} className="transition-colors hover:bg-slate-50/80 group">
                           <td className="p-5 pl-7">
-                            <Link href={`/dashboard/bids/${bid.id}`} className="font-semibold text-slate-900 hover:text-primary transition-colors line-clamp-1 pr-4" title={bid.tenders?.title}>
+                            <Link href={`/dashboard/bids/${bid.id}`} className="line-clamp-1 pr-4 font-semibold text-slate-900 transition-colors hover:text-primary" title={bid.tenders?.title}>
                               {bid.tenders?.title ?? "Nepoznat tender"}
                             </Link>
                           </td>
-                          <td className="p-5 text-sm text-slate-600 font-medium">
+                          <td className="p-5 text-sm font-medium text-slate-600">
                             {formatDate(bid.tenders?.deadline)}
                           </td>
                           <td className="p-5 text-sm font-bold text-slate-700">
@@ -305,16 +306,17 @@ export default async function DashboardPage() {
               </table>
             </div>
           </div>
-        </div>
 
-        {/* Sidebar Widgets */}
-        <div className="space-y-6">
-          {/* Expiring Documents Widget */}
+          <Suspense fallback={<div className="h-64 rounded-[1.75rem] border border-slate-200/80 bg-white animate-pulse" />}>
+            <RecommendedTenders />
+          </Suspense>
+        </section>
+
+        <aside className="space-y-6 2xl:sticky 2xl:top-8 self-start">
           {expiring.length > 0 && (
             <div className="relative overflow-hidden rounded-[1.75rem] border border-amber-200 bg-[linear-gradient(180deg,#fff8e6_0%,#fffef8_100%)] p-7 shadow-[0_22px_44px_-30px_rgba(245,158,11,0.35)]">
-              <div className="absolute right-0 top-0 w-32 h-32 bg-amber-100 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none" />
-              
-              <div className="flex items-center gap-3 mb-5 relative z-10">
+              <div className="absolute right-0 top-0 h-32 w-32 -mr-10 -mt-10 rounded-full bg-amber-100 blur-3xl pointer-events-none" />
+              <div className="relative z-10 mb-5 flex items-center gap-3">
                 <div className="flex size-11 items-center justify-center rounded-2xl bg-amber-100 text-amber-700 ring-1 ring-amber-200/70">
                   <AlertTriangle className="size-5" />
                 </div>
@@ -322,16 +324,16 @@ export default async function DashboardPage() {
                   Dokumenti ističu
                 </h3>
               </div>
-              
-              <div className="space-y-3 relative z-10 mb-5">
+
+              <div className="relative z-10 mb-5 space-y-3">
                 {expiring.slice(0, 3).map((doc) => {
                   const days = daysUntil(doc.expires_at!);
                   const urgent = days <= 7;
                   return (
                     <div key={doc.id} className="flex items-center justify-between rounded-2xl border border-amber-100/60 bg-white p-4 shadow-sm">
                       <div className="min-w-0 pr-3">
-                        <p className="text-sm font-bold text-slate-900 truncate" title={doc.name}>{doc.name}</p>
-                        <p className="text-xs text-slate-500 mt-0.5 truncate">{doc.type}</p>
+                        <p className="truncate text-sm font-bold text-slate-900" title={doc.name}>{doc.name}</p>
+                        <p className="mt-0.5 truncate text-xs text-slate-500">{doc.type}</p>
                       </div>
                       <span className={`shrink-0 inline-flex items-center rounded-full px-2 py-1 text-[10px] font-bold uppercase tracking-wider ${urgent ? "bg-red-50 text-red-600" : "bg-amber-50 text-amber-600"}`}>
                         {days === 0 ? "Danas" : `${days}d`}
@@ -351,31 +353,33 @@ export default async function DashboardPage() {
           )}
 
           <div className="rounded-[1.75rem] border border-slate-200/80 bg-white p-7 shadow-[0_24px_50px_-30px_rgba(15,23,42,0.18)]">
-            <h2 className="font-heading text-lg font-bold text-slate-900 mb-5">Brze akcije</h2>
-            
+            <h2 className="mb-1 font-heading text-lg font-bold text-slate-900">Brze akcije</h2>
+            <p className="mb-5 text-sm text-slate-500">
+              Najčešći koraci za pripremu ponuda i tržišni pregled.
+            </p>
             <div className="space-y-3">
               <Link href="/dashboard/vault" className="group flex items-center gap-4 rounded-2xl border border-slate-100 bg-slate-50/80 p-4 transition-all hover:border-blue-200 hover:bg-white hover:shadow-sm">
-                <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-white text-slate-400 group-hover:bg-blue-50 group-hover:text-primary transition-colors shadow-sm border border-slate-100">
+                <div className="flex size-11 shrink-0 items-center justify-center rounded-xl border border-slate-100 bg-white text-slate-400 shadow-sm transition-colors group-hover:bg-blue-50 group-hover:text-primary">
                   <Upload className="size-5" />
                 </div>
                 <div>
                   <p className="text-sm font-bold text-slate-900">Spremi dokument</p>
-                  <p className="text-xs text-slate-500 mt-0.5">Dodajte u sigurni trezor</p>
+                  <p className="mt-0.5 text-xs text-slate-500">Dodajte u sigurni trezor</p>
                 </div>
               </Link>
 
               <Link href="/dashboard/intelligence" className="group flex items-center gap-4 rounded-2xl border border-slate-100 bg-slate-50/80 p-4 transition-all hover:border-purple-200 hover:bg-white hover:shadow-sm">
-                <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-white text-slate-400 group-hover:bg-purple-50 group-hover:text-purple-600 transition-colors shadow-sm border border-slate-100">
+                <div className="flex size-11 shrink-0 items-center justify-center rounded-xl border border-slate-100 bg-white text-slate-400 shadow-sm transition-colors group-hover:bg-purple-50 group-hover:text-purple-600">
                   <TrendingUp className="size-5" />
                 </div>
                 <div>
                   <p className="text-sm font-bold text-slate-900">Analiza tržišta</p>
-                  <p className="text-xs text-slate-500 mt-0.5">Istražite konkurenciju</p>
+                  <p className="mt-0.5 text-xs text-slate-500">Istražite konkurenciju</p>
                 </div>
               </Link>
             </div>
           </div>
-        </div>
+        </aside>
       </div>
     </div>
   );
