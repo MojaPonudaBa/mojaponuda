@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getSubscriptionStatus } from "@/lib/subscription";
-import type { Bid, Tender, Company, Json } from "@/types/database";
-import { analyzeTender } from "@/lib/ai/tender-analysis";
-import { AI_TO_VAULT_TYPE_MAP } from "@/lib/vault/constants";
+import { ensureBidChecklist } from "@/lib/bids/checklist";
+import type { Bid, Tender, Company } from "@/types/database";
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
@@ -81,138 +80,19 @@ export async function POST(request: NextRequest) {
 
   const tender = bid.tenders;
 
-  // Dohvati dokumente iz trezora za automatsko uparivanje
-  const { data: vaultDocs } = await supabase
-    .from("documents")
-    .select("id, type, expires_at")
-    .eq("company_id", company.id);
-
   try {
-    // Koristi dijeljenu logiku za analizu (ovo rješava i caching)
-    const analysis = await analyzeTender(tender);
-
-    if (!analysis.checklist_items.length) {
-      return NextResponse.json(
-        {
-          error:
-            "AI analiza nije pronašla nijednu checklist stavku. Tender vjerovatno nema dovoljno teksta za analizu ili OpenAI nije vratio upotrebljiv rezultat.",
-        },
-        { status: 422 }
-      );
-    }
-
-    // Spremi AI analizu u bids.ai_analysis (za arhivu specifičnu za ovaj bid)
-    const { error: bidUpdateError } = await supabase
-      .from("bids")
-      .update({ ai_analysis: analysis as unknown as Json })
-      .eq("id", bid_id);
-
-    if (bidUpdateError) {
-      throw new Error(`Spremanje AI analize nije uspjelo: ${bidUpdateError.message}`);
-    }
-
-    // Kreiraj checklist stavke iz analize
-    const existingChecklist = await supabase
-      .from("bid_checklist_items")
-      .select("id")
-      .eq("bid_id", bid_id);
-
-    if (existingChecklist.error) {
-      throw new Error(`Čitanje postojeće checkliste nije uspjelo: ${existingChecklist.error.message}`);
-    }
-
-    const startOrder = (existingChecklist.data?.length ?? 0);
-
-    const checklistRows = analysis.checklist_items.map((item, idx) => {
-      let docId = null;
-      let status: "missing" | "attached" = "missing";
-
-      // Pokušaj automatskog uparivanja
-      if (item.document_type && vaultDocs) {
-        const targetType = AI_TO_VAULT_TYPE_MAP[item.document_type];
-        if (targetType) {
-          // Nađi prvi odgovarajući dokument koji nije istekao
-          const match = vaultDocs.find(d => 
-            d.type === targetType && 
-            (!d.expires_at || new Date(d.expires_at) > new Date())
-          );
-          
-          if (match) {
-            docId = match.id;
-            status = "attached";
-          }
-        }
-      }
-
-      return {
-        bid_id,
-        title: item.name,
-        description: item.description,
-        status: status,
-        document_id: docId,
-        document_type: item.document_type,
-        risk_note: item.risk_note || null,
-        sort_order: startOrder + idx,
-      };
+    const checklist = await ensureBidChecklist({
+      bidId: bid_id,
+      companyId: company.id,
+      tender,
+      allowAI: true,
     });
 
-    if (checklistRows.length > 0) {
-      const { error: checklistInsertError } = await supabase
-        .from("bid_checklist_items")
-        .insert(checklistRows);
-
-      if (checklistInsertError) {
-        throw new Error(`Kreiranje checklist stavki nije uspjelo: ${checklistInsertError.message}`);
-      }
-
-      // Dodaj u bid_documents one koji su automatski pronađeni
-      const autoAttachedDocs = checklistRows
-        .filter(r => r.document_id)
-        .map(r => ({
-          bid_id,
-          document_id: r.document_id!,
-          checklist_item_name: r.title,
-          is_confirmed: false // Korisnik treba potvrditi
-        }));
-
-      if (autoAttachedDocs.length > 0) {
-        const { error: autoAttachError } = await supabase
-          .from("bid_documents")
-          .insert(autoAttachedDocs);
-
-        if (autoAttachError) {
-          throw new Error(`Automatsko povezivanje dokumenata nije uspjelo: ${autoAttachError.message}`);
-        }
-      }
-    }
-
-    // Pozadinski upis: authority_requirement_patterns
-    if (tender.contracting_authority_jib) {
-      const patternRows = analysis.checklist_items.map((item) => ({
-        contracting_authority_jib: tender.contracting_authority_jib!,
-        document_type: item.document_type,
-        tender_id: tender.id,
-        is_required: item.is_required,
-      }));
-
-      // Fire-and-forget — ne blokiraj response
-      (async () => {
-        try {
-          await supabase
-            .from("authority_requirement_patterns")
-            .upsert(patternRows, {
-              onConflict: "contracting_authority_jib,document_type,tender_id",
-            });
-        } catch (err) {
-          console.error("Pattern insert error:", err);
-        }
-      })();
-    }
-
     return NextResponse.json({
-      analysis,
-      checklist_items_added: checklistRows.length,
-      auto_attached: checklistRows.filter(r => r.document_id).length
+      analysis: checklist.analysis,
+      checklist_items_added: checklist.checklistItemsAdded,
+      auto_attached: checklist.autoAttached,
+      checklist_source: checklist.source,
     });
   } catch (err) {
     console.error("AI analysis error:", err);

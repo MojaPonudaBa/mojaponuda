@@ -141,18 +141,26 @@ export default async function TenderDetailPage({
   }
 
   return (
-    <div className="space-y-8 max-w-5xl mx-auto">
-      {/* Navigacija nazad + akcija */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <Link href="/dashboard/tenders">
-          <Button variant="ghost" size="sm" className="text-slate-500 hover:text-slate-900 -ml-2">
+    <div className="space-y-8 max-w-6xl mx-auto">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+          <Link href="/dashboard/tenders">
+            <Button variant="ghost" size="sm" className="-ml-2 text-slate-500 hover:text-slate-900">
+              <ArrowLeft className="mr-2 size-4" />
+              Nazad na tendere
+            </Button>
+          </Link>
+        </div>
+        <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
+          {company && (
+            <StartBidButton
+              tenderId={id}
+              existingBidId={existingBidId}
+              isSubscribed={isSubscribed}
+              className="h-11 rounded-xl bg-blue-600 px-5 font-bold text-white shadow-md shadow-blue-500/20 hover:bg-blue-700"
+            />
+          )}
           <QuickScanButton tenderId={id} isSubscribed={isSubscribed} />
-          
-            <ArrowLeft className="mr-2 size-4" />
-            Nazad na tendere
-          </Button>
-        </Link>
-        <div className="flex items-center gap-3">
           {tender.portal_url && (
             <a
               href={tender.portal_url}
@@ -164,16 +172,12 @@ export default async function TenderDetailPage({
               Otvori na portalu
             </a>
           )}
-          {company && (
-            <StartBidButton tenderId={id} existingBidId={existingBidId} />
-          )}
         </div>
       </div>
 
-      {/* Glavni Header */}
       <div className="rounded-[2rem] border border-slate-100 bg-white p-8 shadow-sm">
-        <div className="flex items-start justify-between gap-6 mb-6">
-          <div>
+        <div className="mb-6 flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+          <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 mb-3">
               <span className="inline-flex items-center rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-bold text-primary">
                 {tender.contract_type || "Tender"}
@@ -185,9 +189,15 @@ export default async function TenderDetailPage({
             <h1 className="text-2xl sm:text-3xl font-heading font-bold text-slate-900 leading-tight">
               {tender.title}
             </h1>
+            <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-500">
+              Otvorite radni prostor jednim klikom i odmah dobijte početnu checklistu za pripremu dokumentacije.
+            </p>
           </div>
-          <div className="hidden sm:flex size-14 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
-            <FileText className="size-7" />
+          <div className="rounded-[1.5rem] border border-blue-100 bg-blue-50/70 p-5 lg:max-w-sm">
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-blue-700">Brzi start</p>
+            <p className="mt-2 text-sm leading-6 text-slate-700">
+              Klik na <span className="font-bold text-slate-900">Započni pripremu</span> odmah kreira ponudu i početnu checklistu, tako da možete bez čekanja početi skupljati dokumentaciju.
+            </p>
           </div>
         </div>
 
@@ -219,22 +229,30 @@ export default async function TenderDetailPage({
       </div>
 
       <div className="grid gap-8 lg:grid-cols-3">
-        {/* Lijeva kolona - Opis */}
         <div className="lg:col-span-2 space-y-6">
-          <div className="rounded-[1.5rem] border border-slate-100 bg-white p-8 shadow-sm">
-            <h3 className="text-lg font-heading font-bold text-slate-900 mb-4 flex items-center gap-2">
-              <FileText className="size-5 text-slate-400" />
-              Opis predmeta nabavke
-            </h3>
-            <div className="prose prose-sm prose-slate max-w-none text-slate-600">
-              <p className="whitespace-pre-wrap leading-relaxed">
-                {tender.raw_description || "Nema dodatnog opisa za ovaj tender."}
+          {tender.raw_description?.trim() ? (
+            <div className="rounded-[1.5rem] border border-slate-100 bg-white p-8 shadow-sm">
+              <h3 className="mb-4 flex items-center gap-2 text-lg font-heading font-bold text-slate-900">
+                <FileText className="size-5 text-slate-400" />
+                Opis predmeta nabavke
+              </h3>
+              <div className="prose prose-sm max-w-none text-slate-600 prose-p:leading-relaxed">
+                <p className="whitespace-pre-wrap">{tender.raw_description}</p>
+              </div>
+            </div>
+          ) : (
+            <div className="rounded-[1.5rem] border border-amber-100 bg-amber-50/70 p-6 shadow-sm">
+              <h3 className="flex items-center gap-2 text-base font-heading font-bold text-slate-900">
+                <FileText className="size-5 text-amber-500" />
+                Opis nije objavljen
+              </h3>
+              <p className="mt-2 text-sm leading-6 text-slate-600">
+                Za ovaj tender nema detaljnog opisa u javnim podacima. Kada kliknete <span className="font-bold text-slate-900">Započni pripremu</span>, otvorit će se radni prostor sa početnom checklistom generisanom iz dostupnih podataka i tipičnih zahtjeva naručioca.
               </p>
             </div>
-          </div>
+          )}
         </div>
 
-        {/* Desna kolona - Statistika naručioca */}
         <div className="space-y-6">
           {authorityStats && (
             <div className="rounded-[1.5rem] border border-slate-100 bg-white p-6 shadow-sm">
@@ -267,14 +285,19 @@ export default async function TenderDetailPage({
             </div>
           )}
 
-          <div className="rounded-[1.5rem] bg-gradient-to-br from-slate-900 to-slate-800 p-6 text-white shadow-lg">
-            <h3 className="text-base font-bold mb-2">Trebate pomoć?</h3>
-            <p className="text-sm text-slate-300 mb-4 leading-relaxed">
-              Naša AI analiza može vam pomoći da procijenite rizik i pripremite pobjedničku ponudu za ovaj tender.
-            </p>
-            {company && (
-              <StartBidButton tenderId={id} existingBidId={existingBidId} variant="secondary" />
-            )}
+          <div className="rounded-[1.5rem] border border-slate-100 bg-white p-6 shadow-sm">
+            <h3 className="text-base font-bold text-slate-900">Šta dobijate odmah</h3>
+            <div className="mt-4 space-y-3 text-sm text-slate-600">
+              <div className="rounded-xl border border-slate-100 bg-slate-50 p-3">
+                Početnu checklistu dokumentacije bez dodatnog klika na analizu.
+              </div>
+              <div className="rounded-xl border border-slate-100 bg-slate-50 p-3">
+                Automatsko povezivanje dokumenata iz trezora kada postoji odgovarajući dokument.
+              </div>
+              <div className="rounded-xl border border-slate-100 bg-slate-50 p-3">
+                Radni prostor spreman za dopunu i finalnu provjeru prije predaje ponude.
+              </div>
+            </div>
           </div>
         </div>
       </div>
