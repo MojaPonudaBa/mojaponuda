@@ -1,5 +1,5 @@
 import { getOpenAIClient } from "@/lib/openai";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import type { Tender, Json } from "@/types/database";
 
 const SYSTEM_PROMPT = `Ti si ekspert za javne nabavke u Bosni i Hercegovini sa dubokim poznavanjem Zakona o javnim nabavkama BiH (Službeni glasnik BiH, br. 39/14).
@@ -146,8 +146,6 @@ const RESPONSE_SCHEMA = {
 };
 
 export async function analyzeTender(tender: Tender): Promise<AnalysisResult> {
-  const supabase = await createClient();
-  
   // 1. Check if analysis already exists in the database
   if (tender.ai_analysis) {
     // Validate that it has the expected structure
@@ -205,10 +203,19 @@ export async function analyzeTender(tender: Tender): Promise<AnalysisResult> {
   const analysis: AnalysisResult = JSON.parse(rawContent);
 
   // 4. Cache result
-  await supabase
-    .from("tenders")
-    .update({ ai_analysis: analysis as unknown as Json })
-    .eq("id", tender.id);
+  try {
+    const supabaseAdmin = createAdminClient();
+    const { error: cacheError } = await supabaseAdmin
+      .from("tenders")
+      .update({ ai_analysis: analysis as unknown as Json })
+      .eq("id", tender.id);
+
+    if (cacheError) {
+      console.error("Tender AI cache save error:", cacheError.message);
+    }
+  } catch (error) {
+    console.error("Tender AI cache save error:", error);
+  }
 
   return analysis;
 }
