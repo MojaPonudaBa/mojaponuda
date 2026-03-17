@@ -4,6 +4,17 @@ export interface ProfileOption {
   description: string;
 }
 
+export interface OfferingCategoryOption extends ProfileOption {
+  focusId: string;
+}
+
+export interface ProfileOptionGroup {
+  id: string;
+  label: string;
+  description: string;
+  optionIds: string[];
+}
+
 export const PRIMARY_INDUSTRY_OPTIONS: ProfileOption[] = [
   {
     id: "construction",
@@ -45,70 +56,163 @@ export const PRIMARY_INDUSTRY_OPTIONS: ProfileOption[] = [
     label: "Sigurnost, zaštita i energija",
     description: "Video nadzor, zaštitarske usluge, elektro i energetski sistemi.",
   },
+  {
+    id: "facilities_hospitality",
+    label: "Objekti, higijena i ugostiteljstvo",
+    description: "Čišćenje, higijenski program, prehrana, catering i podrška objektima.",
+  },
+  {
+    id: "communications_media",
+    label: "Komunikacije, štampa i događaji",
+    description: "Štampa, promotivni materijali, kampanje, audio-video i organizacija događaja.",
+  },
 ];
 
-export const OFFERING_CATEGORY_OPTIONS: ProfileOption[] = [
+export const OFFERING_CATEGORY_OPTIONS: OfferingCategoryOption[] = [
   {
     id: "software_licenses",
     label: "Softver i licence",
     description: "ERP, DMS, antivirus, licence, SaaS i aplikativna rješenja.",
+    focusId: "it",
   },
   {
     id: "it_hardware",
     label: "IT oprema i mreže",
     description: "Računari, serveri, printeri, mrežna oprema i periferija.",
+    focusId: "it",
+  },
+  {
+    id: "telecom_av",
+    label: "Telekomunikacije i audio-video sistemi",
+    description: "Telefonija, konferencijski sistemi, video zidovi, razglas i AV oprema.",
+    focusId: "it",
+  },
+  {
+    id: "cloud_cyber_data",
+    label: "Cloud, cyber sigurnost i podaci",
+    description: "Cloud infrastruktura, backup, SIEM, cyber zaštita i data platforme.",
+    focusId: "it",
   },
   {
     id: "construction_works",
     label: "Građevinski radovi",
     description: "Izvođenje radova, rekonstrukcije, sanacije i adaptacije.",
+    focusId: "construction",
   },
   {
     id: "electro_mechanical",
     label: "Elektro i mašinski radovi",
     description: "Instalacije, mašinske pozicije, HVAC i tehnički sistemi.",
+    focusId: "construction",
   },
   {
     id: "design_supervision",
     label: "Projektovanje i nadzor",
     description: "Glavni projekti, idejna rješenja, stručni nadzor i revizije.",
+    focusId: "consulting",
   },
   {
     id: "maintenance_support",
     label: "Održavanje i podrška",
     description: "Servis, helpdesk, održavanje opreme i ugovori o podršci.",
+    focusId: "maintenance",
   },
   {
     id: "office_school_equipment",
     label: "Uredska i školska oprema",
     description: "Namještaj, učionička oprema, uredski materijal i enterijer.",
+    focusId: "equipment",
+  },
+  {
+    id: "industrial_tools_machinery",
+    label: "Industrijska oprema i alati",
+    description: "Mašine, alati, radionice, rezervni dijelovi i tehnička oprema.",
+    focusId: "equipment",
+  },
+  {
+    id: "furniture_interior",
+    label: "Namještaj i enterijerska oprema",
+    description: "Kancelarijski, školski, zdravstveni i drugi enterijerski program.",
+    focusId: "equipment",
   },
   {
     id: "medical_supplies",
     label: "Medicinska oprema i potrošni materijal",
     description: "Medicinski uređaji, laboratorijski materijal i potrošna roba.",
+    focusId: "medical",
+  },
+  {
+    id: "laboratory_diagnostics",
+    label: "Laboratorija i dijagnostika",
+    description: "Laboratorijska oprema, dijagnostički sistemi, reagensi i analizatori.",
+    focusId: "medical",
   },
   {
     id: "vehicles_transport",
     label: "Vozila i transport",
     description: "Putnička i teretna vozila, rezervni dijelovi i transportne usluge.",
+    focusId: "logistics",
+  },
+  {
+    id: "utility_waste_winter",
+    label: "Komunalne, zimske i odvoz usluge",
+    description: "Odvoz otpada, komunalne usluge, zimsko održavanje i terenska logistika.",
+    focusId: "logistics",
   },
   {
     id: "cleaning_hygiene",
     label: "Čišćenje i higijena",
     description: "Usluge čišćenja, hemija, higijenski i sanitarni program.",
+    focusId: "facilities_hospitality",
   },
   {
     id: "food_catering",
     label: "Hrana i catering",
     description: "Prehrambeni artikli, catering, kantine i ugostiteljske usluge.",
+    focusId: "facilities_hospitality",
   },
   {
     id: "security_video",
     label: "Sigurnost i video nadzor",
     description: "Alarmni sistemi, video nadzor, zaštitarske i sigurnosne usluge.",
+    focusId: "security_energy",
+  },
+  {
+    id: "fuel_energy",
+    label: "Gorivo, energenti i energetski sistemi",
+    description: "Gorivo, lož ulje, energenti, agregati i energetska infrastruktura.",
+    focusId: "security_energy",
+  },
+  {
+    id: "legal_finance_consulting",
+    label: "Pravne, finansijske i savjetodavne usluge",
+    description: "Pravno savjetovanje, revizija, računovodstvo, due diligence i consulting.",
+    focusId: "consulting",
+  },
+  {
+    id: "training_research",
+    label: "Edukacije, istraživanja i stručne obuke",
+    description: "Obuke, certifikacije, istraživanja tržišta i stručni razvoj kadra.",
+    focusId: "consulting",
+  },
+  {
+    id: "printing_marketing_events",
+    label: "Štampa, marketing i događaji",
+    description: "Promotivni materijali, štampa, kampanje, sajmovi i organizacija događaja.",
+    focusId: "communications_media",
   },
 ];
+
+export const OFFERING_CATEGORY_GROUPS: ProfileOptionGroup[] = PRIMARY_INDUSTRY_OPTIONS.map(
+  (focusOption) => ({
+    id: focusOption.id,
+    label: focusOption.label,
+    description: focusOption.description,
+    optionIds: OFFERING_CATEGORY_OPTIONS.filter(
+      (option) => option.focusId === focusOption.id
+    ).map((option) => option.id),
+  })
+).filter((group) => group.optionIds.length > 0);
 
 export const TENDER_TYPE_OPTIONS: ProfileOption[] = [
   {
@@ -151,10 +255,44 @@ const optionLookup = new Map(
   ])
 );
 
+const offeringCategoryLookup = new Map(
+  OFFERING_CATEGORY_OPTIONS.map((option) => [option.id, option])
+);
+
+export function derivePrimaryIndustry(
+  offeringCategories: string[],
+  fallbackPrimaryIndustry?: string | null
+): string | null {
+  if (offeringCategories.length === 0) {
+    return fallbackPrimaryIndustry ?? null;
+  }
+
+  const counts = new Map<string, number>();
+
+  for (const categoryId of offeringCategories) {
+    const focusId = offeringCategoryLookup.get(categoryId)?.focusId;
+
+    if (!focusId) {
+      continue;
+    }
+
+    counts.set(focusId, (counts.get(focusId) ?? 0) + 1);
+  }
+
+  if (counts.size === 0) {
+    return fallbackPrimaryIndustry ?? null;
+  }
+
+  return [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? fallbackPrimaryIndustry ?? null;
+}
+
 export function serializeCompanyProfile(profile: ParsedCompanyProfile): string | null {
   const normalized: StructuredCompanyProfile = {
     version: 1,
-    primaryIndustry: profile.primaryIndustry,
+    primaryIndustry: derivePrimaryIndustry(
+      profile.offeringCategories,
+      profile.primaryIndustry
+    ),
     offeringCategories: [...new Set(profile.offeringCategories)],
     preferredTenderTypes: [...new Set(profile.preferredTenderTypes)],
     companyDescription: profile.companyDescription?.trim() || null,
@@ -231,8 +369,13 @@ export function getPreferredContractTypes(preferredTenderTypes: string[]): strin
 }
 
 export function buildProfileKeywordSeeds(profile: ParsedCompanyProfile): string[] {
+  const derivedPrimaryIndustry = derivePrimaryIndustry(
+    profile.offeringCategories,
+    profile.primaryIndustry
+  );
+
   return [
-    profile.primaryIndustry ? getProfileOptionLabel(profile.primaryIndustry) : null,
+    derivedPrimaryIndustry ? getProfileOptionLabel(derivedPrimaryIndustry) : null,
     ...profile.offeringCategories.map((item) => getProfileOptionLabel(item)),
     ...profile.preferredTenderTypes.map((item) => getProfileOptionLabel(item)),
   ].filter((item): item is string => Boolean(item));
@@ -251,8 +394,10 @@ export function buildProfileContextText({
   preferredTenderTypes: string[];
   regions: string[];
 }): string {
+  const derivedPrimaryIndustry = derivePrimaryIndustry(offeringCategories, primaryIndustry);
+
   const lines = [
-    primaryIndustry ? `Primarna djelatnost: ${getProfileOptionLabel(primaryIndustry)}` : null,
+    derivedPrimaryIndustry ? `Fokus firme: ${getProfileOptionLabel(derivedPrimaryIndustry)}` : null,
     offeringCategories.length > 0
       ? `Ponuda firme: ${offeringCategories.map((item) => getProfileOptionLabel(item)).join(", ")}`
       : null,

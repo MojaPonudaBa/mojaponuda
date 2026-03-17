@@ -13,9 +13,11 @@ import {
 import {
   buildProfileContextText,
   buildProfileKeywordSeeds,
+  derivePrimaryIndustry,
+  getProfileOptionLabel,
+  OFFERING_CATEGORY_GROUPS,
   OFFERING_CATEGORY_OPTIONS,
   parseCompanyProfile,
-  PRIMARY_INDUSTRY_OPTIONS,
   serializeCompanyProfile,
   TENDER_TYPE_OPTIONS,
 } from "@/lib/company-profile";
@@ -61,8 +63,8 @@ const STEPS = [
   },
   {
     id: "offer",
-    title: "Šta nudite",
-    description: "Brzo odaberite čime se bavite i koje usluge, radove ili robu nudite.",
+    title: "Čime se bavite",
+    description: "Odaberite sve što realno nudite. Možete označiti više različitih oblasti bez konflikta.",
     icon: Brain,
   },
   {
@@ -106,7 +108,6 @@ export function OnboardingGuidedForm({
   const [address, setAddress] = useState(initialAddress);
   const [contactEmail, setContactEmail] = useState(initialContactEmail);
   const [contactPhone, setContactPhone] = useState(initialContactPhone);
-  const [primaryIndustry, setPrimaryIndustry] = useState<string | null>(parsedProfile.primaryIndustry);
   const [offeringCategories, setOfferingCategories] = useState<string[]>(parsedProfile.offeringCategories);
   const [preferredTenderTypes, setPreferredTenderTypes] = useState<string[]>(parsedProfile.preferredTenderTypes);
   const [regions, setRegions] = useState<string[]>(initialRegions);
@@ -116,6 +117,10 @@ export function OnboardingGuidedForm({
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [loadingText, setLoadingText] = useState("Završavam profil...");
+  const derivedPrimaryIndustry = useMemo(
+    () => derivePrimaryIndustry(offeringCategories, parsedProfile.primaryIndustry),
+    [offeringCategories, parsedProfile.primaryIndustry]
+  );
 
   async function seedDemoData(userId: string, savedCompanyId: string) {
     const supabase = createClient();
@@ -239,9 +244,8 @@ export function OnboardingGuidedForm({
     }
 
     if (targetStep === 1) {
-      if (!primaryIndustry) return "Odaberite primarnu djelatnost firme.";
       if (offeringCategories.length === 0) {
-        return "Odaberite barem jednu grupu usluga, radova ili robe koju nudite.";
+        return "Odaberite barem jednu stvar koju vaša firma stvarno nudi.";
       }
     }
 
@@ -296,14 +300,14 @@ export function OnboardingGuidedForm({
 
     const profileContext = buildProfileContextText({
       description,
-      primaryIndustry,
+      primaryIndustry: derivedPrimaryIndustry,
       offeringCategories,
       preferredTenderTypes,
       regions,
     });
 
     const profileSeeds = buildProfileKeywordSeeds({
-      primaryIndustry,
+      primaryIndustry: derivedPrimaryIndustry,
       offeringCategories,
       preferredTenderTypes,
       companyDescription: description,
@@ -319,7 +323,7 @@ export function OnboardingGuidedForm({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           description,
-          primaryIndustry,
+          primaryIndustry: derivedPrimaryIndustry,
           offeringCategories,
           preferredTenderTypes,
           regions,
@@ -354,7 +358,7 @@ export function OnboardingGuidedForm({
       contact_phone: contactPhone.trim() || null,
       industry:
         serializeCompanyProfile({
-          primaryIndustry,
+          primaryIndustry: derivedPrimaryIndustry,
           offeringCategories,
           preferredTenderTypes,
           companyDescription: description,
@@ -521,63 +525,70 @@ export function OnboardingGuidedForm({
 
       {step === 1 ? (
         <div className="space-y-6 rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-sm sm:p-7">
-          <div>
-            <p className="text-sm font-semibold text-slate-700">Primarna djelatnost</p>
-            <p className="mt-1 text-sm text-slate-500">Odaberite ono po čemu vas najčešće treba prepoznati u tenderima.</p>
+          <div className="rounded-2xl border border-blue-100 bg-blue-50/70 p-5">
+            <p className="text-sm font-semibold text-slate-900">Odaberite sve što vaša firma stvarno radi</p>
+            <p className="mt-2 text-sm leading-6 text-slate-600">
+              Ne tražimo od vas jednu "primarnu djelatnost" jer mnoge firme nude više različitih usluga, roba i radova. Označite sve što realno nudite, a sistem će sam složiti fokus vašeg profila.
+            </p>
           </div>
-          <div className="grid gap-3 md:grid-cols-2">
-            {PRIMARY_INDUSTRY_OPTIONS.map((option) => (
-              <button
-                key={option.id}
-                type="button"
-                onClick={() => setPrimaryIndustry(option.id)}
-                className={cn(
-                  "rounded-2xl border p-4 text-left transition-all",
-                  primaryIndustry === option.id
-                    ? "border-blue-200 bg-blue-50/80 shadow-sm"
-                    : "border-slate-200 bg-slate-50/50 hover:border-slate-300 hover:bg-white"
-                )}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-semibold text-slate-900">{option.label}</p>
-                    <p className="mt-2 text-sm leading-6 text-slate-500">{option.description}</p>
-                  </div>
-                  {primaryIndustry === option.id ? <Check className="mt-0.5 size-4 text-blue-700" /> : null}
-                </div>
-              </button>
-            ))}
-          </div>
+          <div className="space-y-5">
+            {OFFERING_CATEGORY_GROUPS.map((group) => {
+              const groupOptions = OFFERING_CATEGORY_OPTIONS.filter((option) =>
+                group.optionIds.includes(option.id)
+              );
 
-          <div>
-            <p className="text-sm font-semibold text-slate-700">Šta tačno nudite</p>
-            <p className="mt-1 text-sm text-slate-500">Odaberite više opcija kako bismo što preciznije razumjeli vašu ponudu.</p>
-          </div>
-          <div className="grid gap-3 md:grid-cols-2">
-            {OFFERING_CATEGORY_OPTIONS.map((option) => {
-              const selected = offeringCategories.includes(option.id);
               return (
-                <button
-                  key={option.id}
-                  type="button"
-                  onClick={() => toggleSelection(option.id, offeringCategories, setOfferingCategories)}
-                  className={cn(
-                    "rounded-2xl border p-4 text-left transition-all",
-                    selected
-                      ? "border-slate-900 bg-slate-900 text-white shadow-sm"
-                      : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50"
-                  )}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className={cn("text-sm font-semibold", selected ? "text-white" : "text-slate-900")}>{option.label}</p>
-                      <p className={cn("mt-2 text-sm leading-6", selected ? "text-slate-300" : "text-slate-500")}>{option.description}</p>
-                    </div>
-                    {selected ? <Check className="mt-0.5 size-4 text-blue-200" /> : null}
+                <div key={group.id} className="rounded-2xl border border-slate-200 bg-slate-50/60 p-5">
+                  <div className="mb-4">
+                    <p className="text-sm font-semibold text-slate-900">{group.label}</p>
+                    <p className="mt-1 text-sm text-slate-500">{group.description}</p>
                   </div>
-                </button>
+                  <div className="grid gap-3 md:grid-cols-2">
+                    {groupOptions.map((option) => {
+                      const selected = offeringCategories.includes(option.id);
+
+                      return (
+                        <button
+                          key={option.id}
+                          type="button"
+                          onClick={() => toggleSelection(option.id, offeringCategories, setOfferingCategories)}
+                          className={cn(
+                            "rounded-2xl border p-4 text-left transition-all",
+                            selected
+                              ? "border-slate-900 bg-slate-900 text-white shadow-sm"
+                              : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50"
+                          )}
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <p className={cn("text-sm font-semibold", selected ? "text-white" : "text-slate-900")}>{option.label}</p>
+                              <p className={cn("mt-2 text-sm leading-6", selected ? "text-slate-300" : "text-slate-500")}>{option.description}</p>
+                            </div>
+                            {selected ? <Check className="mt-0.5 size-4 text-blue-200" /> : null}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
               );
             })}
+          </div>
+
+          <div className="rounded-2xl border border-slate-200 bg-white p-5">
+            <p className="text-sm font-semibold text-slate-900">Kako ćemo vas prepoznati u preporukama</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {derivedPrimaryIndustry ? (
+                <span className="rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
+                  Fokus firme: {getProfileOptionLabel(derivedPrimaryIndustry)}
+                </span>
+              ) : null}
+              {offeringCategories.map((item) => (
+                <span key={item} className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-700">
+                  {getProfileOptionLabel(item)}
+                </span>
+              ))}
+            </div>
           </div>
         </div>
       ) : null}
@@ -620,7 +631,12 @@ export function OnboardingGuidedForm({
               <MapPin className="size-4 text-blue-600" />
               <p className="text-sm font-semibold">Gdje se prijavljujete</p>
             </div>
-            <p className="mt-2 text-sm leading-6 text-slate-500">Odaberite regije u kojima realno možete izvršiti ugovor. Ako ništa ne odaberete, tretirat ćemo vas kao firmu koja radi na nivou cijele BiH.</p>
+            <p className="mt-2 text-sm leading-6 text-slate-500">Odaberite regije u kojima realno možete izvršiti ugovor. Možete birati kantone, gradove i općine — sve relevantne regije u BiH su zastupljene.</p>
+            <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4">
+              <p className="text-sm font-bold uppercase tracking-wide text-amber-800">
+                Ako ništa ne odaberete, tretirat ćemo vas kao firmu koja radi na nivou cijele BiH.
+              </p>
+            </div>
             <div className="mt-4">
               <RegionMultiSelect selectedRegions={regions} onChange={setRegions} />
             </div>
@@ -652,26 +668,32 @@ export function OnboardingGuidedForm({
           <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-5">
             <p className="text-sm font-semibold text-slate-900">Sažetak onoga što ćemo koristiti za preporuke</p>
             <div className="mt-4 flex flex-wrap gap-2">
-              {primaryIndustry ? (
+              {derivedPrimaryIndustry ? (
                 <span className="rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
-                  {PRIMARY_INDUSTRY_OPTIONS.find((item) => item.id === primaryIndustry)?.label}
+                  {getProfileOptionLabel(derivedPrimaryIndustry)}
                 </span>
               ) : null}
               {offeringCategories.map((item) => (
                 <span key={item} className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700">
-                  {OFFERING_CATEGORY_OPTIONS.find((option) => option.id === item)?.label}
+                  {getProfileOptionLabel(item)}
                 </span>
               ))}
               {preferredTenderTypes.map((item) => (
                 <span key={item} className="rounded-full border border-emerald-100 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
-                  {TENDER_TYPE_OPTIONS.find((option) => option.id === item)?.label}
+                  {getProfileOptionLabel(item)}
                 </span>
               ))}
-              {regions.map((region) => (
-                <span key={region} className="rounded-full border border-violet-100 bg-violet-50 px-3 py-1 text-xs font-semibold text-violet-700">
-                  {region}
+              {regions.length > 0 ? (
+                regions.map((region) => (
+                  <span key={region} className="rounded-full border border-violet-100 bg-violet-50 px-3 py-1 text-xs font-semibold text-violet-700">
+                    {region}
+                  </span>
+                ))
+              ) : (
+                <span className="rounded-full border border-violet-100 bg-violet-50 px-3 py-1 text-xs font-semibold text-violet-700">
+                  Cijela BiH
                 </span>
-              ))}
+              )}
             </div>
           </div>
         </div>

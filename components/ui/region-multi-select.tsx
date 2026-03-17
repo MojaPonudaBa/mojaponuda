@@ -1,7 +1,7 @@
 ﻿import * as React from "react"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { BIH_REGIONS } from "@/lib/constants/regions"
+import { BIH_REGION_GROUPS } from "@/lib/constants/regions"
 import { Check, ChevronsUpDown, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -60,36 +60,38 @@ export function RegionMultiSelect({
                 </div>
               ))
             ) : (
-              <span className="text-muted-foreground font-normal">Odaberite regije rada...</span>
+              <span className="text-muted-foreground font-normal">Odaberite gradove, općine ili kantone...</span>
             )}
           </div>
           <ChevronsUpDown className="ml-2 size-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[400px] p-0" align="start">
+      <PopoverContent className="w-[440px] p-0" align="start">
         <Command>
-          <CommandInput placeholder="Pretraži regiju..." />
+          <CommandInput placeholder="Pretraži grad, općinu ili kanton..." />
           <CommandList>
             <CommandEmpty>Regija nije pronađena.</CommandEmpty>
-            <CommandGroup className="max-h-64 overflow-auto">
-              {BIH_REGIONS.map((region) => (
-                <CommandItem
-                  key={region}
-                  onSelect={() => {
-                    toggleRegion(region)
-                  }}
-                  className="cursor-pointer"
-                >
-                  <Check
-                    className={cn(
-                      "mr-2 size-4",
-                      selectedRegions.includes(region) ? "opacity-100 text-blue-600" : "opacity-0"
-                    )}
-                  />
-                  {region}
-                </CommandItem>
-              ))}
-            </CommandGroup>
+            {BIH_REGION_GROUPS.map((group) => (
+              <CommandGroup key={group.label} heading={group.label} className="max-h-64 overflow-auto">
+                {group.regions.map((region) => (
+                  <CommandItem
+                    key={region}
+                    onSelect={() => {
+                      toggleRegion(region)
+                    }}
+                    className="cursor-pointer"
+                  >
+                    <Check
+                      className={cn(
+                        "mr-2 size-4",
+                        selectedRegions.includes(region) ? "opacity-100 text-blue-600" : "opacity-0"
+                      )}
+                    />
+                    {region}
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            ))}
           </CommandList>
         </Command>
       </PopoverContent>

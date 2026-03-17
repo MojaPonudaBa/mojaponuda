@@ -40,10 +40,10 @@ export default async function OnboardingPage() {
           <span className="font-heading text-3xl font-bold text-primary">.ba</span>
         </div>
         <h1 className="font-heading text-3xl font-bold text-slate-900">
-          Recite nam šta tačno tražite
+          Recite nam čime se vaša firma stvarno bavi
         </h1>
         <p className="mt-3 text-base text-slate-500 max-w-2xl mx-auto leading-7">
-          Kroz nekoliko kratkih koraka definišite čime se bavite, kakve tendere želite pratiti i gdje se prijavljujete. Što precizniji profil unesete sada, to će preporuke tendera biti korisnije već na prvom ulasku u dashboard.
+          Kroz nekoliko kratkih koraka unesite šta nudite, koje tendere želite pratiti i gdje realno možete izvršiti ugovor. Cilj je da profil bude jasan, potpun i bez zbunjujućih izbora, tako da preporuke tendera budu korisne već od prvog ulaska u dashboard.
         </p>
         <div className="mt-5 flex items-center justify-center gap-3">
           <Link
