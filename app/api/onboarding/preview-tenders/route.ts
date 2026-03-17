@@ -23,7 +23,6 @@ interface PreviewTender {
   deadline: string | null;
   estimated_value: number | null;
   contracting_authority: string | null;
-  reasons: string[];
 }
 
 interface PreviewTenderCandidate {
@@ -150,14 +149,13 @@ function toPreviewTenders(
     shortlistSize: 8,
   }).then((rerankedTenders) => ({
     tenders: rerankedTenders.map(
-      ({ tender, reasons }) =>
+      ({ tender }) =>
         ({
           id: tender.id,
           title: tender.title,
           deadline: tender.deadline,
           estimated_value: tender.estimated_value,
           contracting_authority: tender.contracting_authority,
-          reasons,
         }) satisfies PreviewTender
     ),
     summary,

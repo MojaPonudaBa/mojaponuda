@@ -55,7 +55,7 @@ export function PaywallModal({
           <ul className="space-y-2 text-sm">
             <li className="flex items-center gap-2">
               <CheckCircle className="size-4 text-emerald-500" />
-              <span>Pokretanje pripreme ponude kada odlučite aplicirati</span>
+              <span>Profesionalnu pripremu ponude kada odlučite aplicirati</span>
             </li>
             <li className="flex items-center gap-2">
               <CheckCircle className="size-4 text-emerald-500" />
@@ -67,7 +67,7 @@ export function PaywallModal({
             </li>
             <li className="flex items-center gap-2">
               <CheckCircle className="size-4 text-emerald-500" />
-              <span>Ko vam uzima poslove i šta dolazi prije konkurencije</span>
+              <span>Manje propuštenih detalja i više kontrole nad ponudom</span>
             </li>
           </ul>
         </div>

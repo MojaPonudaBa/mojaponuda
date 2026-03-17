@@ -54,11 +54,21 @@ export function ProfileSettings({ company }: ProfileSettingsProps) {
     parsedProfile.companyDescription ?? parsedProfile.legacyIndustryText ?? ""
   );
   const [cpvCodes, setCpvCodes] = useState<string[]>(company.cpv_codes || []);
-  const [keywords, setKeywords] = useState<string[]>(sanitizeSearchKeywords(company.keywords || []));
+  const [manualKeywords, setManualKeywords] = useState<string[]>(
+    sanitizeSearchKeywords(parsedProfile.manualKeywords ?? [])
+  );
+  const [hiddenGeneratedKeywords, setHiddenGeneratedKeywords] = useState<string[]>(
+    sanitizeSearchKeywords(
+      (company.keywords || []).filter(
+        (keyword) => !sanitizeSearchKeywords(parsedProfile.manualKeywords ?? []).includes(keyword)
+      )
+    )
+  );
   const [regions, setRegions] = useState<string[]>(company.operating_regions || []);
   
   const [generating, setGenerating] = useState(false);
   const [newKeyword, setNewKeyword] = useState("");
+  const [newCpvCode, setNewCpvCode] = useState("");
   const regionSelectionLabels = useMemo(() => getRegionSelectionLabels(regions), [regions]);
 
   async function generateProfile() {
@@ -80,11 +90,14 @@ export function ProfileSettings({ company }: ProfileSettingsProps) {
       const data = await res.json();
       if (res.ok) {
         const uniqueCpv = Array.from(new Set([...cpvCodes, ...(data.cpv_codes || [])]));
-        const uniqueKeywords = sanitizeSearchKeywords([...keywords, ...(data.keywords || [])]);
+        const uniqueHiddenKeywords = sanitizeSearchKeywords([
+          ...hiddenGeneratedKeywords,
+          ...(data.keywords || []),
+        ]);
         const uniqueRegions = Array.from(new Set([...regions, ...(data.suggested_regions || [])]));
 
         setCpvCodes(uniqueCpv);
-        setKeywords(uniqueKeywords);
+        setHiddenGeneratedKeywords(uniqueHiddenKeywords);
         setRegions(uniqueRegions);
       } else {
         setError("Greška pri generisanju profila: " + data.error);
@@ -104,9 +117,28 @@ export function ProfileSettings({ company }: ProfileSettingsProps) {
   function addKeyword(e: React.KeyboardEvent) {
     if (e.key === 'Enter' && newKeyword.trim()) {
       e.preventDefault();
-      setKeywords(sanitizeSearchKeywords([...keywords, newKeyword.trim()]));
+      setManualKeywords(sanitizeSearchKeywords([...manualKeywords, newKeyword.trim()]));
       setNewKeyword("");
     }
+  }
+
+  function addCpvCode(e?: React.KeyboardEvent) {
+    if (e && e.key !== 'Enter') {
+      return;
+    }
+
+    if (e) {
+      e.preventDefault();
+    }
+
+    const normalizedCode = newCpvCode.trim();
+
+    if (!normalizedCode) {
+      return;
+    }
+
+    setCpvCodes(Array.from(new Set([...cpvCodes, normalizedCode])));
+    setNewCpvCode("");
   }
 
   function removeRegionLabel(label: string) {
@@ -126,6 +158,10 @@ export function ProfileSettings({ company }: ProfileSettingsProps) {
     setSuccess(false);
 
     const supabase = createClient();
+    const combinedKeywords = sanitizeSearchKeywords([
+      ...hiddenGeneratedKeywords,
+      ...manualKeywords,
+    ]);
     
     const { error: updateError } = await supabase
       .from("companies")
@@ -139,9 +175,10 @@ export function ProfileSettings({ company }: ProfileSettingsProps) {
         industry: serializeCompanyProfile({
           ...parsedProfile,
           companyDescription: description,
+          manualKeywords,
         }),
         cpv_codes: cpvCodes,
-        keywords: sanitizeSearchKeywords(keywords),
+        keywords: combinedKeywords,
         operating_regions: regions,
       })
       .eq("id", company.id);
@@ -222,8 +259,8 @@ export function ProfileSettings({ company }: ProfileSettingsProps) {
             <Brain className="size-5" />
           </div>
           <div>
-            <h2 className="font-heading font-bold text-lg text-slate-900">Profil za preporuke tendera</h2>
-            <p className="text-sm text-slate-500">Podesite pojmove po kojima sistem traži vama relevantne tendere.</p>
+            <h2 className="font-heading font-bold text-lg text-slate-900">Profil preporuka</h2>
+            <p className="text-sm text-slate-500">Ovdje dopunjujete opis firme, svoje dodatne pojmove i CPV kodove.</p>
           </div>
         </div>
 
@@ -232,7 +269,7 @@ export function ProfileSettings({ company }: ProfileSettingsProps) {
             <div className="space-y-2">
               <Label className="text-purple-900 font-bold">Automatska priprema profila</Label>
               <p className="text-xs text-slate-500 mb-2">
-                Upišite čime se firma bavi. Sistem će predložiti precizne pojmove za pretragu tendera i odgovarajuće CPV kodove.
+                Upišite čime se firma bavi. Sistem će u pozadini doraditi preporuke i predložiti dodatne CPV kodove.
               </p>
               <Textarea 
                 placeholder="Npr. Izvodimo elektroinstalacione radove, održavamo javnu rasvjetu i isporučujemo kabel, razvodne ormare i prateću opremu..." 
@@ -247,20 +284,20 @@ export function ProfileSettings({ company }: ProfileSettingsProps) {
                 className="w-full mt-2 bg-purple-600 hover:bg-purple-700 text-white"
               >
                 {generating ? <Loader2 className="mr-2 size-4 animate-spin" /> : <Sparkles className="mr-2 size-4" />}
-                Pripremi ključne riječi i kodove
+                Dopuni profil i CPV kodove
               </Button>
             </div>
           </div>
 
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label>Pojmovi za pretragu tendera</Label>
+              <Label>Vaši dodatni pojmovi</Label>
               <p className="text-xs text-slate-500">
-                Ovdje držite kratke i precizne pojmove koji se stvarno pojavljuju u tenderima koje želite pratiti.
+                Ovdje vidite samo pojmove koje ste vi ručno unijeli. Sistemski pojmovi ostaju skriveni u pozadini.
               </p>
               <div className="flex gap-2">
                 <Input 
-                  placeholder="Dodaj pojam za pretragu..." 
+                  placeholder="Dodaj pojam koji želite pratiti..." 
                   value={newKeyword}
                   onChange={(e) => setNewKeyword(e.target.value)}
                   onKeyDown={addKeyword}
@@ -268,7 +305,7 @@ export function ProfileSettings({ company }: ProfileSettingsProps) {
                 />
                 <Button size="icon" variant="outline" onClick={() => {
                   if (newKeyword.trim()) {
-                    setKeywords(sanitizeSearchKeywords([...keywords, newKeyword.trim()]));
+                    setManualKeywords(sanitizeSearchKeywords([...manualKeywords, newKeyword.trim()]));
                     setNewKeyword("");
                   }
                 }}>
@@ -276,11 +313,11 @@ export function ProfileSettings({ company }: ProfileSettingsProps) {
                 </Button>
               </div>
               <div className="flex flex-wrap gap-2 p-3 bg-slate-50 rounded-xl border border-slate-100 min-h-[44px]">
-                {keywords.length === 0 && <span className="text-xs text-slate-400 italic">Nema unesenih pojmova za pretragu</span>}
-                {keywords.map(k => (
+                {manualKeywords.length === 0 && <span className="text-xs text-slate-400 italic">Nema ručno unesenih pojmova</span>}
+                {manualKeywords.map(k => (
                   <Badge key={k} variant="outline" className="bg-white border-slate-200 text-slate-700 gap-1 pr-1">
                     {k}
-                    <button onClick={() => removeTag(keywords, setKeywords, k)} className="hover:text-red-500"><X className="size-3" /></button>
+                    <button onClick={() => removeTag(manualKeywords, setManualKeywords, k)} className="hover:text-red-500"><X className="size-3" /></button>
                   </Badge>
                 ))}
               </div>
@@ -288,6 +325,21 @@ export function ProfileSettings({ company }: ProfileSettingsProps) {
 
             <div className="space-y-2">
               <Label>CPV Kodovi</Label>
+              <p className="text-xs text-slate-500">
+                Ovdje su svi trenutno dodijeljeni CPV kodovi. Možete dodati i svoje dodatne kodove.
+              </p>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Dodaj CPV kod, npr. 48000000-8"
+                  value={newCpvCode}
+                  onChange={(e) => setNewCpvCode(e.target.value)}
+                  onKeyDown={addCpvCode}
+                  className="max-w-xs"
+                />
+                <Button size="icon" variant="outline" onClick={() => addCpvCode()}>
+                  <Plus className="size-4" />
+                </Button>
+              </div>
               <div className="flex flex-wrap gap-2 p-3 bg-slate-50 rounded-xl border border-slate-100 min-h-[44px]">
                 {cpvCodes.length === 0 && <span className="text-xs text-slate-400 italic">Nema CPV kodova</span>}
                 {cpvCodes.map(c => (

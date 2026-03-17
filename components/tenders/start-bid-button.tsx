@@ -100,13 +100,13 @@ export function StartBidButton({ tenderId, existingBidId, variant = "default", c
           ) : (
             <>
               {isSubscribed ? <Sparkles className="mr-2 size-4" /> : <Lock className="mr-2 size-4" />}
-              {isSubscribed ? "Pokreni sigurniju pripremu" : "Otključaj sigurniju pripremu"}
+              Započni pripremu ponude
             </>
           )}
         </Button>
         {!isSubscribed ? (
           <p className="text-sm text-slate-500">
-            Uz puni paket dobijate početnu listu dokumenata i koraka, pa prije slanja lakše vidite šta još nedostaje.
+            Profesionalna priprema ponude otvara početnu listu koraka i dokumenata, tako da ranije vidite šta još nedostaje.
           </p>
         ) : null}
         {error && <p className="text-sm font-medium text-red-600">{error}</p>}
@@ -115,10 +115,10 @@ export function StartBidButton({ tenderId, existingBidId, variant = "default", c
       <PaywallModal
         isOpen={showPaywall}
         onClose={() => setShowPaywall(false)}
-        title={limitInfo ? "Dostigli ste limit paketa" : "Sigurnija priprema ponude je dostupna uz pretplatu"}
+        title={limitInfo ? "Dostigli ste limit paketa" : "Profesionalna priprema ponude je dostupna uz pretplatu"}
         description={limitInfo
           ? `Vaš trenutni paket omogućava maksimalno ${limitInfo?.limit} aktivnih tendera. Trenutno imate ${limitInfo?.current}. Nadogradite paket ako želite nastaviti rad bez blokade.`
-          : "Uz pretplatu dobijate pripremu ponude, početnu listu onoga što treba prikupiti i bolju kontrolu prije slanja."}
+          : "Uz pretplatu dobijate profesionalnu pripremu ponude, početnu listu onoga što treba prikupiti i jasniji pregled prije slanja."}
         limitType="tenders"
       />
     </>

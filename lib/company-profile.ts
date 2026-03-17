@@ -317,6 +317,7 @@ export interface StructuredCompanyProfile {
   offeringCategories: string[];
   preferredTenderTypes: string[];
   companyDescription: string | null;
+  manualKeywords?: string[];
 }
 
 export interface ParsedCompanyProfile {
@@ -324,6 +325,7 @@ export interface ParsedCompanyProfile {
   offeringCategories: string[];
   preferredTenderTypes: string[];
   companyDescription: string | null;
+  manualKeywords?: string[];
   legacyIndustryText: string | null;
 }
 
@@ -458,6 +460,8 @@ export function derivePrimaryIndustry(
 }
 
 export function serializeCompanyProfile(profile: ParsedCompanyProfile): string | null {
+  const manualKeywords = sanitizeSearchKeywords(profile.manualKeywords ?? []);
+
   const normalized: StructuredCompanyProfile = {
     version: 1,
     primaryIndustry: derivePrimaryIndustry(
@@ -467,6 +471,7 @@ export function serializeCompanyProfile(profile: ParsedCompanyProfile): string |
     offeringCategories: [...new Set(profile.offeringCategories)],
     preferredTenderTypes: [...new Set(profile.preferredTenderTypes)],
     companyDescription: profile.companyDescription?.trim() || null,
+    manualKeywords,
   };
 
   if (
@@ -474,6 +479,7 @@ export function serializeCompanyProfile(profile: ParsedCompanyProfile): string |
     normalized.offeringCategories.length === 0 &&
     normalized.preferredTenderTypes.length === 0 &&
     !normalized.companyDescription &&
+    manualKeywords.length === 0 &&
     !profile.legacyIndustryText?.trim()
   ) {
     return null;
@@ -489,6 +495,7 @@ export function parseCompanyProfile(industry: string | null | undefined): Parsed
       offeringCategories: [],
       preferredTenderTypes: [],
       companyDescription: null,
+      manualKeywords: [],
       legacyIndustryText: null,
     };
   }
@@ -501,6 +508,7 @@ export function parseCompanyProfile(industry: string | null | undefined): Parsed
         offeringCategories: parsed.offeringCategories ?? [],
         preferredTenderTypes: parsed.preferredTenderTypes ?? [],
         companyDescription: parsed.companyDescription ?? null,
+        manualKeywords: sanitizeSearchKeywords(parsed.manualKeywords ?? []),
         legacyIndustryText: null,
       };
     }
@@ -510,6 +518,7 @@ export function parseCompanyProfile(industry: string | null | undefined): Parsed
       offeringCategories: [],
       preferredTenderTypes: [],
       companyDescription: null,
+      manualKeywords: [],
       legacyIndustryText: industry,
     };
   }
@@ -519,6 +528,7 @@ export function parseCompanyProfile(industry: string | null | undefined): Parsed
     offeringCategories: [],
     preferredTenderTypes: [],
     companyDescription: null,
+    manualKeywords: [],
     legacyIndustryText: industry,
   };
 }

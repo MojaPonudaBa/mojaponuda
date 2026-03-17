@@ -3,6 +3,13 @@ import { getDemoSubscription, isDemoUser } from "@/lib/demo";
 import type { Subscription } from "@/types/database";
 import { DEFAULT_PLAN, getPlanFromVariantId, type Plan, PLANS } from "@/lib/plans";
 
+const COMPLIMENTARY_PRO_EMAILS = ["marin.kolenda@outlook.com"];
+
+function hasComplimentaryProAccess(email?: string | null): boolean {
+  const normalizedEmail = email?.trim().toLowerCase();
+  return normalizedEmail ? COMPLIMENTARY_PRO_EMAILS.includes(normalizedEmail) : false;
+}
+
 export type SubscriptionStatus = {
   isSubscribed: boolean;
   subscription: Subscription | null;
@@ -42,6 +49,14 @@ export async function getSubscriptionStatus(
       isSubscribed: true,
       subscription: demoSub,
       plan: proPlan,
+    };
+  }
+
+  if (hasComplimentaryProAccess(email)) {
+    return {
+      isSubscribed: true,
+      subscription,
+      plan: PLANS.pro,
     };
   }
 

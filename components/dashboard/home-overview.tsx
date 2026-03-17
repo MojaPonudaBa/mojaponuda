@@ -334,7 +334,7 @@ export function DashboardHomeOverview({
           <div className="flex flex-col gap-4 border-b border-slate-100 px-7 py-6 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Aktivne ponude</p>
-              <h2 className="mt-2 font-heading text-2xl font-bold text-slate-950">Ponude koje nose rizik ili momentum</h2>
+              <h2 className="mt-2 font-heading text-2xl font-bold text-slate-950">Ponude koje vam mogu donijeti posao</h2>
             </div>
             <Link
               href="/dashboard/bids"

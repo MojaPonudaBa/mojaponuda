@@ -64,7 +64,6 @@ interface PreviewTender {
   deadline: string | null;
   estimated_value: number | null;
   contracting_authority: string | null;
-  reasons: string[];
 }
 
 const STEPS = [
@@ -697,13 +696,6 @@ export function OnboardingValueFirstForm({
                     ) : null}
                   </div>
                   <p className="mt-2 text-sm text-slate-500">{tender.contracting_authority ?? "Nepoznat naručilac"}</p>
-                  <div className="mt-4 space-y-2">
-                    {tender.reasons.map((reason) => (
-                      <div key={reason} className="rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-sm text-slate-700">
-                        {reason}
-                      </div>
-                    ))}
-                  </div>
                   <div className="mt-4 border-t border-slate-100 pt-4 text-xs font-medium text-slate-500">
                     Rok: {formatDate(tender.deadline)}
                   </div>

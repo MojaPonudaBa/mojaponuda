@@ -59,7 +59,7 @@ export function QuickScanButton({ tenderId, isSubscribed }: QuickScanButtonProps
         className="gap-2 border-purple-200 text-purple-700 hover:bg-purple-50 hover:text-purple-800"
       >
         {isSubscribed ? <Brain className="size-4" /> : <Lock className="size-4" />}
-        Brza Analiza
+        Analiza tendera
       </Button>
 
       <Dialog open={open} onOpenChange={setOpen}>
