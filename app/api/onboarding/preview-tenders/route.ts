@@ -27,6 +27,32 @@ interface PreviewTenderCandidate {
   cpv_code: string | null;
 }
 
+function toPreviewTenders(
+  candidates: PreviewTenderCandidate[],
+  summary: string,
+  recommendationContext: ReturnType<typeof buildRecommendationContext>
+) {
+  const rankedTenders = rankTenderRecommendations(candidates, recommendationContext);
+
+  return maybeRerankTenderRecommendationsWithAI(rankedTenders, recommendationContext, {
+    limit: 6,
+    shortlistSize: 8,
+  }).then((rerankedTenders) => ({
+    tenders: rerankedTenders.map(
+      ({ tender, reasons }) =>
+        ({
+          id: tender.id,
+          title: tender.title,
+          deadline: tender.deadline,
+          estimated_value: tender.estimated_value,
+          contracting_authority: tender.contracting_authority,
+          reasons,
+        }) satisfies PreviewTender
+    ),
+    summary,
+  }));
+}
+
 export async function POST(request: Request) {
   const supabase = await createClient();
 
@@ -67,10 +93,12 @@ export async function POST(request: Request) {
       });
     }
 
-    let query = supabase
+    const baseQuery = supabase
       .from("tenders")
       .select("id, title, deadline, estimated_value, contracting_authority, contract_type, raw_description, cpv_code")
       .gt("deadline", new Date().toISOString());
+
+    let query = baseQuery;
 
     if (
       recommendationContext.preferredContractTypes.length > 0 &&
@@ -83,46 +111,63 @@ export async function POST(request: Request) {
 
     const { data, error } = await query.order("deadline", { ascending: true }).limit(72);
 
-    if (error) {
-      throw error;
+    if (!error) {
+      const candidateTenders = (data ?? []) as PreviewTenderCandidate[];
+      const result = await toPreviewTenders(
+        candidateTenders,
+        candidateTenders.length > 0
+          ? `Na osnovu osnovnih podataka izdvojili smo ${Math.min(candidateTenders.length, 6)} tendera koji najviše liče na ono što radite.`
+          : "Za ovaj osnovni unos još nema dovoljno jasnih poklapanja. U sljedećem koraku dopunite profil i dobit ćete preciznije preporuke.",
+        recommendationContext
+      );
+
+      return NextResponse.json(result);
     }
 
-    const candidateTenders = (data ?? []) as PreviewTenderCandidate[];
+    console.error("Preview tenders precise query error:", error);
 
-    const rankedTenders = rankTenderRecommendations(candidateTenders, recommendationContext);
+    let fallbackQuery = baseQuery;
 
-    const rerankedTenders = await maybeRerankTenderRecommendationsWithAI(
-      rankedTenders,
-      recommendationContext,
-      {
-        limit: 6,
-        shortlistSize: 8,
-      }
+    if (
+      recommendationContext.preferredContractTypes.length > 0 &&
+      recommendationContext.preferredContractTypes.length < 3
+    ) {
+      fallbackQuery = fallbackQuery.in(
+        "contract_type",
+        recommendationContext.preferredContractTypes
+      );
+    }
+
+    const { data: fallbackData, error: fallbackError } = await fallbackQuery
+      .order("deadline", { ascending: true })
+      .limit(160);
+
+    if (fallbackError) {
+      console.error("Preview tenders fallback query error:", fallbackError);
+
+      return NextResponse.json({
+        tenders: [],
+        summary:
+          "Početni pregled je trenutno ograničen za ovaj osnovni unos. Nastavite dalje i u sljedećem koraku ćemo izoštriti preporuke.",
+      });
+    }
+
+    const fallbackCandidates = (fallbackData ?? []) as PreviewTenderCandidate[];
+    const fallbackResult = await toPreviewTenders(
+      fallbackCandidates,
+      fallbackCandidates.length > 0
+        ? "Prikazujemo širi početni pregled tendera dok izoštravamo preporuke za vaš profil."
+        : "Za ovaj osnovni unos još nema dovoljno jasnih poklapanja. U sljedećem koraku dopunite profil i dobit ćete preciznije preporuke.",
+      recommendationContext
     );
 
-    const tenders = rerankedTenders.map(
-      ({ tender, reasons }) =>
-        ({
-          id: tender.id,
-          title: tender.title,
-          deadline: tender.deadline,
-          estimated_value: tender.estimated_value,
-          contracting_authority: tender.contracting_authority,
-          reasons,
-        }) satisfies PreviewTender
-    );
-
-    const summary =
-      tenders.length > 0
-        ? `Na osnovu osnovnih podataka izdvojili smo ${tenders.length} tendera koji najviše liče na ono što radite.`
-        : "Za ovaj osnovni unos još nema dovoljno jasnih poklapanja. U sljedećem koraku dopunite profil i dobit ćete preciznije preporuke.";
-
-    return NextResponse.json({ tenders, summary });
+    return NextResponse.json(fallbackResult);
   } catch (error) {
     console.error("Preview tenders error:", error);
-    return NextResponse.json(
-      { error: "Nismo uspjeli pripremiti početni pregled tendera." },
-      { status: 500 }
-    );
+    return NextResponse.json({
+      tenders: [],
+      summary:
+        "Početni pregled je trenutno ograničen za ovaj osnovni unos. Nastavite dalje i u sljedećem koraku ćemo izoštriti preporuke.",
+    });
   }
 }
