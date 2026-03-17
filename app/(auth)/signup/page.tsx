@@ -4,7 +4,6 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
-import { getBaseUrl } from "@/lib/site-url";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,9 +16,15 @@ const errorMessages: Record<string, string> = {
   "Too many requests": "Previše pokušaja. Pokušajte ponovo za nekoliko minuta.",
   "Signup requires a valid password":
     "Unesite validnu lozinku.",
+  "Email link is invalid":
+    "Link za potvrdu nije ispravno podešen. Provjerite auth postavke i pokušajte ponovo.",
 };
 
 function translateError(message: string): string {
+  if (message.toLowerCase().includes("redirect") || message.toLowerCase().includes("email link")) {
+    return "Registracija trenutno nije dostupna zbog auth postavki za potvrdu emaila. Pokušajte ponovo za nekoliko minuta.";
+  }
+
   return errorMessages[message] || "Greška pri registraciji. Pokušajte ponovo.";
 }
 
@@ -69,7 +74,6 @@ export default function SignupPage() {
     }
 
     const supabase = createClient();
-    const baseUrl = getBaseUrl();
 
     // 1. Registruj korisnika, sačuvaj naziv firme u user_metadata
     const { data, error: signUpError } = await supabase.auth.signUp({
@@ -79,7 +83,6 @@ export default function SignupPage() {
         data: {
           company_name: companyName.trim(),
         },
-        emailRedirectTo: `${baseUrl}/auth/confirm?next=/onboarding`,
       },
     });
 
