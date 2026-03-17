@@ -394,8 +394,36 @@ export async function getCompetitorAnalysis(
         .limit(2000)
     : { data: [] };
 
+  let awardRows = [...(categoryAwards ?? []), ...(authorityAwards ?? [])] as AwardRow[];
+  if (awardRows.length === 0) {
+    const { data: fallbackAwards } = await supabase
+      .from("award_decisions")
+      .select(
+        "portal_award_id, winner_name, winner_jib, winning_price, contract_type, award_date, total_bidders_count, discount_pct, procedure_type, contracting_authority_jib"
+      )
+      .not("winner_jib", "is", null)
+      .order("award_date", { ascending: false })
+      .limit(2000);
+
+    awardRows = (fallbackAwards ?? []) as AwardRow[];
+  }
+
+  const missingAuthorityJibs = uniqueStrings(
+    awardRows.map((award) => award.contracting_authority_jib).filter((jib) => jib && !authorityMap.has(jib))
+  );
+  if (missingAuthorityJibs.length > 0) {
+    const { data: fallbackAuthorityRows } = await supabase
+      .from("contracting_authorities")
+      .select("jib, name, city, authority_type")
+      .in("jib", missingAuthorityJibs);
+
+    for (const authority of (fallbackAuthorityRows ?? []) as AuthorityRow[]) {
+      authorityMap.set(authority.jib, authority);
+    }
+  }
+
   const awardMap = new Map<string, AwardRow>();
-  for (const award of [...(categoryAwards ?? []), ...(authorityAwards ?? [])] as AwardRow[]) {
+  for (const award of awardRows) {
     awardMap.set(award.portal_award_id, award);
   }
 
@@ -713,7 +741,7 @@ export async function getMarketOverview(
   ]);
   const profileScoped = matchedActiveTenders.length > 0 || matchedCategories.length > 0 || matchedAuthorityJibs.length > 0;
 
-  const yearAwards = profileScoped
+  const scopedYearAwards = profileScoped
     ? ((allYearAwards ?? []) as AwardRow[]).filter((award) => {
         const categoryMatch = Boolean(
           award.contract_type && matchedCategories.includes(award.contract_type)
@@ -725,11 +753,7 @@ export async function getMarketOverview(
       })
     : ((allYearAwards ?? []) as AwardRow[]);
 
-  const recentAwards = yearAwards.filter(
-    (award) => Boolean(award.award_date && award.award_date >= ninetyDaysAgo)
-  );
-
-  const upcomingPlansData = profileScoped
+  const scopedUpcomingPlansData = profileScoped
     ? ((allUpcomingPlans ?? []) as PlannedScopeRow[])
         .filter((plan) =>
           isPlanRelevant(
@@ -743,8 +767,24 @@ export async function getMarketOverview(
         .slice(0, 8)
     : ((allUpcomingPlans ?? []) as PlannedScopeRow[]).slice(0, 8);
 
-  const activeTenderSource = profileScoped ? matchedActiveTenders : allActiveRows;
-  const activeTenderCount = profileScoped ? matchedActiveTenders.length : allActiveTenderCount ?? 0;
+  const hasScopedMarketCoverage =
+    matchedActiveTenders.length >= 3 || scopedYearAwards.length > 0 || scopedUpcomingPlansData.length > 0;
+  const useProfileScope = profileScoped && hasScopedMarketCoverage;
+
+  const yearAwards = useProfileScope
+    ? scopedYearAwards
+    : ((allYearAwards ?? []) as AwardRow[]);
+
+  const recentAwards = yearAwards.filter(
+    (award) => Boolean(award.award_date && award.award_date >= ninetyDaysAgo)
+  );
+
+  const upcomingPlansData = useProfileScope
+    ? scopedUpcomingPlansData
+    : ((allUpcomingPlans ?? []) as PlannedScopeRow[]).slice(0, 8);
+
+  const activeTenderSource = useProfileScope ? matchedActiveTenders : allActiveRows;
+  const activeTenderCount = useProfileScope ? matchedActiveTenders.length : allActiveTenderCount ?? 0;
   const activeTenderValue = activeTenderSource.reduce(
     (sum, tender) => sum + (Number(tender.estimated_value) || 0),
     0
@@ -861,7 +901,11 @@ export async function getMarketOverview(
   }
 
   const topAuthoritiesBase = new Map<string, { name: string; jib: string | null; count: number; total_value: number }>();
-  for (const tender of activeTenderSource.filter((tender) => tender.created_at >= startOfMonth)) {
+  const currentMonthAuthorityTenders = activeTenderSource.filter((tender) => tender.created_at >= startOfMonth);
+  const authorityTenderSource = currentMonthAuthorityTenders.length > 0
+    ? currentMonthAuthorityTenders
+    : activeTenderSource;
+  for (const tender of authorityTenderSource) {
     const key = tender.contracting_authority ?? "Nepoznat naručilac";
     const entry = topAuthoritiesBase.get(key);
     const amount = Number(tender.estimated_value) || 0;
@@ -963,6 +1007,6 @@ export async function getMarketOverview(
     sourceTerms: searchTerms,
     matchedCategories,
     matchedAuthorityCount: matchedAuthorityJibs.length,
-    profileScoped,
+    profileScoped: useProfileScope,
   };
 }
