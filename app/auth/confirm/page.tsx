@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { Suspense, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { EmailOtpType } from "@supabase/supabase-js";
@@ -51,7 +51,7 @@ function getOtpType(value: string | null): EmailOtpType {
   return "email";
 }
 
-export default function ConfirmEmailPage() {
+function ConfirmEmailContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [error, setError] = useState<string | null>(null);
@@ -146,5 +146,34 @@ export default function ConfirmEmailPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+function ConfirmEmailFallback() {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4 py-12">
+      <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-xl shadow-blue-500/5 sm:p-10">
+        <div className="mb-6 flex justify-center">
+          <div className="rounded-full bg-blue-50 p-4">
+            <Loader2 className="size-12 animate-spin text-blue-600" />
+          </div>
+        </div>
+
+        <h1 className="font-heading text-2xl font-bold text-slate-900">
+          Pripremamo potvrdu email adrese
+        </h1>
+        <p className="mt-3 text-sm leading-6 text-slate-500">
+          Sačekajte trenutak dok učitamo podatke iz linka za potvrdu.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+export default function ConfirmEmailPage() {
+  return (
+    <Suspense fallback={<ConfirmEmailFallback />}>
+      <ConfirmEmailContent />
+    </Suspense>
   );
 }
