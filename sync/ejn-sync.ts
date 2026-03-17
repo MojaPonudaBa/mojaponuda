@@ -11,6 +11,7 @@ import {
   fetchAwardedSupplierGroups,
   fetchContractingAuthorities,
   fetchSuppliers,
+  fetchSuppliersByIds,
   fetchSupplierGroupSupplierLinks,
   fetchPlannedProcurements,
   type EjnProcurementNotice,
@@ -125,6 +126,55 @@ async function buildSupplierPortalMap(
   }
 
   return map;
+}
+
+async function backfillMissingSupplierPortalMapEntries(
+  supabase: ReturnType<typeof createServiceClient>,
+  supplierPortalMap: Map<string, { jib: string; name: string }>,
+  supplierPortalIds: string[]
+): Promise<Map<string, { jib: string; name: string }>> {
+  const missingSupplierPortalIds = uniqueNonEmpty(supplierPortalIds).filter(
+    (supplierPortalId) => !supplierPortalMap.has(supplierPortalId)
+  );
+
+  if (missingSupplierPortalIds.length === 0) {
+    return supplierPortalMap;
+  }
+
+  const missingSuppliers = await fetchSuppliersByIds(missingSupplierPortalIds);
+
+  for (const supplier of missingSuppliers) {
+    if (!supplier.SupplierId || !supplier.Jib) {
+      continue;
+    }
+
+    const row = {
+      portal_id: supplier.SupplierId,
+      name: supplier.Name || "Nepoznato",
+      jib: supplier.Jib,
+      city: supplier.City || null,
+      municipality: supplier.Municipality || null,
+    };
+
+    const { data: existing } = await supabase
+      .from("market_companies")
+      .select("id")
+      .eq("jib", supplier.Jib)
+      .single();
+
+    if (existing) {
+      await supabase.from("market_companies").update(row).eq("jib", supplier.Jib);
+    } else {
+      await supabase.from("market_companies").insert(row);
+    }
+
+    supplierPortalMap.set(supplier.SupplierId, {
+      jib: supplier.Jib,
+      name: supplier.Name || "Nepoznato",
+    });
+  }
+
+  return supplierPortalMap;
 }
 
 function buildWinningSupplierPortalMap(
@@ -272,9 +322,15 @@ async function syncAwardDecisions(
     const supplierGroupIds = uniqueNonEmpty(awardedGroups.map((group) => group.SupplierGroupId));
     const groupLinks = await fetchSupplierGroupSupplierLinks(supplierGroupIds);
     const winningSupplierPortalMap = buildWinningSupplierPortalMap(awardedGroups, groupLinks);
-    const supplierPortalMap = await buildSupplierPortalMap(
+    const supplierPortalIds = [...winningSupplierPortalMap.values()];
+    let supplierPortalMap = await buildSupplierPortalMap(
       supabase,
-      [...winningSupplierPortalMap.values()]
+      supplierPortalIds
+    );
+    supplierPortalMap = await backfillMissingSupplierPortalMapEntries(
+      supabase,
+      supplierPortalMap,
+      supplierPortalIds
     );
     const tenderIdMap = await buildTenderIdMap(
       supabase,

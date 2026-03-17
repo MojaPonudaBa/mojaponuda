@@ -257,8 +257,8 @@ export async function fetchSupplierGroupSupplierLinks(
   }
 
   const batches: string[][] = [];
-  for (let index = 0; index < supplierGroupIds.length; index += 25) {
-    batches.push(supplierGroupIds.slice(index, index + 25));
+  for (let index = 0; index < supplierGroupIds.length; index += 10) {
+    batches.push(supplierGroupIds.slice(index, index + 10));
   }
 
   const allLinks: EjnSupplierGroupSupplierLink[] = [];
@@ -327,6 +327,44 @@ export async function fetchSuppliers(
     City: r.CityName || null,
     Municipality: null,
   }));
+}
+
+export async function fetchSuppliersByIds(
+  supplierIds: string[]
+): Promise<EjnSupplier[]> {
+  if (supplierIds.length === 0) {
+    return [];
+  }
+
+  const batches: string[][] = [];
+  for (let index = 0; index < supplierIds.length; index += 10) {
+    batches.push(supplierIds.slice(index, index + 10));
+  }
+
+  const allSuppliers: EjnSupplier[] = [];
+
+  for (const batch of batches) {
+    const filter = batch.map((supplierId) => `Id eq ${supplierId}`).join(" or ");
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const raw = await fetchODataPages<any>(
+      "/Suppliers",
+      "Id desc",
+      filter
+    );
+
+    allSuppliers.push(
+      ...raw.map((r) => ({
+        SupplierId: String(r.Id ?? ""),
+        Name: r.Name || "Nepoznato",
+        Jib: r.TaxNumber || r.Jib || "",
+        City: r.CityName || null,
+        Municipality: null,
+      }))
+    );
+  }
+
+  return allSuppliers;
 }
 
 export async function fetchPlannedProcurements(
