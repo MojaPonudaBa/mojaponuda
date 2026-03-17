@@ -1,15 +1,24 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { getProfileOptionLabel } from "@/lib/company-profile";
+import { maybeRerankTenderRecommendationsWithAI } from "@/lib/tender-recommendation-rerank";
 import {
-  buildProfileKeywordSeeds,
-  getPreferredContractTypes,
-  getProfileOptionLabel,
-  parseCompanyProfile,
-  sanitizeSearchKeywords,
-} from "@/lib/company-profile";
-import { buildRegionSearchTerms, getRegionSelectionLabels } from "@/lib/constants/regions";
+  buildRecommendationContext,
+  buildRecommendationSearchCondition,
+  rankTenderRecommendations,
+} from "@/lib/tender-recommendations";
 import { Sparkles, ArrowRight, Briefcase } from "lucide-react";
-import type { Tender } from "@/types/database";
+
+interface RecommendationCardTender {
+  id: string;
+  title: string;
+  deadline: string | null;
+  estimated_value: number | null;
+  contracting_authority: string | null;
+  contract_type: string | null;
+  raw_description: string | null;
+  cpv_code: string | null;
+}
 
 export async function RecommendedTenders() {
   const supabase = await createClient();
@@ -22,25 +31,21 @@ export async function RecommendedTenders() {
   // Get company keywords and regions
   const { data: company } = await supabase
     .from("companies")
-    .select("industry, keywords, operating_regions")
+    .select("industry, keywords, cpv_codes, operating_regions")
     .eq("user_id", user.id)
     .single();
 
-  const profile = parseCompanyProfile(company?.industry);
-  const preferredContractTypes = getPreferredContractTypes(
-    profile.preferredTenderTypes
-  );
-  const searchTerms = [
-    ...sanitizeSearchKeywords([
-      ...(company?.keywords || []),
-      ...buildProfileKeywordSeeds(profile),
-    ]),
-  ];
-  const focusLabel = profile.primaryIndustry ? getProfileOptionLabel(profile.primaryIndustry) : null;
-  const preferredLabels = profile.preferredTenderTypes.map((item) => getProfileOptionLabel(item));
-  const regionLabels = getRegionSelectionLabels(company?.operating_regions || []);
+  const recommendationContext = company ? buildRecommendationContext(company) : null;
+  const searchCondition = recommendationContext
+    ? buildRecommendationSearchCondition(recommendationContext)
+    : "";
+  const focusLabel = recommendationContext?.profile.primaryIndustry
+    ? getProfileOptionLabel(recommendationContext.profile.primaryIndustry)
+    : null;
+  const preferredLabels = recommendationContext?.profile.preferredTenderTypes.map((item) => getProfileOptionLabel(item)) ?? [];
+  const regionLabels = recommendationContext?.regionLabels ?? [];
 
-  if (!company || searchTerms.length === 0) {
+  if (!company || !recommendationContext || !searchCondition) {
     return (
       <section className="rounded-[1.75rem] border border-slate-200/80 bg-white p-6 shadow-[0_18px_50px_-34px_rgba(15,23,42,0.18)]">
         <div className="flex items-start justify-between gap-6">
@@ -72,47 +77,42 @@ export async function RecommendedTenders() {
     );
   }
 
+  const resolvedRecommendationContext = recommendationContext;
+
   // Find matching tenders
   let query = supabase
     .from("tenders")
-    .select("id, title, deadline, estimated_value, contracting_authority")
+    .select("id, title, deadline, estimated_value, contracting_authority, contract_type, raw_description, cpv_code")
     .gt("deadline", new Date().toISOString());
 
-  if (preferredContractTypes.length > 0 && preferredContractTypes.length < 3) {
-    query = query.in("contract_type", preferredContractTypes);
+  if (
+    resolvedRecommendationContext.preferredContractTypes.length > 0 &&
+    resolvedRecommendationContext.preferredContractTypes.length < 3
+  ) {
+    query = query.in("contract_type", resolvedRecommendationContext.preferredContractTypes);
   }
 
-  // Construct OR filter for keywords
-  const keywordConditions = searchTerms
-    .map((kw) => `title.ilike.%${kw}%,raw_description.ilike.%${kw}%`)
-    .join(",");
+  query = query.or(searchCondition);
 
-  if (keywordConditions) {
-    query = query.or(keywordConditions);
-  } else {
-    return null;
-  }
-
-  // If company has specified regions, also filter by those regions
-  const regionSearchTerms = buildRegionSearchTerms(company.operating_regions || []);
-  if (regionSearchTerms.length > 0) {
-    const regionConditions = regionSearchTerms
-      .map(
-        (reg) =>
-          `title.ilike.%${reg}%,raw_description.ilike.%${reg}%,contracting_authority.ilike.%${reg}%`
-      )
-      .join(",");
-    
-    if (regionConditions) {
-      query = query.or(regionConditions);
-    }
-  }
-
-  const { data: tenders } = await query
+  const { data } = await query
     .order("deadline", { ascending: true })
-    .limit(3);
+    .limit(72);
 
-  if (!tenders || tenders.length === 0) return null;
+  const rankedTenders = rankTenderRecommendations(
+    (data ?? []) as RecommendationCardTender[],
+    resolvedRecommendationContext
+  );
+
+  const tenders = await maybeRerankTenderRecommendationsWithAI(
+    rankedTenders,
+    resolvedRecommendationContext,
+    {
+      limit: 3,
+      shortlistSize: 6,
+    }
+  );
+
+  if (tenders.length === 0) return null;
 
   return (
     <section className="rounded-[1.75rem] border border-slate-200/80 bg-white p-6 shadow-[0_18px_50px_-34px_rgba(15,23,42,0.18)]">
@@ -156,7 +156,7 @@ export async function RecommendedTenders() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {tenders.map((tender) => (
+        {tenders.map(({ tender, reasons }) => (
           <Link
             key={tender.id}
             href={`/dashboard/tenders/${tender.id}`}
@@ -186,7 +186,7 @@ export async function RecommendedTenders() {
                 {tender.contracting_authority}
               </p>
               <p className="mt-3 text-xs leading-5 text-slate-500">
-                Zašto odgovara: poklapanje s vašim profilom djelatnosti, tipom tendera i područjem rada.
+                Zašto odgovara: {reasons[0] ?? "Poklapa se s vašim profilom."}
               </p>
 
               <div className="mt-auto flex items-center gap-2 border-t border-slate-100 pt-4 text-xs font-medium text-slate-500">

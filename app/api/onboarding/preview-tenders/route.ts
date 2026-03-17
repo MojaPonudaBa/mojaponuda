@@ -1,13 +1,11 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { maybeRerankTenderRecommendationsWithAI } from "@/lib/tender-recommendation-rerank";
 import {
-  buildProfileKeywordSeeds,
-  getPreferredContractTypes,
-  getProfileOptionLabel,
-  sanitizeSearchKeywords,
-  type ParsedCompanyProfile,
-} from "@/lib/company-profile";
-import { buildRegionSearchTerms, getRegionSelectionLabels } from "@/lib/constants/regions";
+  buildRecommendationContext,
+  buildRecommendationSearchCondition,
+  rankTenderRecommendations,
+} from "@/lib/tender-recommendations";
 
 interface PreviewTender {
   id: string;
@@ -16,6 +14,17 @@ interface PreviewTender {
   estimated_value: number | null;
   contracting_authority: string | null;
   reasons: string[];
+}
+
+interface PreviewTenderCandidate {
+  id: string;
+  title: string;
+  deadline: string | null;
+  estimated_value: number | null;
+  contracting_authority: string | null;
+  contract_type: string | null;
+  raw_description: string | null;
+  cpv_code: string | null;
 }
 
 export async function POST(request: Request) {
@@ -44,20 +53,21 @@ export async function POST(request: Request) {
       ? body.regions.filter((item: unknown): item is string => typeof item === "string")
       : [];
 
-    const profile: ParsedCompanyProfile = {
-      primaryIndustry: null,
-      offeringCategories,
-      preferredTenderTypes,
-      companyDescription: null,
-      legacyIndustryText: null,
-    };
+    const recommendationContext = buildRecommendationContext({
+      industry: JSON.stringify({
+        version: 1,
+        primaryIndustry: null,
+        offeringCategories,
+        preferredTenderTypes,
+        companyDescription: null,
+      }),
+      keywords: [],
+      cpv_codes: [],
+      operating_regions: regions,
+    });
+    const searchCondition = buildRecommendationSearchCondition(recommendationContext);
 
-    const keywordSeeds = sanitizeSearchKeywords(buildProfileKeywordSeeds(profile)).slice(0, 12);
-    const contractTypes = getPreferredContractTypes(preferredTenderTypes);
-    const regionTerms = buildRegionSearchTerms(regions);
-    const regionLabels = getRegionSelectionLabels(regions);
-
-    if (keywordSeeds.length === 0) {
+    if (!searchCondition) {
       return NextResponse.json({
         tenders: [],
         summary: "Odaberite barem jednu djelatnost da pokažemo prve tendere.",
@@ -66,95 +76,48 @@ export async function POST(request: Request) {
 
     let query = supabase
       .from("tenders")
-      .select("id, title, deadline, estimated_value, contracting_authority, contract_type, raw_description")
+      .select("id, title, deadline, estimated_value, contracting_authority, contract_type, raw_description, cpv_code")
       .gt("deadline", new Date().toISOString());
 
-    if (contractTypes.length > 0 && contractTypes.length < 3) {
-      query = query.in("contract_type", contractTypes);
+    if (
+      recommendationContext.preferredContractTypes.length > 0 &&
+      recommendationContext.preferredContractTypes.length < 3
+    ) {
+      query = query.in("contract_type", recommendationContext.preferredContractTypes);
     }
 
-    const keywordConditions = keywordSeeds
-      .map((keyword) => `title.ilike.%${keyword}%,raw_description.ilike.%${keyword}%`)
-      .join(",");
+    query = query.or(searchCondition);
 
-    if (keywordConditions) {
-      query = query.or(keywordConditions);
-    }
-
-    const { data, error } = await query.order("deadline", { ascending: true }).limit(36);
+    const { data, error } = await query.order("deadline", { ascending: true }).limit(72);
 
     if (error) {
       throw error;
     }
 
-    const tenders = (data ?? [])
-      .map((tender) => {
-        const haystack = [
-          tender.title,
-          tender.contracting_authority,
-          tender.contract_type,
-          tender.raw_description,
-        ]
-          .filter(Boolean)
-          .join(" ")
-          .toLowerCase();
+    const candidateTenders = (data ?? []) as PreviewTenderCandidate[];
 
-        const reasons: string[] = [];
-        let score = 0;
+    const rankedTenders = rankTenderRecommendations(candidateTenders, recommendationContext);
 
-        if (keywordSeeds.some((keyword) => haystack.includes(keyword.toLowerCase()))) {
-          reasons.push(
-            offeringCategories.length > 0
-              ? `Poklapa se s djelatnošću: ${offeringCategories
-                  .slice(0, 2)
-                  .map((item: string) => getProfileOptionLabel(item))
-                  .join(", ")}`
-              : "Poklapa se s vašom djelatnošću"
-          );
-          score += 2;
-        }
+    const rerankedTenders = await maybeRerankTenderRecommendationsWithAI(
+      rankedTenders,
+      recommendationContext,
+      {
+        limit: 6,
+        shortlistSize: 8,
+      }
+    );
 
-        const contractMatch =
-          contractTypes.length === 0 ||
-          (tender.contract_type ? contractTypes.includes(tender.contract_type) : false);
-
-        if (contractMatch) {
-          reasons.push(
-            contractTypes.length > 0
-              ? `Odgovara tipu tendera: ${contractTypes.join(", ")}`
-              : "Otvoren je za tip tendera koji većina firmi prati"
-          );
-          score += 1;
-        }
-
-        const regionMatch =
-          regionTerms.length === 0 || regionTerms.some((term) => haystack.includes(term.toLowerCase()));
-
-        if (regionMatch) {
-          reasons.push(
-            regionLabels.length > 0
-              ? `Odgovara području rada: ${regionLabels.slice(0, 2).join(", ")}`
-              : "Niste ograničili lokaciju, pa prikazujemo cijelu BiH"
-          );
-          score += 1;
-        }
-
-        return {
+    const tenders = rerankedTenders.map(
+      ({ tender, reasons }) =>
+        ({
           id: tender.id,
           title: tender.title,
           deadline: tender.deadline,
           estimated_value: tender.estimated_value,
           contracting_authority: tender.contracting_authority,
-          reasons: [...new Set(reasons)].slice(0, 3),
-          score,
-          regionMatch,
-        };
-      })
-      .filter((tender) => tender.score > 0)
-      .filter((tender) => (regionTerms.length > 0 ? tender.regionMatch : true))
-      .sort((a, b) => b.score - a.score || new Date(a.deadline ?? 0).getTime() - new Date(b.deadline ?? 0).getTime())
-      .slice(0, 6)
-      .map(({ score, regionMatch, ...tender }) => tender satisfies PreviewTender);
+          reasons,
+        }) satisfies PreviewTender
+    );
 
     const summary =
       tenders.length > 0

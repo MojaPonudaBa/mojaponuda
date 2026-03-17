@@ -1,17 +1,18 @@
 import { Suspense } from "react";
 import { createClient } from "@/lib/supabase/server";
 import type { Tender } from "@/types/database";
+import { maybeRerankTenderRecommendationsWithAI } from "@/lib/tender-recommendation-rerank";
 import {
-  buildProfileKeywordSeeds,
-  parseCompanyProfile,
-  sanitizeSearchKeywords,
-} from "@/lib/company-profile";
-import { buildRegionSearchTerms } from "@/lib/constants/regions";
+  buildRecommendationContext,
+  buildRecommendationSearchCondition,
+  rankTenderRecommendations,
+  type RecommendationContext,
+} from "@/lib/tender-recommendations";
 import { TenderFilters } from "@/components/tenders/tender-filters";
 import { TenderCard } from "@/components/tenders/tender-card";
 import { Pagination } from "@/components/tenders/pagination";
 import { Search, Sparkles } from "lucide-react";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 
@@ -34,25 +35,21 @@ async function TendersContent({ searchParams }: TendersPageProps) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  let companyKeywords: string[] = [];
-  let companyRegions: string[] = [];
+  let recommendationContext: RecommendationContext | null = null;
+  let recommendationSearchCondition = "";
   let hasProfile = false;
 
   if (activeTab === "recommended" && user) {
     const { data: company } = await supabase
       .from("companies")
-      .select("industry, keywords, operating_regions")
+      .select("industry, keywords, cpv_codes, operating_regions")
       .eq("user_id", user.id)
       .single();
 
     if (company) {
-      const companyProfile = parseCompanyProfile(company.industry);
       hasProfile = true;
-      companyKeywords = sanitizeSearchKeywords([
-        ...(company.keywords || []),
-        ...buildProfileKeywordSeeds(companyProfile),
-      ]);
-      companyRegions = buildRegionSearchTerms(company.operating_regions || []);
+      recommendationContext = buildRecommendationContext(company);
+      recommendationSearchCondition = buildRecommendationSearchCondition(recommendationContext);
     }
   }
 
@@ -78,7 +75,7 @@ async function TendersContent({ searchParams }: TendersPageProps) {
       );
     }
 
-    if (!hasProfile || companyKeywords.length === 0) {
+    if (!hasProfile || !recommendationContext || !recommendationSearchCondition) {
       return (
         <div className="flex flex-col items-center justify-center py-20 text-center">
           <div className="mb-4 flex size-16 items-center justify-center rounded-full bg-amber-50 text-amber-600">
@@ -107,77 +104,126 @@ async function TendersContent({ searchParams }: TendersPageProps) {
     params.value_min ||
     params.value_max;
 
-  // Build query
-  let query = supabase
-    .from("tenders")
-    .select("*", { count: "exact" })
-    .gt("deadline", new Date().toISOString());
+  let tenders: Tender[] = [];
+  let totalCount = 0;
 
-  // Apply recommendation filter
-  if (activeTab === "recommended" && companyKeywords.length > 0) {
-    // Construct OR filter for keywords in title or description
-    const keywordConditions = companyKeywords
-      .map((kw) => `title.ilike.%${kw}%,raw_description.ilike.%${kw}%`)
-      .join(",");
+  if (activeTab === "recommended" && recommendationContext && recommendationSearchCondition) {
+    let recommendedQuery = supabase
+      .from("tenders")
+      .select("*")
+      .gt("deadline", new Date().toISOString());
 
-    if (keywordConditions) {
-      query = query.or(keywordConditions);
+    if (
+      recommendationContext.preferredContractTypes.length > 0 &&
+      recommendationContext.preferredContractTypes.length < 3
+    ) {
+      recommendedQuery = recommendedQuery.in(
+        "contract_type",
+        recommendationContext.preferredContractTypes
+      );
     }
 
-    // If company has specified regions, also filter by those regions
-    if (companyRegions.length > 0) {
-      const regionConditions = companyRegions
-        .map(
-          (reg) =>
-            `title.ilike.%${reg}%,raw_description.ilike.%${reg}%,contracting_authority.ilike.%${reg}%`
-        )
-        .join(",");
-      
-      if (regionConditions) {
-        query = query.or(regionConditions);
+    recommendedQuery = recommendedQuery.or(recommendationSearchCondition);
+
+    if (params.contract_type && params.contract_type !== "all") {
+      recommendedQuery = recommendedQuery.ilike("contract_type", `%${params.contract_type}%`);
+    }
+
+    if (params.procedure_type && params.procedure_type !== "all") {
+      recommendedQuery = recommendedQuery.ilike("procedure_type", `%${params.procedure_type}%`);
+    }
+
+    if (params.deadline_from) {
+      recommendedQuery = recommendedQuery.gte(
+        "deadline",
+        new Date(params.deadline_from).toISOString()
+      );
+    }
+    if (params.deadline_to) {
+      recommendedQuery = recommendedQuery.lte(
+        "deadline",
+        new Date(params.deadline_to + "T23:59:59").toISOString()
+      );
+    }
+
+    if (params.value_min) {
+      recommendedQuery = recommendedQuery.gte("estimated_value", parseFloat(params.value_min));
+    }
+    if (params.value_max) {
+      recommendedQuery = recommendedQuery.lte("estimated_value", parseFloat(params.value_max));
+    }
+
+    const { data } = await recommendedQuery
+      .order("deadline", { ascending: true, nullsFirst: false })
+      .limit(240);
+
+    let rankedRecommendations = rankTenderRecommendations(
+      (data ?? []) as Tender[],
+      recommendationContext
+    );
+
+    if (params.q) {
+      const searchTerm = params.q.toLowerCase();
+      rankedRecommendations = rankedRecommendations.filter(({ tender }) =>
+        [tender.title, tender.raw_description, tender.contracting_authority]
+          .filter(Boolean)
+          .some((value) => value!.toLowerCase().includes(searchTerm))
+      );
+    }
+
+    rankedRecommendations = await maybeRerankTenderRecommendationsWithAI(
+      rankedRecommendations,
+      recommendationContext,
+      {
+        shortlistSize: 10,
       }
+    );
+
+    totalCount = rankedRecommendations.length;
+    tenders = rankedRecommendations
+      .slice(offset, offset + PAGE_SIZE)
+      .map(({ tender }) => tender as Tender);
+  } else {
+    let query = supabase
+      .from("tenders")
+      .select("*", { count: "exact" })
+      .gt("deadline", new Date().toISOString());
+
+    if (params.q) {
+      const kw = `%${params.q}%`;
+      query = query.or(`title.ilike.${kw},raw_description.ilike.${kw}`);
     }
+
+    if (params.contract_type && params.contract_type !== "all") {
+      query = query.ilike("contract_type", `%${params.contract_type}%`);
+    }
+
+    if (params.procedure_type && params.procedure_type !== "all") {
+      query = query.ilike("procedure_type", `%${params.procedure_type}%`);
+    }
+
+    if (params.deadline_from) {
+      query = query.gte("deadline", new Date(params.deadline_from).toISOString());
+    }
+    if (params.deadline_to) {
+      query = query.lte("deadline", new Date(params.deadline_to + "T23:59:59").toISOString());
+    }
+
+    if (params.value_min) {
+      query = query.gte("estimated_value", parseFloat(params.value_min));
+    }
+    if (params.value_max) {
+      query = query.lte("estimated_value", parseFloat(params.value_max));
+    }
+
+    const { data, count } = await query
+      .order("deadline", { ascending: false, nullsFirst: false })
+      .range(offset, offset + PAGE_SIZE - 1);
+
+    tenders = (data ?? []) as Tender[];
+    totalCount = count ?? 0;
   }
 
-  // Keyword filter (search bar overrides recommendations or adds to them)
-  if (params.q) {
-    const kw = `%${params.q}%`;
-    query = query.or(`title.ilike.${kw},raw_description.ilike.${kw}`);
-  }
-
-  // Contract type
-  if (params.contract_type && params.contract_type !== "all") {
-    query = query.ilike("contract_type", `%${params.contract_type}%`);
-  }
-
-  // Procedure type
-  if (params.procedure_type && params.procedure_type !== "all") {
-    query = query.ilike("procedure_type", `%${params.procedure_type}%`);
-  }
-
-  // Deadline range
-  if (params.deadline_from) {
-    query = query.gte("deadline", new Date(params.deadline_from).toISOString());
-  }
-  if (params.deadline_to) {
-    query = query.lte("deadline", new Date(params.deadline_to + "T23:59:59").toISOString());
-  }
-
-  // Value range
-  if (params.value_min) {
-    query = query.gte("estimated_value", parseFloat(params.value_min));
-  }
-  if (params.value_max) {
-    query = query.lte("estimated_value", parseFloat(params.value_max));
-  }
-
-  // Order + pagination
-  const { data, count } = await query
-    .order("deadline", { ascending: false, nullsFirst: false })
-    .range(offset, offset + PAGE_SIZE - 1);
-
-  const tenders = (data ?? []) as Tender[];
-  const totalCount = count ?? 0;
   const totalPages = Math.ceil(totalCount / PAGE_SIZE);
 
   return (

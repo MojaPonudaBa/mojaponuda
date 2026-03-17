@@ -2,37 +2,17 @@ import Link from "next/link";
 import {
   FolderSearch,
   Clock,
-  EyeOff,
   Shield,
   LayoutDashboard,
   TrendingUp,
   CheckCircle,
   ArrowRight,
   ChevronDown,
-  Upload,
   BarChart3,
   FileText,
   Briefcase,
   Search,
-  ChevronRight,
-  Minus,
-  Plus,
-  PlayCircle,
-  ImageIcon
 } from "lucide-react";
-
-function ImagePlaceholder({ text, width, height, aspect }: { text: string, width?: string, height?: string, aspect?: string }) {
-  return (
-    <div 
-      className={`flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-slate-50 text-slate-400 w-full relative overflow-hidden group ${aspect ? aspect : 'aspect-[4/3]'} ${width || ''} ${height || ''}`}
-    >
-      <div className="absolute inset-0 bg-slate-100/50 opacity-0 group-hover:opacity-100 transition-opacity" />
-      <ImageIcon className="mb-3 size-10 text-slate-300 group-hover:text-blue-400 transition-colors" />
-      <span className="text-sm font-bold text-slate-500 text-center px-6 relative z-10">{text}</span>
-      <span className="text-[10px] font-mono text-slate-400 mt-2 bg-white/50 px-2 py-1 rounded-md border border-slate-200">1920x1080px</span>
-    </div>
-  );
-}
 
 interface LandingPageProps {
   isLoggedIn?: boolean;
@@ -61,8 +41,8 @@ function NavBar({ isLoggedIn }: { isLoggedIn?: boolean }) {
           <a href="#kako-radi" className="text-sm font-semibold text-slate-600 transition-colors hover:text-primary">
             Kako radi
           </a>
-          <a href="#rjesenje" className="text-sm font-semibold text-slate-600 transition-colors hover:text-primary">
-            Rješenje
+          <a href="#primjer" className="text-sm font-semibold text-slate-600 transition-colors hover:text-primary">
+            Kako izgleda
           </a>
           <a href="#cijene" className="text-sm font-semibold text-slate-600 transition-colors hover:text-primary">
             Cijene
@@ -99,70 +79,113 @@ function NavBar({ isLoggedIn }: { isLoggedIn?: boolean }) {
   );
 }
 
-import { DemoWidget } from "@/components/landing/demo-widget";
-
 // ... inside HeroSection ...
 
-function HeroSection() {
+const HERO_FLOW = [
+  {
+    icon: Search,
+    title: "Pronalazak tendera",
+    description: "Sustav svakodnevno pronalazi i filtrira tendere za vašu djelatnost.",
+  },
+  {
+    icon: Clock,
+    title: "Obavijesti",
+    description: "Dobijete obavijest čim se pojavi nova relevantna prilika.",
+  },
+  {
+    icon: FileText,
+    title: "Prijava i dokumentacija",
+    description: "Jasan pregled šta treba predati i provjera dokumentacije.",
+  },
+  {
+    icon: BarChart3,
+    title: "Analiza tržišta i konkurencije",
+    description: "Vidite gdje se isplati prijaviti i ko dobija poslove.",
+  },
+] as const;
+
+function HeroSection({ isLoggedIn }: { isLoggedIn?: boolean }) {
   return (
     <section className="relative overflow-hidden bg-white px-6 pb-20 pt-32 sm:pb-32 sm:pt-40">
-      {/* Background Elements */}
       <div className="absolute inset-0 -z-10 bg-[linear-gradient(to_right,#f1f5f9_1px,transparent_1px),linear-gradient(to_bottom,#f1f5f9_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)]" />
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[500px] bg-blue-500/10 blur-[120px] rounded-full -z-10" />
       
       <div className="relative mx-auto max-w-7xl">
-        <div className="text-center max-w-4xl mx-auto mb-16">
+        <div className="mx-auto max-w-5xl text-center">
           <div className="inline-flex items-center gap-2 rounded-full border border-blue-100 bg-blue-50/50 px-4 py-1.5 mb-8 animate-fade-in-up">
             <span className="flex size-2 rounded-full bg-blue-500 animate-pulse shadow-[0_0_10px_rgba(59,130,246,0.5)]" />
             <span className="text-xs font-bold uppercase tracking-wide text-blue-700">
-              Sigurnosni sloj za javne nabavke u BiH
+              MojaPonuda.ba za firme koje prate javne nabavke u BiH
             </span>
           </div>
 
-          <h1 className="font-heading text-5xl font-extrabold leading-[1.1] tracking-tight text-slate-900 sm:text-6xl lg:text-7xl mb-8">
-            Ne gubite tendere <br className="hidden sm:block" />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-blue-400 relative">
-              zbog nedostajućih dokumenata.
-              <svg className="absolute w-full h-3 -bottom-1 left-0 text-blue-200 -z-10" viewBox="0 0 100 10" preserveAspectRatio="none">
-                <path d="M0 5 Q 50 10 100 5" stroke="currentColor" strokeWidth="8" fill="none" />
-              </svg>
-            </span>
+          <h1 className="font-heading text-5xl font-extrabold leading-[1.08] tracking-tight text-slate-900 sm:text-6xl lg:text-7xl mb-8">
+            Vaš digitalni asistent <br className="hidden sm:block" />
+            za javne nabavke
           </h1>
 
-          <p className="mx-auto max-w-2xl text-lg leading-relaxed text-slate-600 sm:text-xl mb-10">
-            MojaPonuda vam pomaže da brzo pronađete relevantne tendere, izdvojite šta se stvarno traži i prije slanja provjerite da li nešto nedostaje.
+          <p className="mx-auto max-w-3xl text-lg leading-relaxed text-slate-600 sm:text-xl mb-6">
+            Pronalazi tendere za vašu firmu, šalje obavijesti, vodi vas kroz prijavu i daje uvid u tržište i konkurenciju — na jednom mjestu.
+          </p>
+
+          <p className="mx-auto max-w-2xl text-base font-semibold text-slate-800 sm:text-lg mb-10">
+            Imate pregled nad tenderima koji su za vašu firmu — bez ručnog traženja.
           </p>
 
           <div className="flex flex-col justify-center gap-4 sm:flex-row sm:items-center">
-            <Link
-              href="/signup"
+            <a
+              href="#primjer"
               className="inline-flex h-14 items-center justify-center gap-2 rounded-full bg-primary px-8 text-base font-bold text-white shadow-xl shadow-blue-500/30 transition-all hover:bg-blue-700 hover:shadow-2xl hover:shadow-blue-500/40 hover:-translate-y-1"
             >
-              Pronađite relevantne tendere
+              Pogledajte kako izgleda
               <ArrowRight className="size-4" />
-            </Link>
-            <a
-              href="#demo"
+            </a>
+            <Link
+              href={isLoggedIn ? "/dashboard" : "/signup"}
               className="inline-flex h-14 items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-8 text-base font-bold text-slate-700 shadow-sm transition-all hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900"
             >
-              <PlayCircle className="size-5 text-slate-400" />
-              Pogledajte kako radi
-            </a>
+              Otvorite prvi pregled tendera
+            </Link>
           </div>
+
           <div className="mt-6 flex items-center justify-center gap-6 text-sm text-slate-500">
             <div className="flex items-center gap-2">
               <CheckCircle className="size-4 text-blue-500" />
-              <span>Prvi pregled tendera bez komplikacija</span>
+              <span>Prvi pregled relevantnih tendera bez komplikacija</span>
             </div>
             <div className="flex items-center gap-2">
               <CheckCircle className="size-4 text-blue-500" />
               <span>Bez kreditne kartice</span>
             </div>
           </div>
-        </div>
 
-        <div id="demo" className="mt-10 mx-auto max-w-5xl px-4 scroll-mt-24">
-          <DemoWidget />
+          <div className="mt-14 grid gap-4 text-left md:grid-cols-2 xl:grid-cols-4">
+            {HERO_FLOW.map((item) => (
+              <div
+                key={item.title}
+                className="rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-sm shadow-slate-200/50"
+              >
+                <div className="mb-4 flex size-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-700">
+                  <item.icon className="size-6" />
+                </div>
+                <h3 className="font-heading text-lg font-bold text-slate-900">
+                  {item.title}
+                </h3>
+                <p className="mt-2 text-sm leading-6 text-slate-600">
+                  {item.description}
+                </p>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-8 rounded-[2rem] border border-slate-200 bg-slate-900 px-8 py-7 text-left text-white shadow-2xl shadow-slate-300/20">
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-blue-200">
+              Kao da imate osobu koja prati tendere za vas
+            </p>
+            <p className="mt-3 max-w-3xl text-lg leading-8 text-slate-200">
+              Bez ručnog pretraživanja, bez propuštenih objava i bez gubljenja vremena.
+            </p>
+          </div>
         </div>
       </div>
     </section>
@@ -172,21 +195,21 @@ function HeroSection() {
 const PROBLEMS = [
   {
     icon: FolderSearch,
-    title: "Dokumentacija rasuta po folderima",
+    title: "Premalo pravih prilika u fokusu",
     description:
-      "Uvjerenje o registraciji u jednom folderu, potvrda o porezu u emailu, garancija na desktopu. Gubitak vremena na svakom novom tenderu.",
+      "Većina firmi se prijavljuje na premalo tendera koji zaista imaju smisla za njihov profil i kapacitet.",
   },
   {
     icon: Clock,
-    title: "Propušteni rokovi isteka",
+    title: "Relevantne objave prođu nezapaženo",
     description:
-      "Dokument istekne usred pripreme ponude, a da niste primijetili. Rezultat? Diskvalifikacija zbog banalnog administrativnog propusta.",
+      "Nova prilika se pojavi, ali je primijetite kasno ili tek kada je rok već preblizu za kvalitetnu pripremu.",
   },
   {
-    icon: EyeOff,
-    title: "Nedostatak uvida u tržište",
+    icon: Shield,
+    title: "Vrijeme odlazi na pogrešne tendera",
     description:
-      "Ne znate po kojim cijenama vaša konkurencija pobjeđuje, niti koji naručioci najčešće raspisuju tendere za vaše usluge.",
+      "Vrijeme se troši na prijave koje nemaju smisla, dok bolja prilika ostaje po strani bez jasnog pregleda tržišta.",
   },
 ] as const;
 
@@ -196,10 +219,10 @@ function ProblemSection() {
       <div className="mx-auto max-w-7xl">
         <div className="text-center max-w-3xl mx-auto mb-16">
           <h2 className="font-heading text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
-            Priprema ponude ne bi trebala biti <span className="text-primary">noćna mora.</span>
+            Problem nije u prijavi — <span className="text-primary">nego u odabiru.</span>
           </h2>
           <p className="mt-4 text-lg text-slate-600">
-            Većina firmi u BiH gubi ugovore ne zbog cijene ili kvaliteta, već zbog papirologije i nedostatka informacija.
+            Većina firmi se prijavljuje na premalo ili pogrešne tendere. Relevantne prilike često prođu nezapaženo, a vrijeme se troši na one koje nemaju smisla.
           </p>
         </div>
 
@@ -228,22 +251,24 @@ function ProblemSection() {
 
 const HOW_IT_WORKS = [
   {
-    step: "01",
-    title: "Recite čime se bavite i gdje radite",
-    description: "Dovoljna su dva osnovna koraka da sistem odmah izdvoji tendere koji imaju smisla za vašu firmu.",
-    icon: Upload,
-  },
-  {
-    step: "02",
-    title: "Odmah vidite zašto vam tender odgovara",
-    description: "Uz svaki tender dobijate jasno objašnjenje: djelatnost, lokacija i tip nabavke koji se poklapaju s vašim profilom.",
+    title: "Vidite sve relevantne tendere na jednom mjestu",
+    description: "Pregled je složen oko vaše djelatnosti, lokacije i tipa ugovora koji za vas ima smisla.",
     icon: LayoutDashboard,
   },
   {
-    step: "03",
-    title: "Pokrenite pripremu bez propusta",
-    description: "Kada odlučite aplicirati, sistem izdvoji dokumente i korake za rad, a vi pregledate i potvrdite prije slanja.",
+    title: "Reagirate odmah kada se pojavi nova prilika",
+    description: "Ne čekate ručnu provjeru portala. Bitna objava dolazi do vas čim se pojavi.",
+    icon: Clock,
+  },
+  {
+    title: "Birate gdje se isplati prijaviti",
+    description: "Lakše razlikujete tender koji izgleda zanimljivo od tendera koji zaista odgovara vašoj firmi.",
     icon: TrendingUp,
+  },
+  {
+    title: "Ne gubite vrijeme na nerelevantne prijave",
+    description: "Fokus ostaje na prilikama koje nose realnu vrijednost, umjesto na pretrazi i provjeri bez kraja.",
+    icon: Shield,
   },
 ] as const;
 
@@ -257,27 +282,24 @@ function HowItWorksSection() {
         <div className="text-center max-w-3xl mx-auto mb-20">
           <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 mb-6">
              <span className="text-xs font-bold uppercase tracking-wide text-slate-500">
-              Vrijednost prije truda
+              Šta se mijenja
              </span>
           </div>
           <h2 className="font-heading text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
-            Kako MojaPonuda <span className="text-primary">smanjuje rizik</span>
+            Kada imate <span className="text-primary">jasan pregled tržišta</span>
           </h2>
           <p className="mt-4 text-lg text-slate-600">
-            Od prvog relevantnog tendera do završne provjere prije slanja u tri jasna koraka.
+            Pregled, brzina reakcije i selekcija prilika postaju operativna prednost, a ne svakodnevna improvizacija.
           </p>
         </div>
 
-        <div className="grid gap-8 lg:grid-cols-3">
+        <div className="grid gap-8 md:grid-cols-2 xl:grid-cols-4">
           {HOW_IT_WORKS.map((s) => (
-            <div key={s.step} className="relative bg-white rounded-[2rem] p-8 border border-slate-200 shadow-sm transition-all hover:shadow-xl hover:shadow-slate-200/50 hover:-translate-y-1">
+            <div key={s.title} className="relative bg-white rounded-[2rem] p-8 border border-slate-200 shadow-sm transition-all hover:shadow-xl hover:shadow-slate-200/50 hover:-translate-y-1">
               <div className="mb-6 flex items-center justify-between">
                 <div className="flex size-14 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
                   <s.icon className="size-7" />
                 </div>
-                <span className="text-6xl font-heading font-black text-slate-100 select-none">
-                  {s.step}
-                </span>
               </div>
               <h3 className="mb-3 font-heading text-xl font-bold text-slate-900">
                 {s.title}
@@ -293,97 +315,192 @@ function HowItWorksSection() {
   );
 }
 
+const PRACTICE_TENDER = {
+  title: "Nabavka mrežne opreme i sigurnosnih licenci za gradski data centar",
+  authority: "Grad Sarajevo",
+  deadline: "28.03.2026.",
+  estimatedValue: "185.000 KM",
+  reasons: [
+    "Djelatnost: IT oprema i mreže",
+    "Lokacija: Sarajevo",
+    "Tip ugovora: Robe",
+  ],
+  checklist: [
+    "Tehnička specifikacija i usklađenost ponude",
+    "Izjava ponuđača i osnovni uslovi sposobnosti",
+    "Dokaz o ovlaštenju ili partnerskom statusu proizvođača",
+    "Rokovi za pitanja i finalnu predaju",
+  ],
+} as const;
+
+function PracticeSection() {
+  return (
+    <section id="primjer" className="bg-white px-6 py-24 sm:py-32 border-t border-slate-100">
+      <div className="mx-auto max-w-7xl">
+        <div className="max-w-3xl mb-16">
+          <h2 className="font-heading text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
+            Kako to izgleda <span className="text-primary">u praksi</span>
+          </h2>
+          <p className="mt-4 text-lg text-slate-600">
+            Jedan tender, jasan razlog zašto odgovara i pregled onoga što treba pripremiti.
+          </p>
+        </div>
+
+        <div className="grid gap-8 lg:grid-cols-[1.2fr_0.8fr]">
+          <div className="rounded-[2rem] border border-slate-200 bg-white p-8 shadow-xl shadow-slate-200/40">
+            <div className="flex flex-wrap items-center gap-3 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+              <span className="rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-blue-700">
+                Preporučeni tender
+              </span>
+              <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-slate-600">
+                Rok: {PRACTICE_TENDER.deadline}
+              </span>
+            </div>
+
+            <h3 className="mt-6 font-heading text-3xl font-bold text-slate-900">
+              {PRACTICE_TENDER.title}
+            </h3>
+
+            <div className="mt-6 grid gap-4 sm:grid-cols-3">
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+                  Naručilac
+                </p>
+                <p className="mt-2 text-sm font-semibold text-slate-900">
+                  {PRACTICE_TENDER.authority}
+                </p>
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+                  Procijenjena vrijednost
+                </p>
+                <p className="mt-2 text-sm font-semibold text-slate-900">
+                  {PRACTICE_TENDER.estimatedValue}
+                </p>
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+                  Tip ugovora
+                </p>
+                <p className="mt-2 text-sm font-semibold text-slate-900">
+                  {PRACTICE_TENDER.reasons[2].replace("Tip ugovora: ", "")}
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-8 rounded-[1.5rem] border border-emerald-100 bg-emerald-50/70 p-6">
+              <p className="text-sm font-semibold uppercase tracking-[0.16em] text-emerald-800">
+                Zašto vam je relevantan
+              </p>
+              <div className="mt-4 flex flex-wrap gap-3">
+                {PRACTICE_TENDER.reasons.map((reason) => (
+                  <span
+                    key={reason}
+                    className="rounded-full border border-emerald-200 bg-white px-3 py-1.5 text-sm font-medium text-emerald-900"
+                  >
+                    {reason}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-[2rem] border border-slate-200 bg-slate-900 p-8 text-white shadow-xl shadow-slate-300/20">
+            <div className="flex size-14 items-center justify-center rounded-2xl bg-white/10 text-blue-200">
+              <Briefcase className="size-7" />
+            </div>
+            <h3 className="mt-6 font-heading text-2xl font-bold">
+              Kada odlučite da se prijavite — znate šta treba
+            </h3>
+            <p className="mt-3 text-base leading-7 text-slate-300">
+              Sistem vam daje jasan početni pregled zahtjeva i dokumentacije, bez nagađanja i vraćanja na početak.
+            </p>
+            <div className="mt-8 space-y-4">
+              {PRACTICE_TENDER.checklist.map((item) => (
+                <div key={item} className="flex items-start gap-3 rounded-2xl border border-white/10 bg-white/5 p-4">
+                  <CheckCircle className="mt-0.5 size-5 shrink-0 text-blue-200" />
+                  <span className="text-sm leading-6 text-slate-200">{item}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 const FEATURES = [
   {
-    icon: Shield,
-    title: "Dokumenti bez haosa",
-    description:
-      "Svi važni dokumenti firme na jednom mjestu, sa pregledom roka važenja i jasnim signalom šta uskoro ističe.",
-    details: [
-      "Jedno mjesto za sve što stalno traže",
-      "Upozorenje prije isteka",
-      "Brza pretraga kada rok pritisne",
-    ],
-    imagePrompt: "UI MOCKUP: Document Vault interface. Clean white table with document list. Status badges (Valid/Expired). Filter sidebar. Blue primary color accents. High fidelity.",
-  },
-  {
     icon: LayoutDashboard,
-    title: "Priprema ponude bez propusta",
+    title: "Vidite gdje se tržište otvara",
     description:
-      "Sistem izdvaja šta se traži iz tendera i slaže početnu listu onoga što trebate pregledati, prikupiti i potvrditi.",
+      "Vidite gdje se pojavljuju prilike i koji segment tržišta vrijedi ozbiljno pratiti za vašu firmu.",
     details: [
-      "Izdvojeni uslovi za pregled",
-      "Početna lista potrebnih dokumenata",
-      "Završna provjera prije slanja",
+      "Pregled aktivnih i planiranih prilika",
+      "Fokus na djelatnost i tržišni signal",
+      "Brže odlučivanje gdje vrijedi uložiti vrijeme",
     ],
-    imagePrompt: "UI MOCKUP: Bid Workspace. Split screen. Left side: PDF viewer with highlighted text. Right side: Checklist with 'Requirement Met' checkmarks. Modern, clean.",
   },
   {
     icon: TrendingUp,
-    title: "Prednost prije konkurencije",
+    title: "Vidite ko dobija poslove",
     description:
-      "Vidite ko vam uzima poslove, gdje ima najviše prilika i šta dolazi prije nego što tender bude raspisan.",
+      "Ne donosite odluke naslijepo. Imate uvid ko pobjeđuje, gdje pobjeđuje i kakav je obrazac na tržištu.",
     details: [
-      "Ko vam uzima poslove",
-      "Gdje ima najviše posla",
-      "Šta dolazi prije konkurencije",
+      "Pregled pobjednika i obrazaca dodjele",
+      "Brže prepoznavanje ozbiljnih konkurenata",
+      "Bolja procjena gdje imate realnu šansu",
     ],
-    imagePrompt: "UI MOCKUP: Analytics Dashboard. Bar charts showing monthly revenue. Pie chart for category distribution. Competitor list with win rates. Professional data viz.",
+  },
+  {
+    icon: BarChart3,
+    title: "Donosite odluke na osnovu podataka",
+    description:
+      "Više od liste tendera: pregled tržišta i konkurencije postaje dio vašeg svakodnevnog odlučivanja.",
+    details: [
+      "Gdje se isplati prijaviti",
+      "Kako se tržište kreće",
+      "Šta dolazi prije nego što konkurencija reaguje",
+    ],
   },
 ] as const;
 
 function SolutionSection() {
   return (
-    <section id="rjesenje" className="bg-white px-6 py-24 sm:py-32 overflow-hidden">
+    <section id="analitika" className="bg-white px-6 py-24 sm:py-32 overflow-hidden border-t border-slate-100">
       <div className="mx-auto max-w-7xl">
-        <div className="text-center max-w-3xl mx-auto mb-24">
+        <div className="text-center max-w-3xl mx-auto mb-20">
           <h2 className="font-heading text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
-            Sve što vam treba, <span className="text-primary">na jednom mjestu</span>
+            Više od <span className="text-primary">liste tendera</span>
           </h2>
+          <p className="mt-4 text-lg text-slate-600">
+            Vidite ko dobija poslove, gdje se pojavljuju prilike i kako se tržište kreće. Donosite odluke na osnovu stvarnih podataka.
+          </p>
         </div>
 
-        <div className="space-y-32">
+        <div className="grid gap-8 lg:grid-cols-3">
           {FEATURES.map((f) => (
             <div
               key={f.title}
-              className={`flex flex-col gap-12 lg:items-center lg:flex-row ${
-                f.icon === TrendingUp ? "lg:flex-row-reverse" : ""
-              }`}
+              className="rounded-[2rem] border border-slate-200 bg-slate-50/60 p-8 shadow-sm transition-all hover:-translate-y-1 hover:bg-white hover:shadow-xl hover:shadow-slate-200/40"
             >
-              <div className="flex-1 space-y-8">
-                <div className="inline-flex size-14 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-lg shadow-blue-500/30">
-                  <f.icon className="size-7" />
-                </div>
-                <h3 className="font-heading text-3xl font-bold text-slate-900">
-                  {f.title}
-                </h3>
-                <p className="text-lg leading-relaxed text-slate-600">
-                  {f.description}
-                </p>
-                <div className="grid gap-4 sm:grid-cols-1">
-                  {f.details.map((d) => (
-                    <div key={d} className="flex items-center gap-3 bg-slate-50 p-3 rounded-xl border border-slate-100">
-                      <div className="size-6 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
-                        <CheckCircle className="size-3.5 text-blue-600" />
-                      </div>
-                      <span className="text-base font-medium text-slate-700">{d}</span>
-                    </div>
-                  ))}
-                </div>
+              <div className="inline-flex size-14 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-lg shadow-blue-500/20">
+                <f.icon className="size-7" />
               </div>
-
-              <div className="flex-1 w-full relative group">
-                <div className={`absolute top-1/2 -translate-y-1/2 ${f.icon === TrendingUp ? '-right-12' : '-left-12'} size-[500px] rounded-full bg-blue-500/5 blur-[100px] -z-10`} />
-                <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl transition-transform duration-500 group-hover:scale-[1.02]">
-                  <div className="absolute top-0 inset-x-0 h-8 bg-slate-100 border-b border-slate-200 flex items-center px-4 gap-2">
-                    <div className="size-2.5 rounded-full bg-red-400/50" />
-                    <div className="size-2.5 rounded-full bg-amber-400/50" />
-                    <div className="size-2.5 rounded-full bg-emerald-400/50" />
+              <h3 className="mt-8 font-heading text-2xl font-bold text-slate-900">
+                {f.title}
+              </h3>
+              <p className="mt-4 text-base leading-7 text-slate-600">
+                {f.description}
+              </p>
+              <div className="mt-8 space-y-3">
+                {f.details.map((d) => (
+                  <div key={d} className="flex items-start gap-3 rounded-xl border border-slate-200 bg-white p-4">
+                    <CheckCircle className="mt-0.5 size-5 shrink-0 text-blue-600" />
+                    <span className="text-sm font-medium leading-6 text-slate-700">{d}</span>
                   </div>
-                  <div className="pt-8 bg-slate-50">
-                    <ImagePlaceholder text={f.imagePrompt} aspect="aspect-[4/3]" />
-                  </div>
-                </div>
+                ))}
               </div>
             </div>
           ))}
@@ -394,24 +511,55 @@ function SolutionSection() {
 }
 
 function StatsSection() {
-  const stats = [
-    { value: "1", label: "Mjesto za važne dokumente" },
-    { value: "1", label: "Kontrolna tačka prije slanja" },
-    { value: "24/7", label: "Praćenje tendera i tržišta" },
-    { value: "+", label: "Veća sigurnost u pripremi" },
+  const cards = [
+    {
+      icon: Shield,
+      title: "Kada odlučite da se prijavite — znate šta treba",
+      description:
+        "Pregled zahtjeva i dokumentacije, jasno i bez nagađanja.",
+      items: [
+        "Jasan početni pregled dokumentacije",
+        "Manje vraćanja na tender i ručne provjere",
+        "Više kontrole prije konačne prijave",
+      ],
+    },
+    {
+      icon: Clock,
+      title: "Ne morate provjeravati portale svaki dan",
+      description:
+        "Sustav vas obavještava čim se pojavi novi tender za vašu djelatnost.",
+      items: [
+        "Brža reakcija na novu priliku",
+        "Manje ručne pretrage i praćenja rokova",
+        "Pregled važnih objava na jednom mjestu",
+      ],
+    },
   ];
 
   return (
     <section className="bg-slate-900 px-6 py-24 text-white relative overflow-hidden">
       <div className="absolute inset-0 bg-blue-600/10" />
       <div className="mx-auto max-w-7xl relative z-10">
-        <div className="grid gap-12 sm:grid-cols-2 lg:grid-cols-4">
-          {stats.map((s, i) => (
-            <div key={i} className="text-center sm:text-left">
-              <p className="font-heading text-5xl font-extrabold lg:text-6xl tracking-tight text-white">
-                {s.value}
+        <div className="grid gap-8 lg:grid-cols-2">
+          {cards.map((card) => (
+            <div key={card.title} className="rounded-[2rem] border border-white/10 bg-white/5 p-8 backdrop-blur-sm">
+              <div className="flex size-14 items-center justify-center rounded-2xl bg-white/10 text-blue-200">
+                <card.icon className="size-7" />
+              </div>
+              <h3 className="mt-6 font-heading text-2xl font-bold text-white">
+                {card.title}
+              </h3>
+              <p className="mt-3 text-base leading-7 text-slate-300">
+                {card.description}
               </p>
-              <p className="mt-2 text-lg font-medium text-blue-200">{s.label}</p>
+              <div className="mt-8 space-y-3">
+                {card.items.map((item) => (
+                  <div key={item} className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/5 p-4">
+                    <CheckCircle className="mt-0.5 size-5 shrink-0 text-blue-200" />
+                    <span className="text-sm leading-6 text-slate-200">{item}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           ))}
         </div>
@@ -426,10 +574,10 @@ function PricingSection() {
       <div className="mx-auto max-w-7xl">
         <div className="text-center max-w-3xl mx-auto mb-16">
           <h2 className="font-heading text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
-            Cijena je mala <span className="text-primary">naspram izgubljenog tendera</span>
+            Paketi za firme koje žele <span className="text-primary">pregled i kontrolu</span>
           </h2>
           <p className="mt-4 text-lg text-slate-600">
-            Ne plaćate pregled tendera. Plaćate trenutak kada želite pripremu ponude bez propusta i bolju kontrolu rizika.
+            Odaberite paket prema obimu rada, broju tendera i nivou uvida koji vam je potreban.
           </p>
         </div>
 
@@ -468,7 +616,7 @@ function PricingSection() {
           <div className="relative rounded-3xl border-2 border-primary bg-white p-8 shadow-2xl shadow-blue-500/10 transform scale-105 z-10">
             <div className="absolute -top-4 inset-x-0 flex justify-center">
               <span className="rounded-full bg-primary px-4 py-1 text-xs font-bold uppercase tracking-wider text-white">
-                Razumna odluka za ozbiljan rad
+                Najčešći izbor
               </span>
             </div>
             <h3 className="font-heading text-xl font-bold text-slate-900">Puni Paket</h3>
@@ -477,9 +625,6 @@ function PricingSection() {
               <span className="font-heading text-5xl font-bold text-slate-900">100</span>
               <span className="text-sm font-medium text-slate-500">KM / mj.</span>
             </div>
-            <p className="mt-4 rounded-2xl border border-blue-100 bg-blue-50/70 px-4 py-3 text-sm font-semibold text-blue-900">
-              Jedan tender često vrijedi 10.000+ KM. Ovdje plaćate sigurniju pripremu i veću kontrolu prije slanja.
-            </p>
             <div className="mt-8 space-y-4">
               {[
                 "50 aktivnih tendera",
@@ -600,17 +745,17 @@ function FinalCTA() {
       
       <div className="relative z-10 mx-auto max-w-3xl text-center">
         <h2 className="font-heading text-3xl font-bold tracking-tight text-white sm:text-4xl lg:text-5xl">
-          Ne šaljite ponudu naslijepo.
+          Pronalazi, filtrira i prati tendere za vašu firmu — i vodi vas kroz prijavu.
         </h2>
         <p className="mx-auto mt-6 max-w-xl text-lg text-slate-300">
-          Pronađite relevantan tender, izdvojite šta nedostaje i uđite u pripremu sa mnogo manje rizika.
+          Pregled tržišta, relevantne prilike i jasniji sljedeći korak na jednom mjestu.
         </p>
         <div className="mt-10 flex justify-center">
           <Link
             href="/signup"
             className="inline-flex h-14 items-center justify-center gap-2 rounded-full bg-white px-8 text-base font-bold text-slate-900 transition-all hover:bg-slate-100 hover:scale-105"
           >
-            Otvorite prvi pregled tendera
+            Pogledajte prvi pregled tendera
             <ArrowRight className="size-5" />
           </Link>
         </div>
@@ -674,9 +819,10 @@ export function LandingPage({ isLoggedIn }: LandingPageProps) {
   return (
     <div className="min-h-screen bg-white font-sans selection:bg-blue-100 selection:text-blue-900">
       <NavBar isLoggedIn={isLoggedIn} />
-      <HeroSection />
+      <HeroSection isLoggedIn={isLoggedIn} />
       <ProblemSection />
       <HowItWorksSection />
+      <PracticeSection />
       <SolutionSection />
       <StatsSection />
       <PricingSection />

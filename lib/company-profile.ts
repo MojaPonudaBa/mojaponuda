@@ -234,26 +234,26 @@ export const TENDER_TYPE_OPTIONS: ProfileOption[] = [
 
 const PRIMARY_INDUSTRY_KEYWORDS: Record<string, string[]> = {
   construction: ["građevin", "izgradnj", "rekonstrukcij", "sanacij", "adaptacij"],
-  it: ["softver", "licenc", "server", "mrež", "digitalizacij"],
-  equipment: ["oprem", "namještaj", "inventar", "mašin", "alat"],
+  it: ["softver", "licenc", "server", "računar", "informatičk"],
+  equipment: ["namještaj", "inventar", "mašin", "alat", "uredsk"],
   medical: ["medicinsk", "laboratorij", "dijagnostik", "reagens"],
-  maintenance: ["održavanj", "servis", "podršk", "intervencij"],
+  maintenance: ["održavanj", "servisiranj", "helpdesk", "intervencij"],
   consulting: ["projektovanj", "nadzor", "savjetovanj", "revizij", "obuk"],
-  logistics: ["transport", "prevoz", "komunaln", "odvoz", "zimsk"],
-  security_energy: ["sigurnost", "zaštit", "videonadzor", "goriv", "energ"],
-  facilities_hospitality: ["čišćenj", "higijen", "prehramben", "catering"],
-  communications_media: ["štamp", "marketing", "promotivn", "događaj"],
+  logistics: ["transport", "prevoz", "vozil", "odvoz", "zimsk"],
+  security_energy: ["videonadzor", "alarm", "zaštit", "goriv", "energent"],
+  facilities_hospitality: ["čišćenj", "higijen", "dezinfekcij", "catering"],
+  communications_media: ["štamp", "marketing", "brendiranj", "događaj"],
 };
 
 const OFFERING_CATEGORY_KEYWORDS: Record<string, string[]> = {
-  software_licenses: ["softver", "licenc", "erp", "dms", "aplikacij"],
-  it_hardware: ["server", "računar", "printer", "mrež", "lan", "kablov"],
+  software_licenses: ["softver", "licenc", "erp", "dms", "saas", "aplikacij"],
+  it_hardware: ["server", "računar", "printer", "switch", "router", "firewall", "mrežna oprema"],
   telecom_av: ["telekom", "telefonij", "konferencij", "audio", "video", "razglas"],
-  cloud_cyber_data: ["cloud", "backup", "cyber", "sigurnost", "podat", "data"],
+  cloud_cyber_data: ["cloud", "backup", "cyber sigurnost", "siem", "data platform", "disaster recovery"],
   construction_works: ["izgradnj", "rekonstrukcij", "sanacij", "adaptacij", "građevin", "radov"],
   electro_mechanical: ["elektroinstalacij", "mašinsk", "instalacij", "hvac", "grijanj", "hlađenj"],
   design_supervision: ["projektovanj", "nadzor", "idejn", "glavn", "revizij"],
-  maintenance_support: ["održavanj", "servis", "podršk", "intervencij"],
+  maintenance_support: ["održavanj", "servisiranj", "tehnička podrška", "helpdesk", "intervencij"],
   office_school_equipment: ["uredsk", "kancelarij", "školsk", "namještaj", "inventar"],
   industrial_tools_machinery: ["industrijsk", "alat", "mašin", "rezervn", "radionic"],
   furniture_interior: ["namještaj", "stolic", "stol", "ormar", "enterijer"],
@@ -271,9 +271,9 @@ const OFFERING_CATEGORY_KEYWORDS: Record<string, string[]> = {
 };
 
 const TENDER_TYPE_KEYWORDS: Record<string, string[]> = {
-  goods: ["isporuk", "nabavk", "oprem"],
-  services: ["uslug", "servis", "održavanj"],
-  works: ["radov", "izgradnj", "rekonstrukcij"],
+  goods: [],
+  services: [],
+  works: [],
 };
 
 const SEARCH_KEYWORD_STOP_WORDS = new Set([
@@ -347,6 +347,21 @@ const genericProfileKeywordTerms = new Set(
     )
 );
 
+const AMBIGUOUS_SINGLE_WORD_KEYWORD_PATTERNS = [
+  /^mrež/i,
+  /^oprem/i,
+  /^nabavk/i,
+  /^radov/i,
+  /^uslug/i,
+  /^servis$/i,
+  /^podršk/i,
+  /^sistem/i,
+  /^rješenj/i,
+  /^digitalizacij/i,
+  /^podat$/i,
+  /^data$/i,
+];
+
 const offeringCategoryLookup = new Map(
   OFFERING_CATEGORY_OPTIONS.map((option) => [option.id, option])
 );
@@ -370,6 +385,14 @@ function uniqueSearchKeywordTerms(terms: Array<string | null | undefined>): stri
   return [...new Set(terms.map((term) => (term ? normalizeSearchKeywordTerm(term) : null)).filter(Boolean) as string[])];
 }
 
+function isAmbiguousSingleWordKeyword(term: string): boolean {
+  if (term.includes(" ")) {
+    return false;
+  }
+
+  return AMBIGUOUS_SINGLE_WORD_KEYWORD_PATTERNS.some((pattern) => pattern.test(term));
+}
+
 function extractDescriptionKeywordTerms(description: string | null | undefined): string[] {
   if (!description?.trim()) {
     return [];
@@ -379,7 +402,8 @@ function extractDescriptionKeywordTerms(description: string | null | undefined):
     .split(/[^a-zA-Z0-9čćžšđČĆŽŠĐ-]+/)
     .map((word) => normalizeSearchKeywordTerm(word))
     .filter((word): word is string => typeof word === "string" && word.length >= 5)
-    .filter((word) => !SEARCH_KEYWORD_STOP_WORDS.has(word));
+    .filter((word) => !SEARCH_KEYWORD_STOP_WORDS.has(word))
+    .filter((word) => !isAmbiguousSingleWordKeyword(word));
 
   return uniqueSearchKeywordTerms(words).slice(0, 8);
 }
@@ -389,6 +413,21 @@ export function sanitizeSearchKeywords(terms: Array<string | null | undefined>):
     .filter((term) => !genericProfileKeywordTerms.has(term))
     .filter((term) => !SEARCH_KEYWORD_STOP_WORDS.has(term))
     .slice(0, 24);
+}
+
+export function buildRecommendationKeywords({
+  explicitKeywords = [],
+  profile,
+}: {
+  explicitKeywords?: Array<string | null | undefined>;
+  profile: ParsedCompanyProfile;
+}): string[] {
+  return sanitizeSearchKeywords([
+    ...explicitKeywords,
+    ...buildProfileKeywordSeeds(profile),
+  ])
+    .filter((term) => !isAmbiguousSingleWordKeyword(term))
+    .slice(0, 18);
 }
 
 export function derivePrimaryIndustry(

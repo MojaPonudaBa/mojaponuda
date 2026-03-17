@@ -110,6 +110,7 @@ export interface Database {
           deadline: string | null;
           estimated_value: number | null;
           contract_type: string | null;
+          cpv_code: string | null;
           procedure_type: string | null;
           status: string | null;
           portal_url: string | null;
@@ -126,6 +127,7 @@ export interface Database {
           deadline?: string | null;
           estimated_value?: number | null;
           contract_type?: string | null;
+          cpv_code?: string | null;
           procedure_type?: string | null;
           status?: string | null;
           portal_url?: string | null;
@@ -142,6 +144,7 @@ export interface Database {
           deadline?: string | null;
           estimated_value?: number | null;
           contract_type?: string | null;
+          cpv_code?: string | null;
           procedure_type?: string | null;
           status?: string | null;
           portal_url?: string | null;

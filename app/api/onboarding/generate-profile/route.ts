@@ -14,7 +14,7 @@ Tvoj zadatak je da na osnovu kompletnog profila firme pripremiš profil za pretr
 
 Izlaz mora biti JSON objekat sa sljedećim poljima:
 - cpv_codes: niz stringova (samo glavni kodovi, npr. "45000000-7")
-- keywords: niz stringova za pretragu tendera, na bosanskom jeziku, max 20 pojmova. Koristi kratke i precizne izraze koji se stvarno pojavljuju u tenderima. Gdje ima smisla koristi korijen riječi da uhvati padeže i oblike, npr. "izgradnj", "rekonstrukcij", "održavanj", "mrež", "licenc".
+- keywords: niz stringova za pretragu tendera, na bosanskom jeziku, max 20 pojmova. Koristi kratke i precizne izraze koji se stvarno pojavljuju u tenderima. Prednost daj konkretnim frazama i nazivima robe/usluge, npr. "mrežna oprema", "server", "antivirus licence", "video nadzor", "rekonstrukcija krova".
 - suggested_regions: niz stringova sa regijama koje imaju smisla za ovaj profil; ako korisnik već pošalje regije, vrati iste te regije
 - summary: kratki sažetak profila firme za internu upotrebu, do 2 rečenice
 
@@ -23,6 +23,8 @@ Pravila za keywords:
 - Nemoj vraćati preširoke riječi koje vode do puno nebitnih rezultata.
 - Vraćaj samo pojmove koji su direktno primjenjivi na ono što firma zaista prodaje, isporučuje ili izvodi.
 - Uključi sinonime i usko povezane pojmove samo kada su zaista relevantni.
+- Nemoj vraćati sirove korijene riječi ili nedovršene stemove kao što su "mrež", "oprem", "nabavk", "radov", "uslug".
+- Nemoj vraćati jednu široku riječ ako bez dodatnog konteksta može značiti više različitih industrija.
 
 Budi precizan i fokusiraj se na ono što je najrelevantnije za javne nabavke.`;
 

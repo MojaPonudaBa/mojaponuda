@@ -9,16 +9,15 @@ import {
   demoUpcomingProcurements,
 } from "@/lib/demo";
 import type { BidStatus, Document as DocType } from "@/types/database";
-import {
-  buildProfileKeywordSeeds,
-  getPreferredContractTypes,
-  getProfileOptionLabel,
-  parseCompanyProfile,
-  sanitizeSearchKeywords,
-} from "@/lib/company-profile";
+import { getProfileOptionLabel } from "@/lib/company-profile";
 import { DashboardHomeOverview } from "@/components/dashboard/home-overview";
 import { getCompetitorAnalysis } from "@/lib/market-intelligence";
-import { buildRegionSearchTerms } from "@/lib/constants/regions";
+import { maybeRerankTenderRecommendationsWithAI } from "@/lib/tender-recommendation-rerank";
+import {
+  buildRecommendationContext,
+  buildRecommendationSearchCondition,
+  rankTenderRecommendations,
+} from "@/lib/tender-recommendations";
 import { getSubscriptionStatus } from "@/lib/subscription";
 
 function formatCompactCurrency(value: number | null | undefined): string {
@@ -57,7 +56,7 @@ export default async function DashboardPage() {
   const isDemoAccount = isDemoUser(user.email);
   const { data: company } = await supabase
     .from("companies")
-    .select("id, name, jib, industry, keywords, operating_regions")
+    .select("id, name, jib, industry, keywords, cpv_codes, operating_regions")
     .eq("user_id", user.id)
     .maybeSingle();
 
@@ -69,18 +68,14 @@ export default async function DashboardPage() {
     jib: string;
     industry: string | null;
     keywords: string[] | null;
+    cpv_codes: string[] | null;
     operating_regions: string[] | null;
   };
 
-  const companyProfile = parseCompanyProfile(resolvedCompany.industry);
-  const preferredContractTypes = getPreferredContractTypes(
-    companyProfile.preferredTenderTypes
+  const recommendationContext = buildRecommendationContext(resolvedCompany);
+  const recommendationSearchCondition = buildRecommendationSearchCondition(
+    recommendationContext
   );
-  const companyKeywords = sanitizeSearchKeywords([
-    ...(resolvedCompany.keywords || []),
-    ...buildProfileKeywordSeeds(companyProfile),
-  ]);
-  const companyRegions = buildRegionSearchTerms(resolvedCompany.operating_regions || []);
 
   // Calculate dates outside of query builder to avoid impure function warnings
   const now = new Date();
@@ -237,70 +232,60 @@ export default async function DashboardPage() {
     estimated_value: number | null;
     contracting_authority: string | null;
     contracting_authority_jib: string | null;
+    contract_type: string | null;
+    cpv_code: string | null;
     raw_description: string | null;
   }[] = [];
 
-  if (companyKeywords.length > 0) {
-    const keywordConditions = companyKeywords
-      .map((kw) => `title.ilike.%${kw}%,raw_description.ilike.%${kw}%`)
-      .join(",");
-
+  if (recommendationSearchCondition) {
     let relevantQuery = supabase
       .from("tenders")
       .select(
-        "id, title, deadline, estimated_value, contracting_authority, contracting_authority_jib, raw_description"
+        "id, title, deadline, estimated_value, contracting_authority, contracting_authority_jib, contract_type, cpv_code, raw_description"
       )
       .gt("deadline", nowIso);
 
-    if (preferredContractTypes.length > 0 && preferredContractTypes.length < 3) {
-      relevantQuery = relevantQuery.in("contract_type", preferredContractTypes);
+    if (
+      recommendationContext.preferredContractTypes.length > 0 &&
+      recommendationContext.preferredContractTypes.length < 3
+    ) {
+      relevantQuery = relevantQuery.in(
+        "contract_type",
+        recommendationContext.preferredContractTypes
+      );
     }
 
-    if (keywordConditions) {
-      relevantQuery = relevantQuery.or(keywordConditions);
-    }
+    relevantQuery = relevantQuery.or(recommendationSearchCondition);
 
     const { data: relevantRows } = await relevantQuery
       .order("deadline", { ascending: true })
       .limit(60);
 
-    const baseRelevantTenders = (relevantRows ?? []) as {
-      id: string;
-      title: string;
-      deadline: string | null;
-      estimated_value: number | null;
-      contracting_authority: string | null;
-      contracting_authority_jib: string | null;
-      raw_description: string | null;
-    }[];
+    const rankedRelevantTenders = rankTenderRecommendations(
+      (relevantRows ?? []) as {
+        id: string;
+        title: string;
+        deadline: string | null;
+        estimated_value: number | null;
+        contracting_authority: string | null;
+        contracting_authority_jib: string | null;
+        contract_type: string | null;
+        cpv_code: string | null;
+        raw_description: string | null;
+      }[],
+      recommendationContext
+    );
 
-    const scoreRegionMatch = (value: string | null | undefined) => {
-      if (!value || companyRegions.length === 0) return 0;
-      const lowerValue = value.toLowerCase();
-      return companyRegions.some((region) => lowerValue.includes(region.toLowerCase()))
-        ? 1
-        : 0;
-    };
-
-    relevantTenders = [...baseRelevantTenders]
-      .sort((a, b) => {
-        const scoreA =
-          scoreRegionMatch(a.contracting_authority) +
-          scoreRegionMatch(a.title) +
-          scoreRegionMatch(a.raw_description);
-        const scoreB =
-          scoreRegionMatch(b.contracting_authority) +
-          scoreRegionMatch(b.title) +
-          scoreRegionMatch(b.raw_description);
-
-        if (scoreA !== scoreB) return scoreB - scoreA;
-
-        return (
-          new Date(a.deadline || nowIso).getTime() -
-          new Date(b.deadline || nowIso).getTime()
-        );
-      })
-      .slice(0, 12);
+    relevantTenders = (
+      await maybeRerankTenderRecommendationsWithAI(
+        rankedRelevantTenders,
+        recommendationContext,
+        {
+          limit: 12,
+          shortlistSize: 8,
+        }
+      )
+    ).map(({ tender }) => tender);
   }
 
   const relevantTenderCount = relevantTenders.length;
@@ -405,8 +390,8 @@ export default async function DashboardPage() {
   const currentPlanName = subscriptionStatus.isSubscribed
     ? subscriptionStatus.plan.name
     : "Bez aktivne pretplate";
-  const profileLabel = companyProfile.primaryIndustry
-    ? getProfileOptionLabel(companyProfile.primaryIndustry)
+  const profileLabel = recommendationContext.profile.primaryIndustry
+    ? getProfileOptionLabel(recommendationContext.profile.primaryIndustry)
     : null;
   const warningCount = expiring.length + missingChecklistCount;
   const nextAction = urgentBidDeadlines[0]
