@@ -386,7 +386,7 @@ function findSuggestedDocument(item: BidChecklistItem): Document | undefined {
       <Dialog open={addOpen} onOpenChange={setAddOpen}>
         <DialogContent className="border-slate-100 bg-white sm:max-w-md p-6 rounded-2xl shadow-xl">
           <DialogHeader>
-            <DialogTitle className="text-xl font-heading font-bold text-slate-900">Dodaj stavku checklista</DialogTitle>
+            <DialogTitle className="text-xl font-heading font-bold text-slate-900">Dodaj stavku na listu</DialogTitle>
             <DialogDescription className="text-slate-500">
               Definišite novi zahtjev ili dokument koji je potreban za ovu ponudu.
             </DialogDescription>

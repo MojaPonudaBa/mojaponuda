@@ -1,8 +1,8 @@
 ﻿import * as React from "react"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { BIH_REGION_GROUPS } from "@/lib/constants/regions"
-import { Check, ChevronsUpDown, X } from "lucide-react"
+import { BIH_REGION_GROUPS, expandSelectedRegions, getRegionSelectionLabels } from "@/lib/constants/regions"
+import { Check, ChevronsUpDown, Minus, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 
@@ -14,13 +14,32 @@ export function RegionMultiSelect({
   onChange: (regions: string[]) => void
 }) {
   const [open, setOpen] = React.useState(false)
+  const expandedSelectedRegions = React.useMemo(
+    () => expandSelectedRegions(selectedRegions),
+    [selectedRegions]
+  )
+  const selectionLabels = React.useMemo(
+    () => getRegionSelectionLabels(selectedRegions),
+    [selectedRegions]
+  )
 
-  const toggleRegion = (region: string) => {
-    if (selectedRegions.includes(region)) {
-      onChange(selectedRegions.filter((r) => r !== region))
+  const toggleMunicipality = (region: string) => {
+    if (expandedSelectedRegions.includes(region)) {
+      onChange(expandedSelectedRegions.filter((r) => r !== region))
     } else {
-      onChange([...selectedRegions, region])
+      onChange([...expandedSelectedRegions, region])
     }
+  }
+
+  const toggleParentRegion = (municipalities: string[]) => {
+    const isWholeGroupSelected = municipalities.every((municipality) => expandedSelectedRegions.includes(municipality))
+
+    if (isWholeGroupSelected) {
+      onChange(expandedSelectedRegions.filter((region) => !municipalities.includes(region)))
+      return
+    }
+
+    onChange([...new Set([...expandedSelectedRegions, ...municipalities])])
   }
 
   return (
@@ -33,8 +52,8 @@ export function RegionMultiSelect({
           className="w-full justify-between h-auto min-h-10 px-3 py-2 rounded-xl"
         >
           <div className="flex flex-wrap gap-1">
-            {selectedRegions.length > 0 ? (
-              selectedRegions.map((region) => (
+            {selectionLabels.length > 0 ? (
+              selectionLabels.map((region) => (
                 <div
                   key={region}
                   className="flex items-center gap-1 bg-blue-50 text-blue-700 px-2 py-0.5 rounded-md text-xs"
@@ -46,12 +65,22 @@ export function RegionMultiSelect({
                     className="cursor-pointer hover:text-red-500 rounded-full"
                     onKeyDown={(e) => {
                       if (e.key === "Enter") {
-                        toggleRegion(region)
+                        const group = BIH_REGION_GROUPS.find((item) => item.parentRegion === region)
+                        if (group?.parentRegion) {
+                          toggleParentRegion(group.municipalities)
+                        } else {
+                          toggleMunicipality(region)
+                        }
                         e.stopPropagation()
                       }
                     }}
                     onClick={(e) => {
-                      toggleRegion(region)
+                      const group = BIH_REGION_GROUPS.find((item) => item.parentRegion === region)
+                      if (group?.parentRegion) {
+                        toggleParentRegion(group.municipalities)
+                      } else {
+                        toggleMunicipality(region)
+                      }
                       e.stopPropagation()
                     }}
                   >
@@ -73,18 +102,37 @@ export function RegionMultiSelect({
             <CommandEmpty>Regija nije pronađena.</CommandEmpty>
             {BIH_REGION_GROUPS.map((group) => (
               <CommandGroup key={group.label} heading={group.label} className="max-h-64 overflow-auto">
-                {group.regions.map((region) => (
+                {group.parentRegion ? (
+                  <CommandItem
+                    key={group.parentRegion}
+                    onSelect={() => {
+                      toggleParentRegion(group.municipalities)
+                    }}
+                    className="cursor-pointer font-semibold text-slate-900"
+                  >
+                    {group.municipalities.every((municipality) => expandedSelectedRegions.includes(municipality)) ? (
+                      <Check className="mr-2 size-4 text-blue-600" />
+                    ) : group.municipalities.some((municipality) => expandedSelectedRegions.includes(municipality)) ? (
+                      <Minus className="mr-2 size-4 text-blue-600" />
+                    ) : (
+                      <Check className="mr-2 size-4 opacity-0" />
+                    )}
+                    {group.parentRegion}
+                    <span className="ml-2 text-xs font-normal text-slate-500">označi cijeli kanton</span>
+                  </CommandItem>
+                ) : null}
+                {group.municipalities.map((region) => (
                   <CommandItem
                     key={region}
                     onSelect={() => {
-                      toggleRegion(region)
+                      toggleMunicipality(region)
                     }}
                     className="cursor-pointer"
                   >
                     <Check
                       className={cn(
                         "mr-2 size-4",
-                        selectedRegions.includes(region) ? "opacity-100 text-blue-600" : "opacity-0"
+                        expandedSelectedRegions.includes(region) ? "opacity-100 text-blue-600" : "opacity-0"
                       )}
                     />
                     {region}

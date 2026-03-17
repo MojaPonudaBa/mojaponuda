@@ -1,6 +1,12 @@
 import { Suspense } from "react";
 import { createClient } from "@/lib/supabase/server";
 import type { Tender } from "@/types/database";
+import {
+  buildProfileKeywordSeeds,
+  parseCompanyProfile,
+  sanitizeSearchKeywords,
+} from "@/lib/company-profile";
+import { buildRegionSearchTerms } from "@/lib/constants/regions";
 import { TenderFilters } from "@/components/tenders/tender-filters";
 import { TenderCard } from "@/components/tenders/tender-card";
 import { Pagination } from "@/components/tenders/pagination";
@@ -35,14 +41,18 @@ async function TendersContent({ searchParams }: TendersPageProps) {
   if (activeTab === "recommended" && user) {
     const { data: company } = await supabase
       .from("companies")
-      .select("keywords, operating_regions")
+      .select("industry, keywords, operating_regions")
       .eq("user_id", user.id)
       .single();
 
     if (company) {
+      const companyProfile = parseCompanyProfile(company.industry);
       hasProfile = true;
-      companyKeywords = company.keywords || [];
-      companyRegions = company.operating_regions || [];
+      companyKeywords = sanitizeSearchKeywords([
+        ...(company.keywords || []),
+        ...buildProfileKeywordSeeds(companyProfile),
+      ]);
+      companyRegions = buildRegionSearchTerms(company.operating_regions || []);
     }
   }
 
@@ -78,8 +88,8 @@ async function TendersContent({ searchParams }: TendersPageProps) {
             Podesite svoj profil
           </h3>
           <p className="mb-6 max-w-md text-slate-500">
-            Da bismo vam mogli preporučiti tendere, trebamo znati čime se bavi
-            vaša firma. Unesite ključne riječi u postavkama profila.
+            Da bismo vam mogli preporučiti tendere, trebamo znati šta tačno nudite
+            i gdje radite. Dopunite profil firme.
           </p>
           <Button asChild>
             <Link href="/dashboard/settings">Uredi Profil</Link>

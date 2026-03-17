@@ -1,13 +1,14 @@
 ﻿export interface RegionGroup {
   label: string;
-  regions: string[];
+  parentRegion?: string;
+  municipalities: string[];
 }
 
 export const BIH_REGION_GROUPS: RegionGroup[] = [
   {
     label: "Unsko-sanski kanton",
-    regions: [
-      "Unsko-sanski kanton",
+    parentRegion: "Unsko-sanski kanton",
+    municipalities: [
       "Bihać",
       "Bosanska Krupa",
       "Bosanski Petrovac",
@@ -20,12 +21,13 @@ export const BIH_REGION_GROUPS: RegionGroup[] = [
   },
   {
     label: "Posavski kanton",
-    regions: ["Posavski kanton", "Domaljevac-Šamac", "Odžak", "Orašje"],
+    parentRegion: "Posavski kanton",
+    municipalities: ["Domaljevac-Šamac", "Odžak", "Orašje"],
   },
   {
     label: "Tuzlanski kanton",
-    regions: [
-      "Tuzlanski kanton",
+    parentRegion: "Tuzlanski kanton",
+    municipalities: [
       "Banovići",
       "Čelić",
       "Doboj Istok",
@@ -43,8 +45,8 @@ export const BIH_REGION_GROUPS: RegionGroup[] = [
   },
   {
     label: "Zeničko-dobojski kanton",
-    regions: [
-      "Zeničko-dobojski kanton",
+    parentRegion: "Zeničko-dobojski kanton",
+    municipalities: [
       "Breza",
       "Doboj Jug",
       "Kakanj",
@@ -61,12 +63,13 @@ export const BIH_REGION_GROUPS: RegionGroup[] = [
   },
   {
     label: "Bosansko-podrinjski kanton",
-    regions: ["Bosansko-podrinjski kanton", "Foča-Ustikolina", "Goražde", "Pale-Prača"],
+    parentRegion: "Bosansko-podrinjski kanton",
+    municipalities: ["Foča-Ustikolina", "Goražde", "Pale-Prača"],
   },
   {
     label: "Srednjobosanski kanton",
-    regions: [
-      "Srednjobosanski kanton",
+    parentRegion: "Srednjobosanski kanton",
+    municipalities: [
       "Bugojno",
       "Busovača",
       "Dobretići",
@@ -83,8 +86,8 @@ export const BIH_REGION_GROUPS: RegionGroup[] = [
   },
   {
     label: "Hercegovačko-neretvanski kanton",
-    regions: [
-      "Hercegovačko-neretvanski kanton",
+    parentRegion: "Hercegovačko-neretvanski kanton",
+    municipalities: [
       "Čapljina",
       "Čitluk",
       "Jablanica",
@@ -98,12 +101,13 @@ export const BIH_REGION_GROUPS: RegionGroup[] = [
   },
   {
     label: "Zapadnohercegovački kanton",
-    regions: ["Zapadnohercegovački kanton", "Grude", "Ljubuški", "Posušje", "Široki Brijeg"],
+    parentRegion: "Zapadnohercegovački kanton",
+    municipalities: ["Grude", "Ljubuški", "Posušje", "Široki Brijeg"],
   },
   {
     label: "Kanton Sarajevo",
-    regions: [
-      "Kanton Sarajevo",
+    parentRegion: "Kanton Sarajevo",
+    municipalities: [
       "Sarajevo",
       "Centar Sarajevo",
       "Hadžići",
@@ -118,8 +122,8 @@ export const BIH_REGION_GROUPS: RegionGroup[] = [
   },
   {
     label: "Kanton 10",
-    regions: [
-      "Kanton 10",
+    parentRegion: "Kanton 10",
+    municipalities: [
       "Bosansko Grahovo",
       "Drvar",
       "Glamoč",
@@ -130,11 +134,12 @@ export const BIH_REGION_GROUPS: RegionGroup[] = [
   },
   {
     label: "Brčko distrikt",
-    regions: ["Brčko distrikt", "Brčko"],
+    parentRegion: "Brčko distrikt",
+    municipalities: ["Brčko"],
   },
   {
     label: "Republika Srpska · Krajina i Banja Luka",
-    regions: [
+    municipalities: [
       "Banja Luka",
       "Čelinac",
       "Gradiška",
@@ -159,7 +164,7 @@ export const BIH_REGION_GROUPS: RegionGroup[] = [
   },
   {
     label: "Republika Srpska · Doboj, Posavina i Semberija",
-    regions: [
+    municipalities: [
       "Bijeljina",
       "Brod",
       "Derventa",
@@ -180,7 +185,7 @@ export const BIH_REGION_GROUPS: RegionGroup[] = [
   },
   {
     label: "Republika Srpska · Romanija i Podrinje",
-    regions: [
+    municipalities: [
       "Istočno Sarajevo",
       "Istočna Ilidža",
       "Istočno Novo Sarajevo",
@@ -205,7 +210,7 @@ export const BIH_REGION_GROUPS: RegionGroup[] = [
   },
   {
     label: "Republika Srpska · Hercegovina",
-    regions: [
+    municipalities: [
       "Berkovići",
       "Bileća",
       "Gacko",
@@ -218,4 +223,87 @@ export const BIH_REGION_GROUPS: RegionGroup[] = [
   },
 ];
 
-export const BIH_REGIONS = [...new Set(BIH_REGION_GROUPS.flatMap((group) => group.regions))];
+function uniqueRegions(regions: Array<string | null | undefined>): string[] {
+  return [...new Set(regions.map((region) => region?.trim()).filter(Boolean) as string[])];
+}
+
+const parentToMunicipalities = new Map(
+  BIH_REGION_GROUPS.filter((group) => group.parentRegion).map((group) => [group.parentRegion as string, group.municipalities])
+);
+
+const allMunicipalities = new Set(BIH_REGION_GROUPS.flatMap((group) => group.municipalities));
+
+export function expandSelectedRegions(selectedRegions: string[]): string[] {
+  const expanded = new Set<string>();
+
+  for (const region of selectedRegions) {
+    const municipalities = parentToMunicipalities.get(region);
+
+    if (municipalities) {
+      municipalities.forEach((municipality) => expanded.add(municipality));
+      continue;
+    }
+
+    expanded.add(region);
+  }
+
+  return [...expanded];
+}
+
+export function buildRegionSearchTerms(selectedRegions: string[]): string[] {
+  const expanded = expandSelectedRegions(selectedRegions);
+  const searchTerms = new Set(expanded);
+
+  for (const group of BIH_REGION_GROUPS) {
+    if (!group.parentRegion) {
+      continue;
+    }
+
+    const isWholeGroupSelected = group.municipalities.every((municipality) => expanded.includes(municipality));
+
+    if (isWholeGroupSelected) {
+      searchTerms.add(group.parentRegion);
+    }
+  }
+
+  return [...searchTerms];
+}
+
+export function getRegionSelectionLabels(selectedRegions: string[]): string[] {
+  const expanded = expandSelectedRegions(selectedRegions);
+  const labels: string[] = [];
+  const coveredMunicipalities = new Set<string>();
+
+  for (const group of BIH_REGION_GROUPS) {
+    const selectedMunicipalities = group.municipalities.filter((municipality) => expanded.includes(municipality));
+
+    if (selectedMunicipalities.length === 0) {
+      continue;
+    }
+
+    const isWholeGroupSelected = selectedMunicipalities.length === group.municipalities.length;
+
+    if (group.parentRegion && isWholeGroupSelected) {
+      labels.push(group.parentRegion);
+      group.municipalities.forEach((municipality) => coveredMunicipalities.add(municipality));
+      continue;
+    }
+
+    selectedMunicipalities.forEach((municipality) => {
+      labels.push(municipality);
+      coveredMunicipalities.add(municipality);
+    });
+  }
+
+  expanded.forEach((region) => {
+    if (!coveredMunicipalities.has(region) && !allMunicipalities.has(region)) {
+      labels.push(region);
+    }
+  });
+
+  return uniqueRegions(labels);
+}
+
+export const BIH_REGIONS = uniqueRegions([
+  ...BIH_REGION_GROUPS.flatMap((group) => (group.parentRegion ? [group.parentRegion, ...group.municipalities] : group.municipalities)),
+]);

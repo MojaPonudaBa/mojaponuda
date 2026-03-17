@@ -18,9 +18,11 @@ import {
   OFFERING_CATEGORY_GROUPS,
   OFFERING_CATEGORY_OPTIONS,
   parseCompanyProfile,
+  sanitizeSearchKeywords,
   serializeCompanyProfile,
   TENDER_TYPE_OPTIONS,
 } from "@/lib/company-profile";
+import { getRegionSelectionLabels } from "@/lib/constants/regions";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -121,6 +123,7 @@ export function OnboardingGuidedForm({
     () => derivePrimaryIndustry(offeringCategories, parsedProfile.primaryIndustry),
     [offeringCategories, parsedProfile.primaryIndustry]
   );
+  const regionSelectionLabels = useMemo(() => getRegionSelectionLabels(regions), [regions]);
 
   async function seedDemoData(userId: string, savedCompanyId: string) {
     const supabase = createClient();
@@ -303,7 +306,7 @@ export function OnboardingGuidedForm({
       primaryIndustry: derivedPrimaryIndustry,
       offeringCategories,
       preferredTenderTypes,
-      regions,
+      regions: regionSelectionLabels,
     });
 
     const profileSeeds = buildProfileKeywordSeeds({
@@ -326,7 +329,7 @@ export function OnboardingGuidedForm({
           primaryIndustry: derivedPrimaryIndustry,
           offeringCategories,
           preferredTenderTypes,
-          regions,
+          regions: regionSelectionLabels,
         }),
       });
 
@@ -339,15 +342,11 @@ export function OnboardingGuidedForm({
       console.error("Onboarding profile generation error:", generationError);
     }
 
-    const keywords = unique([
+    const keywords = sanitizeSearchKeywords([
+      ...initialKeywords,
       ...generatedKeywords,
       ...profileSeeds,
-      ...description
-        .split(/[,.\n]/)
-        .map((item) => item.trim())
-        .filter((item) => item.length >= 4)
-        .slice(0, 6),
-    ]).slice(0, 18);
+    ]);
 
     const payload = {
       name: name.trim(),
@@ -631,7 +630,7 @@ export function OnboardingGuidedForm({
               <MapPin className="size-4 text-blue-600" />
               <p className="text-sm font-semibold">Gdje se prijavljujete</p>
             </div>
-            <p className="mt-2 text-sm leading-6 text-slate-500">Odaberite regije u kojima realno možete izvršiti ugovor. Možete birati kantone, gradove i općine — sve relevantne regije u BiH su zastupljene.</p>
+            <p className="mt-2 text-sm leading-6 text-slate-500">Odaberite regije u kojima realno možete izvršiti ugovor. Možete označiti cijeli kanton odjednom ili samo pojedine gradove i općine.</p>
             <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4">
               <p className="text-sm font-bold uppercase tracking-wide text-amber-800">
                 Ako ništa ne odaberete, tretirat ćemo vas kao firmu koja radi na nivou cijele BiH.
@@ -683,8 +682,8 @@ export function OnboardingGuidedForm({
                   {getProfileOptionLabel(item)}
                 </span>
               ))}
-              {regions.length > 0 ? (
-                regions.map((region) => (
+              {regionSelectionLabels.length > 0 ? (
+                regionSelectionLabels.map((region) => (
                   <span key={region} className="rounded-full border border-violet-100 bg-violet-50 px-3 py-1 text-xs font-semibold text-violet-700">
                     {region}
                   </span>

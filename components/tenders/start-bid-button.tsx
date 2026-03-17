@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Loader2, Briefcase, Sparkles } from "lucide-react";
+import { Loader2, Briefcase, Lock, Sparkles } from "lucide-react";
 import { PaywallModal } from "@/components/subscription/paywall-modal";
 
 interface StartBidButtonProps {
@@ -39,9 +39,15 @@ export function StartBidButton({ tenderId, existingBidId, variant = "default", c
   }
 
   async function handleStart() {
+    if (!isSubscribed) {
+      setLimitInfo(null);
+      setShowPaywall(true);
+      return;
+    }
+
     setError(null);
     setLoading(true);
-    setLoadingText(isSubscribed ? "Pripremam radni prostor i checklistu..." : "Pripremam radni prostor i početnu checklistu...");
+    setLoadingText("Pripremam ponudu i početnu listu potrebnih dokumenata...");
     try {
       const res = await fetch("/api/bids", {
         method: "POST",
@@ -57,6 +63,13 @@ export function StartBidButton({ tenderId, existingBidId, variant = "default", c
       if (!res.ok) {
         if (data.code === "LIMIT_REACHED") {
           setLimitInfo({ limit: data.limit, current: data.current });
+          setShowPaywall(true);
+          setLoading(false);
+          return;
+        }
+
+        if (data.code === "SUBSCRIPTION_REQUIRED") {
+          setLimitInfo(null);
           setShowPaywall(true);
           setLoading(false);
           return;
@@ -86,19 +99,26 @@ export function StartBidButton({ tenderId, existingBidId, variant = "default", c
             </>
           ) : (
             <>
-              <Sparkles className="mr-2 size-4" />
-              Započni pripremu
+              {isSubscribed ? <Sparkles className="mr-2 size-4" /> : <Lock className="mr-2 size-4" />}
+              {isSubscribed ? "Započni pripremu" : "Otključaj pripremu ponude"}
             </>
           )}
         </Button>
+        {!isSubscribed ? (
+          <p className="text-sm text-slate-500">
+            Priprema ponude, početna lista potrebnih dokumenata i rad na ponudi dostupni su uz pretplatu.
+          </p>
+        ) : null}
         {error && <p className="text-sm font-medium text-red-600">{error}</p>}
       </div>
 
       <PaywallModal
         isOpen={showPaywall}
         onClose={() => setShowPaywall(false)}
-        title="Dostigli ste limit paketa"
-        description={`Vaš trenutni paket omogućava maksimalno ${limitInfo?.limit} aktivnih tendera. Trenutno imate ${limitInfo?.current}. Nadogradite paket za više prostora.`}
+        title={limitInfo ? "Dostigli ste limit paketa" : "Priprema ponude je dostupna uz pretplatu"}
+        description={limitInfo
+          ? `Vaš trenutni paket omogućava maksimalno ${limitInfo?.limit} aktivnih tendera. Trenutno imate ${limitInfo?.current}. Nadogradite paket za više prostora.`
+          : "Uz pretplatu otključavate pripremu ponude, početnu listu potrebnih dokumenata i sve alate za organizaciju ponude na jednom mjestu."}
         limitType="tenders"
       />
     </>

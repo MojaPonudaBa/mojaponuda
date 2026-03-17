@@ -232,6 +232,85 @@ export const TENDER_TYPE_OPTIONS: ProfileOption[] = [
   },
 ];
 
+const PRIMARY_INDUSTRY_KEYWORDS: Record<string, string[]> = {
+  construction: ["građevin", "izgradnj", "rekonstrukcij", "sanacij", "adaptacij"],
+  it: ["softver", "licenc", "server", "mrež", "digitalizacij"],
+  equipment: ["oprem", "namještaj", "inventar", "mašin", "alat"],
+  medical: ["medicinsk", "laboratorij", "dijagnostik", "reagens"],
+  maintenance: ["održavanj", "servis", "podršk", "intervencij"],
+  consulting: ["projektovanj", "nadzor", "savjetovanj", "revizij", "obuk"],
+  logistics: ["transport", "prevoz", "komunaln", "odvoz", "zimsk"],
+  security_energy: ["sigurnost", "zaštit", "videonadzor", "goriv", "energ"],
+  facilities_hospitality: ["čišćenj", "higijen", "prehramben", "catering"],
+  communications_media: ["štamp", "marketing", "promotivn", "događaj"],
+};
+
+const OFFERING_CATEGORY_KEYWORDS: Record<string, string[]> = {
+  software_licenses: ["softver", "licenc", "erp", "dms", "aplikacij"],
+  it_hardware: ["server", "računar", "printer", "mrež", "lan", "kablov"],
+  telecom_av: ["telekom", "telefonij", "konferencij", "audio", "video", "razglas"],
+  cloud_cyber_data: ["cloud", "backup", "cyber", "sigurnost", "podat", "data"],
+  construction_works: ["izgradnj", "rekonstrukcij", "sanacij", "adaptacij", "građevin", "radov"],
+  electro_mechanical: ["elektroinstalacij", "mašinsk", "instalacij", "hvac", "grijanj", "hlađenj"],
+  design_supervision: ["projektovanj", "nadzor", "idejn", "glavn", "revizij"],
+  maintenance_support: ["održavanj", "servis", "podršk", "intervencij"],
+  office_school_equipment: ["uredsk", "kancelarij", "školsk", "namještaj", "inventar"],
+  industrial_tools_machinery: ["industrijsk", "alat", "mašin", "rezervn", "radionic"],
+  furniture_interior: ["namještaj", "stolic", "stol", "ormar", "enterijer"],
+  medical_supplies: ["medicinsk", "potrošn", "instrument", "sanitetsk", "uređaj"],
+  laboratory_diagnostics: ["laboratorij", "dijagnostik", "reagens", "analizator"],
+  vehicles_transport: ["vozil", "automobil", "kombi", "kamion", "transport", "prevoz"],
+  utility_waste_winter: ["komunaln", "otpad", "odvoz", "zimsk", "održavanj"],
+  cleaning_hygiene: ["čišćenj", "higijen", "dezinfekcij", "sanitarn", "hemij"],
+  food_catering: ["hran", "prehramben", "catering", "ugostitelj", "obrok"],
+  security_video: ["sigurnost", "zaštit", "alarm", "video", "nadzor", "videonadzor"],
+  fuel_energy: ["goriv", "lož", "energ", "elektroenergetsk", "agregat"],
+  legal_finance_consulting: ["pravn", "finansij", "računovodstv", "revizij", "savjetovanj"],
+  training_research: ["obuk", "edukacij", "certifikacij", "istraživanj", "seminar"],
+  printing_marketing_events: ["štamp", "marketing", "promotivn", "brendiranj", "događaj"],
+};
+
+const TENDER_TYPE_KEYWORDS: Record<string, string[]> = {
+  goods: ["isporuk", "nabavk", "oprem"],
+  services: ["uslug", "servis", "održavanj"],
+  works: ["radov", "izgradnj", "rekonstrukcij"],
+};
+
+const SEARCH_KEYWORD_STOP_WORDS = new Set([
+  "firma",
+  "firme",
+  "naša",
+  "naše",
+  "naš",
+  "njihov",
+  "njihove",
+  "koja",
+  "koje",
+  "koji",
+  "kako",
+  "gdje",
+  "kroz",
+  "radi",
+  "radimo",
+  "vrste",
+  "vrsta",
+  "ponuda",
+  "ponude",
+  "usluga",
+  "usluge",
+  "roba",
+  "radova",
+  "opis",
+  "fokus",
+  "profil",
+  "tender",
+  "tendere",
+  "bosna",
+  "hercegovina",
+  "cijela",
+  "bih",
+]);
+
 export interface StructuredCompanyProfile {
   version: 1;
   primaryIndustry: string | null;
@@ -255,9 +334,62 @@ const optionLookup = new Map(
   ])
 );
 
+const genericProfileKeywordTerms = new Set(
+  [...PRIMARY_INDUSTRY_OPTIONS, ...OFFERING_CATEGORY_OPTIONS, ...TENDER_TYPE_OPTIONS]
+    .map((option) => option.label)
+    .map((term) =>
+      term
+        .trim()
+        .toLowerCase()
+        .replace(/[“”"']/g, "")
+        .replace(/[(),.;:/\\]+/g, " ")
+        .replace(/\s+/g, " ")
+    )
+);
+
 const offeringCategoryLookup = new Map(
   OFFERING_CATEGORY_OPTIONS.map((option) => [option.id, option])
 );
+
+function normalizeSearchKeywordTerm(term: string): string | null {
+  const normalized = term
+    .trim()
+    .toLowerCase()
+    .replace(/[“”"']/g, "")
+    .replace(/[(),.;:/\\]+/g, " ")
+    .replace(/\s+/g, " ");
+
+  if (!normalized || normalized.length < 3) {
+    return null;
+  }
+
+  return normalized;
+}
+
+function uniqueSearchKeywordTerms(terms: Array<string | null | undefined>): string[] {
+  return [...new Set(terms.map((term) => (term ? normalizeSearchKeywordTerm(term) : null)).filter(Boolean) as string[])];
+}
+
+function extractDescriptionKeywordTerms(description: string | null | undefined): string[] {
+  if (!description?.trim()) {
+    return [];
+  }
+
+  const words = description
+    .split(/[^a-zA-Z0-9čćžšđČĆŽŠĐ-]+/)
+    .map((word) => normalizeSearchKeywordTerm(word))
+    .filter((word): word is string => typeof word === "string" && word.length >= 5)
+    .filter((word) => !SEARCH_KEYWORD_STOP_WORDS.has(word));
+
+  return uniqueSearchKeywordTerms(words).slice(0, 8);
+}
+
+export function sanitizeSearchKeywords(terms: Array<string | null | undefined>): string[] {
+  return uniqueSearchKeywordTerms(terms)
+    .filter((term) => !genericProfileKeywordTerms.has(term))
+    .filter((term) => !SEARCH_KEYWORD_STOP_WORDS.has(term))
+    .slice(0, 24);
+}
 
 export function derivePrimaryIndustry(
   offeringCategories: string[],
@@ -374,11 +506,12 @@ export function buildProfileKeywordSeeds(profile: ParsedCompanyProfile): string[
     profile.primaryIndustry
   );
 
-  return [
-    derivedPrimaryIndustry ? getProfileOptionLabel(derivedPrimaryIndustry) : null,
-    ...profile.offeringCategories.map((item) => getProfileOptionLabel(item)),
-    ...profile.preferredTenderTypes.map((item) => getProfileOptionLabel(item)),
-  ].filter((item): item is string => Boolean(item));
+  return sanitizeSearchKeywords([
+    ...(derivedPrimaryIndustry ? PRIMARY_INDUSTRY_KEYWORDS[derivedPrimaryIndustry] ?? [] : []),
+    ...profile.offeringCategories.flatMap((item) => OFFERING_CATEGORY_KEYWORDS[item] ?? []),
+    ...profile.preferredTenderTypes.flatMap((item) => TENDER_TYPE_KEYWORDS[item] ?? []),
+    ...extractDescriptionKeywordTerms(profile.companyDescription ?? profile.legacyIndustryText),
+  ]);
 }
 
 export function buildProfileContextText({

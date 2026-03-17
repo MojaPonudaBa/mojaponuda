@@ -190,13 +190,23 @@ export default async function TenderDetailPage({
               {tender.title}
             </h1>
             <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-500">
-              Otvorite radni prostor jednim klikom i odmah dobijte početnu checklistu za pripremu dokumentacije.
+              {isSubscribed
+                ? "Otvorite pripremu ponude jednim klikom i odmah dobijte početnu listu dokumenata i koraka za rad."
+                : "Pregledajte detalje tendera, a pripremu ponude otključajte kroz pretplatu kada budete spremni za rad."}
             </p>
           </div>
           <div className="rounded-[1.5rem] border border-blue-100 bg-blue-50/70 p-5 lg:max-w-sm">
-            <p className="text-xs font-bold uppercase tracking-[0.18em] text-blue-700">Brzi start</p>
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-blue-700">Brzi početak</p>
             <p className="mt-2 text-sm leading-6 text-slate-700">
-              Klik na <span className="font-bold text-slate-900">Započni pripremu</span> odmah kreira ponudu i početnu checklistu, tako da možete bez čekanja početi skupljati dokumentaciju.
+              {isSubscribed ? (
+                <>
+                  Klik na <span className="font-bold text-slate-900">Započni pripremu</span> odmah otvara pripremu ponude i slaže početnu listu onoga što najčešće treba prikupiti.
+                </>
+              ) : (
+                <>
+                  Priprema ponude je dostupna uz pretplatu. Otključajte ovu opciju da odmah dobijete početnu listu dokumenata i koraka za rad.
+                </>
+              )}
             </p>
           </div>
         </div>
@@ -247,7 +257,15 @@ export default async function TenderDetailPage({
                 Opis nije objavljen
               </h3>
               <p className="mt-2 text-sm leading-6 text-slate-600">
-                Za ovaj tender nema detaljnog opisa u javnim podacima. Kada kliknete <span className="font-bold text-slate-900">Započni pripremu</span>, otvorit će se radni prostor sa početnom checklistom generisanom iz dostupnih podataka i tipičnih zahtjeva naručioca.
+                {isSubscribed ? (
+                  <>
+                    Za ovaj tender nema detaljnog opisa u javnim podacima. Kada kliknete <span className="font-bold text-slate-900">Započni pripremu</span>, otvorit će se priprema ponude sa početnom listom dokumenata i koraka složenom iz dostupnih podataka i tipičnih zahtjeva naručioca.
+                  </>
+                ) : (
+                  <>
+                    Za ovaj tender nema detaljnog opisa u javnim podacima. Uz pretplatu možete otvoriti pripremu ponude i dobiti početnu listu dokumenata i koraka složenu iz dostupnih podataka i tipičnih zahtjeva naručioca.
+                  </>
+                )}
               </p>
             </div>
           )}

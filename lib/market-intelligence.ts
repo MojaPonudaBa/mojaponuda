@@ -1,5 +1,11 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Company, Database } from "@/types/database";
+import {
+  buildProfileKeywordSeeds,
+  parseCompanyProfile,
+  sanitizeSearchKeywords,
+} from "@/lib/company-profile";
+import { buildRegionSearchTerms } from "@/lib/constants/regions";
 
 interface CompetitorAccumulator {
   name: string;
@@ -184,7 +190,12 @@ function scoreRegionMatch(source: string | null | undefined, regions: string[]):
 }
 
 function buildSearchTerms(company: Pick<Company, "keywords" | "industry">): string[] {
-  return uniqueStrings([...(company.keywords ?? []), company.industry]).slice(0, 10);
+  const profile = parseCompanyProfile(company.industry);
+
+  return sanitizeSearchKeywords([
+    ...(company.keywords ?? []),
+    ...buildProfileKeywordSeeds(profile),
+  ]).slice(0, 16);
 }
 
 function buildKeywordOrConditions(terms: string[]): string {
@@ -200,7 +211,7 @@ export async function getCompetitorAnalysis(
   company: Pick<Company, "jib" | "keywords" | "operating_regions" | "industry">
 ): Promise<CompetitorAnalysisResult> {
   const searchTerms = buildSearchTerms(company);
-  const operatingRegions = company.operating_regions ?? [];
+  const operatingRegions = buildRegionSearchTerms(company.operating_regions ?? []);
   const nowIso = new Date().toISOString();
   const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000)
     .toISOString()

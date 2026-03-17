@@ -14,9 +14,11 @@ import {
   getPreferredContractTypes,
   getProfileOptionLabel,
   parseCompanyProfile,
+  sanitizeSearchKeywords,
 } from "@/lib/company-profile";
 import { DashboardHomeOverview } from "@/components/dashboard/home-overview";
 import { getCompetitorAnalysis } from "@/lib/market-intelligence";
+import { buildRegionSearchTerms } from "@/lib/constants/regions";
 import { getSubscriptionStatus } from "@/lib/subscription";
 
 function formatCompactCurrency(value: number | null | undefined): string {
@@ -74,13 +76,11 @@ export default async function DashboardPage() {
   const preferredContractTypes = getPreferredContractTypes(
     companyProfile.preferredTenderTypes
   );
-  const companyKeywords = [
-    ...new Set([
-      ...(resolvedCompany.keywords || []),
-      ...buildProfileKeywordSeeds(companyProfile),
-    ]),
-  ];
-  const companyRegions = resolvedCompany.operating_regions || [];
+  const companyKeywords = sanitizeSearchKeywords([
+    ...(resolvedCompany.keywords || []),
+    ...buildProfileKeywordSeeds(companyProfile),
+  ]);
+  const companyRegions = buildRegionSearchTerms(resolvedCompany.operating_regions || []);
 
   // Calculate dates outside of query builder to avoid impure function warnings
   const now = new Date();

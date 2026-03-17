@@ -236,7 +236,7 @@ const HOW_IT_WORKS = [
   {
     step: "02",
     title: "AI analizira tender za vas",
-    description: "Uploadujte tendersku dokumentaciju. Naš AI algoritam u sekundi čita tekst, pronalazi sve uslove kvalifikacije i generiše interaktivnu checklistu.",
+    description: "Uploadujte tendersku dokumentaciju. Naš AI u sekundi čita tekst, pronalazi tražene uslove i slaže jasnu listu onoga što trebate pripremiti.",
     icon: LayoutDashboard,
   },
   {
@@ -308,12 +308,12 @@ const FEATURES = [
   },
   {
     icon: LayoutDashboard,
-    title: "AI Radni Prostor",
+    title: "AI priprema ponude",
     description:
-      "Nema više ručnog podvlačenja uslova markerom. Naš AI čita dokumentaciju i stvara tačnu listu svega što vam treba.",
+      "Nema više ručnog podvlačenja uslova markerom. Naš AI čita dokumentaciju i slaže tačnu listu svega što vam treba.",
     details: [
       "Automatska ekstrakcija uslova",
-      "Interaktivna checklist-a",
+      "Jasna lista potrebnih dokumenata",
       "Generisanje finalnog paketa",
     ],
     imagePrompt: "UI MOCKUP: Bid Workspace. Split screen. Left side: PDF viewer with highlighted text. Right side: Checklist with 'Requirement Met' checkmarks. Modern, clean.",

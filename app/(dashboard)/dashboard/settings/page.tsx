@@ -79,6 +79,7 @@ export default async function SettingsPage() {
               address: company.address,
               contact_email: company.contact_email,
               contact_phone: company.contact_phone,
+              industry: company.industry,
               cpv_codes: company.cpv_codes,
               keywords: company.keywords,
               operating_regions: company.operating_regions,

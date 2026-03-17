@@ -4,7 +4,9 @@ import {
   buildProfileKeywordSeeds,
   getPreferredContractTypes,
   parseCompanyProfile,
+  sanitizeSearchKeywords,
 } from "@/lib/company-profile";
+import { buildRegionSearchTerms } from "@/lib/constants/regions";
 import { Sparkles, ArrowRight, Briefcase } from "lucide-react";
 import type { Tender } from "@/types/database";
 
@@ -28,7 +30,7 @@ export async function RecommendedTenders() {
     profile.preferredTenderTypes
   );
   const searchTerms = [
-    ...new Set([
+    ...sanitizeSearchKeywords([
       ...(company?.keywords || []),
       ...buildProfileKeywordSeeds(profile),
     ]),
@@ -89,9 +91,9 @@ export async function RecommendedTenders() {
   }
 
   // If company has specified regions, also filter by those regions
-  const regions = company.operating_regions || [];
-  if (regions.length > 0) {
-    const regionConditions = regions
+  const regionSearchTerms = buildRegionSearchTerms(company.operating_regions || []);
+  if (regionSearchTerms.length > 0) {
+    const regionConditions = regionSearchTerms
       .map(
         (reg) =>
           `title.ilike.%${reg}%,raw_description.ilike.%${reg}%,contracting_authority.ilike.%${reg}%`

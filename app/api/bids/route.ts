@@ -19,6 +19,17 @@ export async function POST(request: NextRequest) {
   // Check subscription limits
   const { isSubscribed, plan } = await getSubscriptionStatus(user.id, user.email);
 
+  if (!isSubscribed) {
+    return NextResponse.json(
+      {
+        error: "Priprema ponude je dostupna samo uz aktivnu pretplatu.",
+        code: "SUBSCRIPTION_REQUIRED",
+        upgradeRequired: true,
+      },
+      { status: 403 }
+    );
+  }
+
   const { data: company } = await supabase
     .from("companies")
     .select("id")

@@ -114,7 +114,7 @@ export function NewBidModal({ tenders }: NewBidModalProps) {
             <div>
               <DialogTitle className="text-xl font-heading font-bold text-slate-900">Nova ponuda</DialogTitle>
               <DialogDescription className="text-slate-500">
-                Kreirajte novi radni prostor za pripremu ponude.
+                Otvorite novu pripremu ponude.
               </DialogDescription>
             </div>
           </div>
