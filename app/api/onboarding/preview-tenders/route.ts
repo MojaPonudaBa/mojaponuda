@@ -10,6 +10,11 @@ import {
 import { getOpenAIClient } from "@/lib/openai";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
+  buildNeighboringGroupRegionFallback,
+  buildRegionSearchTerms,
+  buildSameGroupRegionFallback,
+} from "@/lib/constants/regions";
+import {
   buildRecommendationContext,
   scoreTenderRecommendation,
 } from "@/lib/tender-recommendations";
@@ -151,6 +156,31 @@ function toPreviewTender(candidate: PreviewTenderCandidate): PreviewTender {
     estimated_value: candidate.estimated_value,
     contracting_authority: candidate.contracting_authority,
   };
+}
+
+function normalizePreviewText(value: string | null | undefined): string {
+  return value?.toLowerCase() ?? "";
+}
+
+function matchesPreviewRegionTerms(
+  candidate: PreviewTenderCandidate,
+  regionTerms: string[]
+): boolean {
+  if (regionTerms.length === 0) {
+    return false;
+  }
+
+  const values = [
+    normalizePreviewText(candidate.title),
+    normalizePreviewText(candidate.raw_description),
+    normalizePreviewText(candidate.contracting_authority),
+    normalizePreviewText(candidate.authority_city),
+    normalizePreviewText(candidate.authority_municipality),
+    normalizePreviewText(candidate.authority_canton),
+    normalizePreviewText(candidate.authority_entity),
+  ];
+
+  return values.some((value) => regionTerms.some((term) => value.includes(term.toLowerCase())));
 }
 
 export async function POST(request: Request) {
@@ -333,28 +363,41 @@ export async function POST(request: Request) {
       });
 
     const hasRegionFilter = recommendationContext.regionTerms.length > 0;
+    const sameGroupRegions = hasRegionFilter ? buildSameGroupRegionFallback(regions) : [];
+    const sameGroupRegionTerms = hasRegionFilter ? buildRegionSearchTerms(sameGroupRegions) : [];
+    const neighboringRegions = hasRegionFilter ? buildNeighboringGroupRegionFallback(regions) : [];
+    const neighboringRegionTerms = hasRegionFilter ? buildRegionSearchTerms(neighboringRegions) : [];
 
-    const qualified = scored.filter((item) => item.qualifies);
-    const withAnyPositive = scored.filter(
+    const withBusinessSignal = scored.filter(
       (item) =>
-        item.score > 0 ||
         item.cpvMatch ||
         item.titleMatches.length > 0 ||
         item.matchedKeywords.length > 0
     );
-    // regionMatch already checks title, description, authority name, city,
-    // municipality, canton, entity — so it catches both explicit geo data
-    // and implicit mentions like "OPĆINA TRAVNIK" in the authority name.
-    const positiveAndRegion = withAnyPositive.filter((item) => item.regionMatch);
-    const regionOnly = scored.filter((item) => item.regionMatch);
+    const qualified = withBusinessSignal.filter((item) => item.qualifies);
+    const businessSignalAndRegion = withBusinessSignal.filter((item) => item.regionMatch);
+    const businessSignalSameGroup = withBusinessSignal.filter(
+      (item) =>
+        !item.regionMatch &&
+        matchesPreviewRegionTerms(item.tender, sameGroupRegionTerms)
+    );
+    const businessSignalNeighboring = withBusinessSignal.filter(
+      (item) =>
+        !item.regionMatch &&
+        !matchesPreviewRegionTerms(item.tender, sameGroupRegionTerms) &&
+        matchesPreviewRegionTerms(item.tender, neighboringRegionTerms)
+    );
 
     console.log("[PREVIEW] Scoring results:", {
       totalScored: scored.length,
       qualified: qualified.length,
-      withAnyPositive: withAnyPositive.length,
-      positiveAndRegion: positiveAndRegion.length,
-      regionOnly: regionOnly.length,
+      withBusinessSignal: withBusinessSignal.length,
+      businessSignalAndRegion: businessSignalAndRegion.length,
+      businessSignalSameGroup: businessSignalSameGroup.length,
+      businessSignalNeighboring: businessSignalNeighboring.length,
       hasRegionFilter,
+      sameGroupRegions: sameGroupRegions.slice(0, 12),
+      neighboringRegions: neighboringRegions.slice(0, 12),
       topScores: scored.slice(0, 5).map((item) => ({
         title: item.tender.title.slice(0, 60),
         score: item.score,
@@ -369,10 +412,6 @@ export async function POST(request: Request) {
     });
 
     // ── Step 4: Pick the best available preview set (never empty) ──
-    // When the user selected regions, respect that filter strictly.
-    // regionMatch checks authority name text, title, and description
-    // for region terms — so "OPĆINA TRAVNIK" in authority name will match
-    // "Travnik" (a municipality in Srednjobosanski kanton).
     let previewTenders: PreviewTender[];
     let previewSummary: string;
     let tier: string;
@@ -381,27 +420,36 @@ export async function POST(request: Request) {
       previewTenders = qualified.slice(0, 6).map((item) => toPreviewTender(item.tender));
       previewSummary = `Na osnovu osnovnih podataka izdvojili smo ${previewTenders.length} tendera koji najviše liče na ono što radite.`;
       tier = "qualified";
-    } else if (positiveAndRegion.length > 0) {
-      previewTenders = positiveAndRegion.slice(0, 6).map((item) => toPreviewTender(item.tender));
+    } else if (businessSignalAndRegion.length > 0) {
+      previewTenders = businessSignalAndRegion.slice(0, 6).map((item) => toPreviewTender(item.tender));
       previewSummary =
         "Prikazujemo početni pregled tendera na osnovu djelatnosti i odabrane regije. U sljedećem koraku dodajte kontekst za preciznije preporuke.";
-      tier = "positive+region";
-    } else if (hasRegionFilter && regionOnly.length > 0) {
-      previewTenders = regionOnly.slice(0, 6).map((item) => toPreviewTender(item.tender));
+      tier = "business+region";
+    } else if (hasRegionFilter && businessSignalSameGroup.length > 0) {
+      previewTenders = businessSignalSameGroup.slice(0, 6).map((item) => toPreviewTender(item.tender));
       previewSummary =
-        "Prikazujemo tendere iz odabrane regije. U sljedećem koraku dodajte kontekst za preciznije preporuke.";
-      tier = "region-only";
-    } else if (withAnyPositive.length > 0) {
-      previewTenders = withAnyPositive.slice(0, 6).map((item) => toPreviewTender(item.tender));
-      previewSummary = hasRegionFilter
-        ? "Prikazujemo širi početni pregled tendera na osnovu djelatnosti. Nismo pronašli dovoljno tendera u odabranoj regiji."
-        : "Prikazujemo širi početni pregled tendera na osnovu djelatnosti i dostupnih signala. U sljedećem koraku dodajte kontekst za preciznije preporuke.";
-      tier = "positive-any-region";
+        "Na odabranom području trenutno nema više tendera iz vaše djelatnosti. Izdvojili smo relevantne prilike iz obližnjih općina i gradova.";
+      tier = "business+same-group";
+    } else if (hasRegionFilter && businessSignalNeighboring.length > 0) {
+      previewTenders = businessSignalNeighboring.slice(0, 6).map((item) => toPreviewTender(item.tender));
+      previewSummary =
+        "Na odabranom području trenutno nema više tendera iz vaše djelatnosti. Izdvojili smo najbliže relevantne prilike iz okolnih područja.";
+      tier = "business+neighboring";
+    } else if (!hasRegionFilter && withBusinessSignal.length > 0) {
+      previewTenders = withBusinessSignal.slice(0, 6).map((item) => toPreviewTender(item.tender));
+      previewSummary =
+        "Prikazujemo širi početni pregled tendera na osnovu djelatnosti i dostupnih signala. U sljedećem koraku dodajte kontekst za preciznije preporuke.";
+      tier = "business-anywhere";
+    } else if (hasRegionFilter) {
+      previewTenders = [];
+      previewSummary =
+        "Trenutno nema otvorenih tendera iz vaše djelatnosti na odabranom području ni u obližnjim područjima. Nastavite dalje i dopunite profil za šire, ali i dalje relevantne preporuke.";
+      tier = "no-business-match-in-area";
     } else {
-      previewTenders = scored.slice(0, 6).map((item) => toPreviewTender(item.tender));
+      previewTenders = [];
       previewSummary =
-        "Prikazujemo najnovije otvorene tendere. U sljedećem koraku dopunite profil za preciznije preporuke.";
-      tier = "broadest";
+        "Trenutno nema otvorenih tendera koji se jasno poklapaju s odabranom djelatnošću. Nastavite dalje i dopunite profil kako bismo proširili relevantne preporuke.";
+      tier = "no-business-match";
     }
 
     console.log("[PREVIEW] Final result:", {

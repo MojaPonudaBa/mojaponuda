@@ -223,6 +223,93 @@ export const BIH_REGION_GROUPS: RegionGroup[] = [
   },
 ];
 
+ const REGION_GROUP_NEIGHBORS: Record<string, string[]> = {
+   "Unsko-sanski kanton": ["Kanton 10", "Republika Srpska · Krajina i Banja Luka"],
+   "Posavski kanton": ["Tuzlanski kanton", "Brčko distrikt", "Republika Srpska · Doboj, Posavina i Semberija"],
+   "Tuzlanski kanton": [
+     "Posavski kanton",
+     "Zeničko-dobojski kanton",
+     "Brčko distrikt",
+     "Republika Srpska · Doboj, Posavina i Semberija",
+   ],
+   "Zeničko-dobojski kanton": [
+     "Tuzlanski kanton",
+     "Srednjobosanski kanton",
+     "Kanton Sarajevo",
+     "Bosansko-podrinjski kanton",
+     "Hercegovačko-neretvanski kanton",
+     "Republika Srpska · Doboj, Posavina i Semberija",
+     "Republika Srpska · Romanija i Podrinje",
+   ],
+   "Bosansko-podrinjski kanton": [
+     "Kanton Sarajevo",
+     "Zeničko-dobojski kanton",
+     "Hercegovačko-neretvanski kanton",
+     "Republika Srpska · Romanija i Podrinje",
+   ],
+   "Srednjobosanski kanton": [
+     "Zeničko-dobojski kanton",
+     "Kanton Sarajevo",
+     "Hercegovačko-neretvanski kanton",
+     "Kanton 10",
+     "Republika Srpska · Krajina i Banja Luka",
+   ],
+   "Hercegovačko-neretvanski kanton": [
+     "Srednjobosanski kanton",
+     "Kanton Sarajevo",
+     "Bosansko-podrinjski kanton",
+     "Zapadnohercegovački kanton",
+     "Kanton 10",
+     "Republika Srpska · Romanija i Podrinje",
+     "Republika Srpska · Hercegovina",
+   ],
+   "Zapadnohercegovački kanton": ["Hercegovačko-neretvanski kanton", "Kanton 10"],
+   "Kanton Sarajevo": [
+     "Srednjobosanski kanton",
+     "Zeničko-dobojski kanton",
+     "Bosansko-podrinjski kanton",
+     "Hercegovačko-neretvanski kanton",
+     "Republika Srpska · Romanija i Podrinje",
+   ],
+   "Kanton 10": [
+     "Unsko-sanski kanton",
+     "Srednjobosanski kanton",
+     "Hercegovačko-neretvanski kanton",
+     "Zapadnohercegovački kanton",
+     "Republika Srpska · Krajina i Banja Luka",
+     "Republika Srpska · Hercegovina",
+   ],
+   "Brčko distrikt": ["Posavski kanton", "Tuzlanski kanton", "Republika Srpska · Doboj, Posavina i Semberija"],
+   "Republika Srpska · Krajina i Banja Luka": [
+     "Unsko-sanski kanton",
+     "Srednjobosanski kanton",
+     "Kanton 10",
+     "Zeničko-dobojski kanton",
+     "Republika Srpska · Doboj, Posavina i Semberija",
+   ],
+   "Republika Srpska · Doboj, Posavina i Semberija": [
+     "Posavski kanton",
+     "Tuzlanski kanton",
+     "Zeničko-dobojski kanton",
+     "Brčko distrikt",
+     "Republika Srpska · Krajina i Banja Luka",
+     "Republika Srpska · Romanija i Podrinje",
+   ],
+   "Republika Srpska · Romanija i Podrinje": [
+     "Kanton Sarajevo",
+     "Bosansko-podrinjski kanton",
+     "Zeničko-dobojski kanton",
+     "Hercegovačko-neretvanski kanton",
+     "Republika Srpska · Doboj, Posavina i Semberija",
+     "Republika Srpska · Hercegovina",
+   ],
+   "Republika Srpska · Hercegovina": [
+     "Hercegovačko-neretvanski kanton",
+     "Kanton 10",
+     "Republika Srpska · Romanija i Podrinje",
+   ],
+ };
+
 function uniqueRegions(regions: Array<string | null | undefined>): string[] {
   return [...new Set(regions.map((region) => region?.trim()).filter(Boolean) as string[])];
 }
@@ -230,6 +317,16 @@ function uniqueRegions(regions: Array<string | null | undefined>): string[] {
 const parentToMunicipalities = new Map(
   BIH_REGION_GROUPS.filter((group) => group.parentRegion).map((group) => [group.parentRegion as string, group.municipalities])
 );
+
+ const groupKeyToMunicipalities = new Map(
+   BIH_REGION_GROUPS.map((group) => [group.parentRegion ?? group.label, group.municipalities])
+ );
+
+ const municipalityToGroupKey = new Map(
+   BIH_REGION_GROUPS.flatMap((group) =>
+     group.municipalities.map((municipality) => [municipality, group.parentRegion ?? group.label] as const)
+   )
+ );
 
 const allMunicipalities = new Set(BIH_REGION_GROUPS.flatMap((group) => group.municipalities));
 
@@ -267,6 +364,51 @@ export function buildRegionSearchTerms(selectedRegions: string[]): string[] {
   }
 
   return [...searchTerms];
+}
+
+export function buildSameGroupRegionFallback(selectedRegions: string[]): string[] {
+  const expanded = expandSelectedRegions(selectedRegions);
+  const selectedRegionSet = new Set(expanded);
+  const selectedGroupKeys = new Set(
+    expanded
+      .map((region) => municipalityToGroupKey.get(region))
+      .filter(Boolean) as string[]
+  );
+  const sameGroupRegions = new Set<string>();
+
+  selectedGroupKeys.forEach((groupKey) => {
+    (groupKeyToMunicipalities.get(groupKey) ?? []).forEach((municipality) => {
+      if (!selectedRegionSet.has(municipality)) {
+        sameGroupRegions.add(municipality);
+      }
+    });
+  });
+
+  return [...sameGroupRegions];
+}
+
+export function buildNeighboringGroupRegionFallback(selectedRegions: string[]): string[] {
+  const expanded = expandSelectedRegions(selectedRegions);
+  const selectedRegionSet = new Set(expanded);
+  const selectedGroupKeys = new Set(
+    BIH_REGION_GROUPS.map((group) => group.parentRegion ?? group.label).filter((groupKey) => {
+      const municipalities = groupKeyToMunicipalities.get(groupKey) ?? [];
+      return municipalities.length > 0 && municipalities.every((municipality) => selectedRegionSet.has(municipality));
+    })
+  );
+  const neighboringRegions = new Set<string>();
+
+  selectedGroupKeys.forEach((groupKey) => {
+    (REGION_GROUP_NEIGHBORS[groupKey] ?? []).forEach((neighborKey) => {
+      (groupKeyToMunicipalities.get(neighborKey) ?? []).forEach((municipality) => {
+        if (!selectedRegionSet.has(municipality)) {
+          neighboringRegions.add(municipality);
+        }
+      });
+    });
+  });
+
+  return [...neighboringRegions];
 }
 
 export function getRegionSelectionLabels(selectedRegions: string[]): string[] {
