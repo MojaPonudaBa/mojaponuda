@@ -19,7 +19,6 @@ interface RecommendationCardTender {
   contracting_authority_jib: string | null;
   contract_type: string | null;
   raw_description: string | null;
-  cpv_code: string | null;
   authority_city?: string | null;
   authority_municipality?: string | null;
   authority_canton?: string | null;
@@ -94,7 +93,7 @@ export async function RecommendedTenders() {
   // Find matching tenders
   let query = supabase
     .from("tenders")
-    .select("id, title, deadline, estimated_value, contracting_authority, contracting_authority_jib, contract_type, raw_description, cpv_code")
+    .select("id, title, deadline, estimated_value, contracting_authority, contracting_authority_jib, contract_type, raw_description")
     .gt("deadline", new Date().toISOString());
 
   if (

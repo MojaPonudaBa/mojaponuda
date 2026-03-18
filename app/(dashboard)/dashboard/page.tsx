@@ -245,13 +245,12 @@ export default async function DashboardPage() {
       contracting_authority_jib: string | null;
       contract_type: string | null;
       raw_description: string | null;
-      cpv_code: string | null;
       authority_city: string | null;
       authority_municipality: string | null;
       authority_canton: string | null;
       authority_entity: string | null;
     }>(supabase, recommendationContext, {
-      select: "id, title, deadline, estimated_value, contracting_authority, contracting_authority_jib, contract_type, raw_description, cpv_code",
+      select: "id, title, deadline, estimated_value, contracting_authority, contracting_authority_jib, contract_type, raw_description",
       nowIso,
       limit: 60,
     });

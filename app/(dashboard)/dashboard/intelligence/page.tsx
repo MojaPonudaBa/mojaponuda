@@ -67,7 +67,7 @@ export default async function IntelligencePage() {
     const recommendationContext = buildRecommendationContext(company);
     if (hasRecommendationSignals(recommendationContext)) {
       const scopedRecommendationRows = await fetchRecommendedTenderCandidates(supabase, recommendationContext, {
-        select: "id, title, deadline, estimated_value, contracting_authority, contracting_authority_jib, contract_type, raw_description, cpv_code",
+        select: "id, title, deadline, estimated_value, contracting_authority, contracting_authority_jib, contract_type, raw_description",
         nowIso: now.toISOString(),
         limit: 240,
       });

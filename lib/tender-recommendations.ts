@@ -174,9 +174,10 @@ function buildContractTypeSearchConditions(preferredContractTypes: string[]): st
 }
 
 function buildCpvSearchConditions(cpvPrefixes: string[]): string[] {
-  return [...new Set(cpvPrefixes.filter((prefix) => prefix.length >= 5))].map(
-    (prefix) => `cpv_code.like.${prefix}%`
-  );
+  // TODO: Re-enable after cpv_code column is added to tenders table via migration.
+  // The column does not exist in production yet — referencing it in .or() breaks the entire query.
+  void cpvPrefixes;
+  return [];
 }
 
 function normalizeCpvCode(value: string | null | undefined): string | null {
