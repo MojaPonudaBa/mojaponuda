@@ -7,7 +7,13 @@ import {
   sanitizeSearchKeywords,
 } from "@/lib/company-profile";
 import { buildRegionSearchTerms } from "@/lib/constants/regions";
-import { buildRecommendationContext, matchesCpvPrefixes } from "@/lib/tender-recommendations";
+import {
+  buildRecommendationContext,
+  fetchRecommendedTenderCandidates,
+  hasRecommendationSignals,
+  matchesCpvPrefixes,
+  rankTenderRecommendations,
+} from "@/lib/tender-recommendations";
 
 interface CompetitorAccumulator {
   name: string;
@@ -876,32 +882,11 @@ export async function getMarketOverview(
     operatingRegions.length > 0 ||
     preferredContractTypes.length > 0 ||
     cpvPrefixes.length > 0;
-  const keywordConditions = buildKeywordOrConditions(searchTerms);
-
   const [
-    { data: allActiveTenderRows },
-    { data: profileTenderRows },
     { data: allYearAwards },
     { data: allUpcomingPlans },
     { data: ourAwards },
   ] = await Promise.all([
-    supabase
-      .from("tenders")
-      .select(
-        "id, title, raw_description, contract_type, contracting_authority, contracting_authority_jib, estimated_value, deadline, created_at"
-      )
-      .gte("deadline", nowIso)
-      .limit(800),
-    keywordConditions
-      ? supabase
-          .from("tenders")
-          .select(
-            "id, title, raw_description, contract_type, contracting_authority, contracting_authority_jib, estimated_value, deadline, created_at"
-          )
-          .gte("deadline", nowIso)
-          .or(keywordConditions)
-          .limit(800)
-      : Promise.resolve({ data: [] }),
     supabase
       .from("award_decisions")
       .select(
@@ -929,9 +914,27 @@ export async function getMarketOverview(
       : Promise.resolve({ data: [] }),
   ]);
 
+  const matchedActiveTenders = company && recommendationContext && hasRecommendationSignals(recommendationContext)
+    ? rankTenderRecommendations(
+        await fetchRecommendedTenderCandidates<TenderScopeRow>(
+          supabase,
+          recommendationContext,
+          {
+            select:
+              "id, title, raw_description, contract_type, contracting_authority, contracting_authority_jib, estimated_value, deadline, created_at, cpv_code",
+            nowIso,
+            limit: 240,
+          }
+        ),
+        recommendationContext
+      ).map(({ tender, score }) => ({
+        ...tender,
+        market_fit_score: score,
+      }))
+    : [];
+
   const tenderAuthorityJibs = uniqueStrings([
-    ...((allActiveTenderRows ?? []) as TenderScopeRow[]).map((row) => row.contracting_authority_jib),
-    ...((profileTenderRows ?? []) as TenderScopeRow[]).map((row) => row.contracting_authority_jib),
+    ...matchedActiveTenders.map((row) => row.contracting_authority_jib),
     ...((allYearAwards ?? []) as AwardRow[]).map((row) => row.contracting_authority_jib),
   ]);
   const { data: tenderAuthorityRows } = tenderAuthorityJibs.length > 0
@@ -943,54 +946,6 @@ export async function getMarketOverview(
   const tenderAuthorityMap = new Map<string, AuthorityRow>(
     ((tenderAuthorityRows ?? []) as AuthorityRow[]).map((authority) => [authority.jib, authority])
   );
-
-  const allActiveRows = withAuthorityLocation(
-    (allActiveTenderRows ?? []) as TenderScopeRow[],
-    tenderAuthorityMap
-  );
-  const profileTenderCandidates = keywordConditions
-    ? withAuthorityLocation((profileTenderRows ?? []) as TenderScopeRow[], tenderAuthorityMap)
-    : allActiveRows;
-  const matchedActiveTenders = company && hasProfileScope
-    ? profileTenderCandidates
-        .map((tender) => ({
-          ...tender,
-          market_fit_score: scoreMarketFit(
-            [
-              tender.title,
-              tender.raw_description,
-              tender.contracting_authority,
-              tender.contract_type,
-              tender.authority_city,
-              tender.authority_municipality,
-              tender.authority_canton,
-              tender.authority_entity,
-            ],
-            searchTerms,
-            operatingRegions
-          ),
-        }))
-        .filter((tender) =>
-          matchesProfileScope(
-            [
-              tender.title,
-              tender.raw_description,
-              tender.contracting_authority,
-              tender.contract_type,
-              tender.authority_city,
-              tender.authority_municipality,
-              tender.authority_canton,
-              tender.authority_entity,
-            ],
-            tender.contract_type,
-            searchTerms,
-            operatingRegions,
-            preferredContractTypes
-          )
-        )
-        .sort((a, b) => b.market_fit_score - a.market_fit_score)
-        .slice(0, 250)
-    : [];
 
   const matchedCategories = uniqueStrings([
     ...preferredContractTypes,
