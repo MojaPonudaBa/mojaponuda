@@ -1,3 +1,4 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   buildRecommendationKeywords,
   derivePrimaryIndustry,
@@ -6,6 +7,7 @@ import {
   type ParsedCompanyProfile,
 } from "@/lib/company-profile";
 import { buildRegionSearchTerms, getRegionSelectionLabels } from "@/lib/constants/regions";
+import type { Database } from "@/types/database";
 
 export interface RecommendationCompanySource {
   industry: string | null | undefined;
@@ -54,6 +56,12 @@ export interface ScoredTenderRecommendation<TTender extends RecommendationTender
   contractMatch: boolean;
   regionMatch: boolean;
   reasons: string[];
+}
+
+interface FetchRecommendedTenderCandidatesOptions {
+  limit?: number;
+  nowIso?: string;
+  select?: string;
 }
 
 const PRIMARY_INDUSTRY_NEGATIVE_KEYWORDS: Record<string, string[]> = {
@@ -125,6 +133,18 @@ function normalizeCpvCode(value: string | null | undefined): string | null {
 
   const normalized = value.replace(/[^0-9]/g, "");
   return normalized.length >= 5 ? normalized : null;
+}
+
+export function matchesCpvPrefixes(
+  value: string | null | undefined,
+  cpvPrefixes: string[]
+): boolean {
+  if (cpvPrefixes.length === 0) {
+    return false;
+  }
+
+  const normalizedCpvCode = normalizeCpvCode(value);
+  return cpvPrefixes.some((prefix) => normalizedCpvCode?.startsWith(prefix) ?? false);
 }
 
 function uniqueStrings(values: Array<string | null | undefined>): string[] {
@@ -235,6 +255,85 @@ export function buildRecommendationSearchCondition(context: RecommendationContex
   });
 
   return keywordConditions.join(",");
+}
+
+export function hasRecommendationSignals(context: RecommendationContext): boolean {
+  return (
+    context.keywords.length > 0 ||
+    context.cpvPrefixes.length > 0 ||
+    context.preferredContractTypes.length > 0 ||
+    context.regionTerms.length > 0
+  );
+}
+
+export async function fetchRecommendedTenderCandidates<
+  TTender extends RecommendationTenderInput,
+>(
+  supabase: SupabaseClient<Database>,
+  context: RecommendationContext,
+  options: FetchRecommendedTenderCandidatesOptions = {}
+): Promise<TTender[]> {
+  if (!hasRecommendationSignals(context)) {
+    return [];
+  }
+
+  const recommendationSearchCondition = buildRecommendationSearchCondition(context);
+  const nowIso = options.nowIso ?? new Date().toISOString();
+  const limit = options.limit ?? 240;
+
+  let query = supabase
+    .from("tenders")
+    .select(options.select ?? "*")
+    .gt("deadline", nowIso);
+
+  if (
+    context.preferredContractTypes.length > 0 &&
+    context.preferredContractTypes.length < 3
+  ) {
+    query = query.in("contract_type", context.preferredContractTypes);
+  }
+
+  if (recommendationSearchCondition) {
+    query = query.or(recommendationSearchCondition);
+  }
+
+  const { data } = await query
+    .order("deadline", { ascending: true, nullsFirst: false })
+    .limit(limit);
+
+  const rows = (data ?? []) as unknown as TTender[];
+  const authorityJibs = [
+    ...new Set(
+      rows
+        .map((tender) => tender.contracting_authority_jib)
+        .filter(Boolean) as string[]
+    ),
+  ];
+
+  const { data: authorityRows } = authorityJibs.length > 0
+    ? await supabase
+        .from("contracting_authorities")
+        .select("jib, city, municipality, canton, entity")
+        .in("jib", authorityJibs)
+    : { data: [] };
+
+  const authorityMap = new Map(
+    (authorityRows ?? []).map((authority) => [authority.jib, authority])
+  );
+
+  return rows.map((tender) => {
+    const authority = tender.contracting_authority_jib
+      ? authorityMap.get(tender.contracting_authority_jib)
+      : null;
+
+    return {
+      ...tender,
+      authority_city: authority?.city ?? null,
+      authority_municipality: authority?.municipality ?? null,
+      authority_canton: authority?.canton ?? null,
+      authority_entity: authority?.entity ?? null,
+    } as TTender;
+  });
 }
 
 export function scoreTenderRecommendation<TTender extends RecommendationTenderInput>(

@@ -4,7 +4,8 @@ import type { Tender } from "@/types/database";
 import { maybeRerankTenderRecommendationsWithAI } from "@/lib/tender-recommendation-rerank";
 import {
   buildRecommendationContext,
-  buildRecommendationSearchCondition,
+  fetchRecommendedTenderCandidates,
+  hasRecommendationSignals,
   rankTenderRecommendations,
   type RecommendationContext,
 } from "@/lib/tender-recommendations";
@@ -36,9 +37,8 @@ async function TendersContent({ searchParams }: TendersPageProps) {
   } = await supabase.auth.getUser();
 
   let recommendationContext: RecommendationContext | null = null;
-  let recommendationSearchCondition = "";
   let hasProfile = false;
-  let hasRecommendationSignals = false;
+  let hasRecommendationSignalsForProfile = false;
 
   if (activeTab === "recommended" && user) {
     const { data: company } = await supabase
@@ -50,12 +50,7 @@ async function TendersContent({ searchParams }: TendersPageProps) {
     if (company) {
       hasProfile = true;
       recommendationContext = buildRecommendationContext(company);
-      recommendationSearchCondition = buildRecommendationSearchCondition(recommendationContext);
-      hasRecommendationSignals =
-        recommendationContext.keywords.length > 0 ||
-        recommendationContext.cpvPrefixes.length > 0 ||
-        recommendationContext.preferredContractTypes.length > 0 ||
-        recommendationContext.regionTerms.length > 0;
+      hasRecommendationSignalsForProfile = hasRecommendationSignals(recommendationContext);
     }
   }
 
@@ -81,7 +76,7 @@ async function TendersContent({ searchParams }: TendersPageProps) {
       );
     }
 
-    if (!hasProfile || !recommendationContext || !hasRecommendationSignals) {
+    if (!hasProfile || !recommendationContext || !hasRecommendationSignalsForProfile) {
       return (
         <div className="flex flex-col items-center justify-center py-20 text-center">
           <div className="mb-4 flex size-16 items-center justify-center rounded-full bg-amber-50 text-amber-600">
@@ -114,86 +109,16 @@ async function TendersContent({ searchParams }: TendersPageProps) {
   let totalCount = 0;
 
   if (activeTab === "recommended" && recommendationContext) {
-    let recommendedQuery = supabase
-      .from("tenders")
-      .select("*")
-      .gt("deadline", new Date().toISOString());
-
-    if (
-      recommendationContext.preferredContractTypes.length > 0 &&
-      recommendationContext.preferredContractTypes.length < 3
-    ) {
-      recommendedQuery = recommendedQuery.in(
-        "contract_type",
-        recommendationContext.preferredContractTypes
-      );
-    }
-
-    if (recommendationSearchCondition) {
-      recommendedQuery = recommendedQuery.or(recommendationSearchCondition);
-    }
-
-    if (params.contract_type && params.contract_type !== "all") {
-      recommendedQuery = recommendedQuery.ilike("contract_type", `%${params.contract_type}%`);
-    }
-
-    if (params.procedure_type && params.procedure_type !== "all") {
-      recommendedQuery = recommendedQuery.ilike("procedure_type", `%${params.procedure_type}%`);
-    }
-
-    if (params.deadline_from) {
-      recommendedQuery = recommendedQuery.gte(
-        "deadline",
-        new Date(params.deadline_from).toISOString()
-      );
-    }
-    if (params.deadline_to) {
-      recommendedQuery = recommendedQuery.lte(
-        "deadline",
-        new Date(params.deadline_to + "T23:59:59").toISOString()
-      );
-    }
-
-    if (params.value_min) {
-      recommendedQuery = recommendedQuery.gte("estimated_value", parseFloat(params.value_min));
-    }
-    if (params.value_max) {
-      recommendedQuery = recommendedQuery.lte("estimated_value", parseFloat(params.value_max));
-    }
-
-    const { data } = await recommendedQuery
-      .order("deadline", { ascending: true, nullsFirst: false })
-      .limit(240);
-
-    const recommendedRows = (data ?? []) as Tender[];
-    const authorityJibs = [...new Set(
-      recommendedRows
-        .map((tender) => tender.contracting_authority_jib)
-        .filter(Boolean) as string[]
-    )];
-    const { data: authorityRows } = authorityJibs.length > 0
-      ? await supabase
-          .from("contracting_authorities")
-          .select("jib, city, municipality, canton, entity")
-          .in("jib", authorityJibs)
-      : { data: [] };
-
-    const authorityMap = new Map(
-      (authorityRows ?? []).map((authority) => [authority.jib, authority])
-    );
-
-    const scopedRecommendationRows = recommendedRows.map((tender) => {
-      const authority = tender.contracting_authority_jib
-        ? authorityMap.get(tender.contracting_authority_jib)
-        : null;
-
-      return {
-        ...tender,
-        authority_city: authority?.city ?? null,
-        authority_municipality: authority?.municipality ?? null,
-        authority_canton: authority?.canton ?? null,
-        authority_entity: authority?.entity ?? null,
-      };
+    const scopedRecommendationRows = await fetchRecommendedTenderCandidates<
+      Tender & {
+        authority_city: string | null;
+        authority_municipality: string | null;
+        authority_canton: string | null;
+        authority_entity: string | null;
+      }
+    >(supabase, recommendationContext, {
+      select: "*",
+      limit: 240,
     });
 
     let rankedRecommendations = rankTenderRecommendations(

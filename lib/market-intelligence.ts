@@ -7,6 +7,7 @@ import {
   sanitizeSearchKeywords,
 } from "@/lib/company-profile";
 import { buildRegionSearchTerms } from "@/lib/constants/regions";
+import { buildRecommendationContext, matchesCpvPrefixes } from "@/lib/tender-recommendations";
 
 interface CompetitorAccumulator {
   name: string;
@@ -357,11 +358,28 @@ function isPlanRelevant(
   operatingRegions: string[],
   preferredContractTypes: string[],
   matchedCategories: string[],
-  matchedAuthorityJibs: string[]
+  matchedAuthorityJibs: string[],
+  cpvPrefixes: string[]
 ): boolean {
   const authorityMatch = Boolean(
     plan.contracting_authorities?.jib && matchedAuthorityJibs.includes(plan.contracting_authorities.jib)
   );
+  const contractMatch =
+    preferredContractTypes.length === 0 ||
+    (plan.contract_type ? preferredContractTypes.includes(plan.contract_type) : false);
+  const regionMatch = hasRegionMatch(
+    [
+      plan.description,
+      plan.contracting_authorities?.name,
+      plan.contracting_authorities?.city,
+      plan.contracting_authorities?.municipality,
+      plan.contracting_authorities?.canton,
+      plan.contracting_authorities?.entity,
+    ],
+    operatingRegions
+  );
+  const cpvMatch = matchesCpvPrefixes(plan.cpv_code, cpvPrefixes);
+  const cpvProfileMatch = cpvMatch && contractMatch && regionMatch;
   const profileMatch = matchesProfileScope(
     [
       plan.description,
@@ -380,10 +398,10 @@ function isPlanRelevant(
   );
 
   if (operatingRegions.length > 0) {
-    return authorityMatch || profileMatch;
+    return authorityMatch || profileMatch || cpvProfileMatch;
   }
 
-  return authorityMatch || profileMatch || Boolean(
+  return authorityMatch || profileMatch || cpvProfileMatch || Boolean(
     plan.contract_type && matchedCategories.includes(plan.contract_type)
   );
 }
@@ -832,7 +850,7 @@ export async function getCompetitorAnalysis(
 
 export async function getMarketOverview(
   supabase: SupabaseClient<Database>,
-  company?: Pick<Company, "jib" | "keywords" | "operating_regions" | "industry">
+  company?: Pick<Company, "jib" | "keywords" | "cpv_codes" | "operating_regions" | "industry">
 ): Promise<MarketOverviewResult> {
   const now = new Date();
   const nowIso = now.toISOString();
@@ -846,15 +864,18 @@ export async function getMarketOverview(
     .split("T")[0];
 
   const profile = company ? parseCompanyProfile(company.industry) : null;
+  const recommendationContext = company ? buildRecommendationContext(company) : null;
   const searchTerms = company ? buildSearchTerms(company) : [];
   const operatingRegions = company ? buildRegionSearchTerms(company.operating_regions ?? []) : [];
+  const cpvPrefixes = recommendationContext?.cpvPrefixes ?? [];
   const preferredContractTypes = profile
     ? getPreferredContractTypes(profile.preferredTenderTypes)
     : [];
   const hasProfileScope =
     searchTerms.length > 0 ||
     operatingRegions.length > 0 ||
-    preferredContractTypes.length > 0;
+    preferredContractTypes.length > 0 ||
+    cpvPrefixes.length > 0;
   const keywordConditions = buildKeywordOrConditions(searchTerms);
 
   const [
@@ -1026,7 +1047,8 @@ export async function getMarketOverview(
             operatingRegions,
             preferredContractTypes,
             matchedCategories,
-            matchedAuthorityJibs
+            matchedAuthorityJibs,
+            cpvPrefixes
           )
         )
         .slice(0, 8)

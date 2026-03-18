@@ -21,11 +21,11 @@ export default async function UpcomingPage() {
 
   const { data: companyData } = await supabase
     .from("companies")
-    .select("jib, industry, keywords, operating_regions")
+    .select("jib, industry, keywords, cpv_codes, operating_regions")
     .eq("user_id", user.id)
     .maybeSingle();
 
-  const company = companyData as Pick<Company, "jib" | "industry" | "keywords" | "operating_regions"> | null;
+  const company = companyData as Pick<Company, "jib" | "industry" | "keywords" | "cpv_codes" | "operating_regions"> | null;
   const marketOverview = await getMarketOverview(supabase, company ?? undefined);
 
   const upcoming = marketOverview.upcomingPlans.length > 0

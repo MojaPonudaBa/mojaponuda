@@ -15,7 +15,8 @@ import { getCompetitorAnalysis } from "@/lib/market-intelligence";
 import { maybeRerankTenderRecommendationsWithAI } from "@/lib/tender-recommendation-rerank";
 import {
   buildRecommendationContext,
-  buildRecommendationSearchCondition,
+  fetchRecommendedTenderCandidates,
+  hasRecommendationSignals,
   rankTenderRecommendations,
 } from "@/lib/tender-recommendations";
 import { getSubscriptionStatus } from "@/lib/subscription";
@@ -73,9 +74,6 @@ export default async function DashboardPage() {
   };
 
   const recommendationContext = buildRecommendationContext(resolvedCompany);
-  const recommendationSearchCondition = buildRecommendationSearchCondition(
-    recommendationContext
-  );
 
   // Calculate dates outside of query builder to avoid impure function warnings
   const now = new Date();
@@ -234,43 +232,32 @@ export default async function DashboardPage() {
     contracting_authority_jib: string | null;
     contract_type: string | null;
     raw_description: string | null;
+    cpv_code?: string | null;
   }[] = [];
 
-  if (recommendationSearchCondition) {
-    let relevantQuery = supabase
-      .from("tenders")
-      .select(
-        "id, title, deadline, estimated_value, contracting_authority, contracting_authority_jib, contract_type, raw_description"
-      )
-      .gt("deadline", nowIso);
-
-    if (
-      recommendationContext.preferredContractTypes.length > 0 &&
-      recommendationContext.preferredContractTypes.length < 3
-    ) {
-      relevantQuery = relevantQuery.in(
-        "contract_type",
-        recommendationContext.preferredContractTypes
-      );
-    }
-
-    relevantQuery = relevantQuery.or(recommendationSearchCondition);
-
-    const { data: relevantRows } = await relevantQuery
-      .order("deadline", { ascending: true })
-      .limit(60);
+  if (hasRecommendationSignals(recommendationContext)) {
+    const relevantRows = await fetchRecommendedTenderCandidates<{
+      id: string;
+      title: string;
+      deadline: string | null;
+      estimated_value: number | null;
+      contracting_authority: string | null;
+      contracting_authority_jib: string | null;
+      contract_type: string | null;
+      raw_description: string | null;
+      cpv_code: string | null;
+      authority_city: string | null;
+      authority_municipality: string | null;
+      authority_canton: string | null;
+      authority_entity: string | null;
+    }>(supabase, recommendationContext, {
+      select: "id, title, deadline, estimated_value, contracting_authority, contracting_authority_jib, contract_type, raw_description, cpv_code",
+      nowIso,
+      limit: 60,
+    });
 
     const rankedRelevantTenders = rankTenderRecommendations(
-      (relevantRows ?? []) as {
-        id: string;
-        title: string;
-        deadline: string | null;
-        estimated_value: number | null;
-        contracting_authority: string | null;
-        contracting_authority_jib: string | null;
-        contract_type: string | null;
-        raw_description: string | null;
-      }[],
+      relevantRows,
       recommendationContext
     );
 

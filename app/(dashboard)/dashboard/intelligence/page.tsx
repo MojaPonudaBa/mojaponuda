@@ -13,7 +13,8 @@ import { formatCurrencyKM } from "@/lib/currency";
 import { getCompetitorAnalysis, getMarketOverview } from "@/lib/market-intelligence";
 import {
   buildRecommendationContext,
-  buildRecommendationSearchCondition,
+  fetchRecommendedTenderCandidates,
+  hasRecommendationSignals,
   rankTenderRecommendations,
 } from "@/lib/tender-recommendations";
 import { getSubscriptionStatus } from "@/lib/subscription";
@@ -34,22 +35,6 @@ import {
   TrendingUp,
 } from "lucide-react";
 import Link from "next/link";
-
-type IntelligenceRecommendationTender = {
-  id: string;
-  title: string;
-  deadline: string | null;
-  estimated_value: number | null;
-  contracting_authority: string | null;
-  contracting_authority_jib: string | null;
-  contract_type: string | null;
-  raw_description: string | null;
-  cpv_code: string | null;
-  authority_city: string | null;
-  authority_municipality: string | null;
-  authority_canton: string | null;
-  authority_entity: string | null;
-};
 
 export default async function IntelligencePage() {
   const supabase = await createClient();
@@ -80,80 +65,11 @@ export default async function IntelligencePage() {
 
   if (company) {
     const recommendationContext = buildRecommendationContext(company);
-    const recommendationSearchCondition = buildRecommendationSearchCondition(recommendationContext);
-    const hasRecommendationSignals =
-      recommendationContext.keywords.length > 0 ||
-      recommendationContext.cpvPrefixes.length > 0 ||
-      recommendationContext.preferredContractTypes.length > 0 ||
-      recommendationContext.regionTerms.length > 0;
-
-    if (hasRecommendationSignals) {
-      let recommendationQuery = supabase
-        .from("tenders")
-        .select(
-          "id, title, deadline, estimated_value, contracting_authority, contracting_authority_jib, contract_type, raw_description, cpv_code"
-        )
-        .gt("deadline", now.toISOString());
-
-      if (
-        recommendationContext.preferredContractTypes.length > 0 &&
-        recommendationContext.preferredContractTypes.length < 3
-      ) {
-        recommendationQuery = recommendationQuery.in(
-          "contract_type",
-          recommendationContext.preferredContractTypes
-        );
-      }
-
-      if (recommendationSearchCondition) {
-        recommendationQuery = recommendationQuery.or(recommendationSearchCondition);
-      }
-
-      const { data: recommendationRows } = await recommendationQuery
-        .order("deadline", { ascending: true, nullsFirst: false })
-        .limit(240);
-
-      const authorityJibs = [
-        ...new Set(
-          ((recommendationRows ?? []) as Array<{ contracting_authority_jib: string | null }>)
-            .map((tender) => tender.contracting_authority_jib)
-            .filter(Boolean) as string[]
-        ),
-      ];
-
-      const { data: authorityRows } = authorityJibs.length > 0
-        ? await supabase
-            .from("contracting_authorities")
-            .select("jib, city, municipality, canton, entity")
-            .in("jib", authorityJibs)
-        : { data: [] };
-
-      const authorityMap = new Map(
-        (authorityRows ?? []).map((authority) => [authority.jib, authority])
-      );
-
-      const scopedRecommendationRows = ((recommendationRows ?? []) as Array<{
-        id: string;
-        title: string;
-        deadline: string | null;
-        estimated_value: number | null;
-        contracting_authority: string | null;
-        contracting_authority_jib: string | null;
-        contract_type: string | null;
-        raw_description: string | null;
-        cpv_code: string | null;
-      }>).map((tender) => {
-        const authority = tender.contracting_authority_jib
-          ? authorityMap.get(tender.contracting_authority_jib)
-          : null;
-
-        return {
-          ...tender,
-          authority_city: authority?.city ?? null,
-          authority_municipality: authority?.municipality ?? null,
-          authority_canton: authority?.canton ?? null,
-          authority_entity: authority?.entity ?? null,
-        } satisfies IntelligenceRecommendationTender;
+    if (hasRecommendationSignals(recommendationContext)) {
+      const scopedRecommendationRows = await fetchRecommendedTenderCandidates(supabase, recommendationContext, {
+        select: "id, title, deadline, estimated_value, contracting_authority, contracting_authority_jib, contract_type, raw_description, cpv_code",
+        nowIso: now.toISOString(),
+        limit: 240,
       });
 
       recommendedOpenCount = rankTenderRecommendations(
