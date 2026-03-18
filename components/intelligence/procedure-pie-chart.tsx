@@ -1,5 +1,6 @@
 "use client";
 
+import { formatCurrencyKM } from "@/lib/currency";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import type { MarketProcedureInsight } from "@/lib/market-intelligence";
 
@@ -8,12 +9,6 @@ interface ProcedurePieChartProps {
 }
 
 const COLORS = ["#2563eb", "#0ea5e9", "#0f766e", "#7c3aed", "#d97706", "#14b8a6"];
-
-function formatKM(value: number): string {
-  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M KM`;
-  if (value >= 1_000) return `${(value / 1_000).toFixed(0)}K KM`;
-  return `${value.toFixed(0)} KM`;
-}
 
 export function ProcedurePieChart({ data }: ProcedurePieChartProps) {
   if (data.length === 0) {
@@ -43,7 +38,7 @@ export function ProcedurePieChart({ data }: ProcedurePieChartProps) {
           </Pie>
           <Tooltip
             formatter={(value, _name, item) => [
-              formatKM(Number(value) || 0),
+              formatCurrencyKM(Number(value) || 0),
               item?.payload?.procedure_type ?? "Postupak",
             ]}
             contentStyle={{
@@ -66,7 +61,7 @@ export function ProcedurePieChart({ data }: ProcedurePieChartProps) {
               />
               <p className="text-sm font-semibold text-slate-900">{entry.procedure_type}</p>
             </div>
-            <p className="mt-1 text-xs text-slate-500">{entry.count} ugovora · {formatKM(entry.total_value)}</p>
+            <p className="mt-1 text-xs text-slate-500">{entry.count} ugovora · {formatCurrencyKM(entry.total_value)}</p>
           </div>
         ))}
       </div>

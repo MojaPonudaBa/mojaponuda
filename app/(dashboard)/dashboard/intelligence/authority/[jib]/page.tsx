@@ -1,16 +1,11 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { formatCurrencyKM } from "@/lib/currency";
 import { getSubscriptionStatus } from "@/lib/subscription";
 import { ProGate } from "@/components/subscription/pro-gate";
 import Link from "next/link";
 import { ArrowLeft, Building2, FileCheck, Clock, CheckCircle, TrendingUp, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
-
-function formatKM(value: number): string {
-  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M KM`;
-  if (value >= 1_000) return `${(value / 1_000).toFixed(0)}K KM`;
-  return `${value.toFixed(0)} KM`;
-}
 
 const DOC_TYPE_LABELS: Record<string, string> = {
   registration: "Rješenje o registraciji",
@@ -157,11 +152,11 @@ export default async function AuthorityProfilePage({
         <div className="rounded-[1.5rem] border border-slate-100 bg-white p-6 shadow-sm flex flex-col justify-between group hover:border-emerald-200 transition-colors">
           <div className="flex items-center justify-between mb-4">
             <p className="text-sm font-bold text-slate-500 uppercase tracking-wide">Ukupna vrijednost</p>
-            <div className="size-8 rounded-lg bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-emerald-50 group-hover:text-emerald-500 transition-colors">
+            <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
               <TrendingUp className="size-4" />
             </div>
           </div>
-          <p className="font-heading text-4xl font-extrabold text-slate-900 tracking-tight">{formatKM(totalValue)}</p>
+          <p className="font-heading text-4xl font-extrabold text-slate-900 tracking-tight">{formatCurrencyKM(totalValue)}</p>
         </div>
         <div className="rounded-[1.5rem] border border-slate-100 bg-white p-6 shadow-sm flex flex-col justify-between group hover:border-purple-200 transition-colors">
           <div className="flex items-center justify-between mb-4">
@@ -204,7 +199,7 @@ export default async function AuthorityProfilePage({
                         <p className="font-mono text-xs text-slate-500">{w.wins} pobjeda</p>
                       </div>
                     </div>
-                    <span className="shrink-0 font-mono text-sm font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded-md">{formatKM(w.total_value)}</span>
+                    <span className="shrink-0 font-mono text-sm font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded-md">{formatCurrencyKM(w.total_value)}</span>
                   </div>
                 ))}
               </div>
@@ -263,7 +258,7 @@ export default async function AuthorityProfilePage({
                 <div className="flex justify-between gap-4">
                   <p className="text-sm font-bold text-slate-900 group-hover:text-blue-700 transition-colors line-clamp-1">{t.title}</p>
                   {t.estimated_value && (
-                    <span className="font-mono text-sm font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md whitespace-nowrap">{formatKM(Number(t.estimated_value))}</span>
+                    <span className="font-mono text-sm font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md whitespace-nowrap">{formatCurrencyKM(Number(t.estimated_value))}</span>
                   )}
                 </div>
                 <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-slate-500">

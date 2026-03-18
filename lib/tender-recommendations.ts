@@ -31,9 +31,14 @@ export interface RecommendationTenderInput {
   deadline: string | null;
   estimated_value: number | null;
   contracting_authority: string | null;
+  contracting_authority_jib?: string | null;
   contract_type?: string | null;
   raw_description?: string | null;
   cpv_code?: string | null;
+  authority_city?: string | null;
+  authority_municipality?: string | null;
+  authority_canton?: string | null;
+  authority_entity?: string | null;
 }
 
 export interface ScoredTenderRecommendation<TTender extends RecommendationTenderInput> {
@@ -171,6 +176,21 @@ function escapePostgrestLikeValue(value: string): string {
   return value.replace(/,/g, " ").trim();
 }
 
+function matchesRegionTerms(
+  values: Array<string | null | undefined>,
+  regionTerms: string[]
+): boolean {
+  if (regionTerms.length === 0) {
+    return true;
+  }
+
+  const normalizedValues = values.map((value) => normalizeText(value));
+
+  return normalizedValues.some((value) =>
+    regionTerms.some((region) => value.includes(region.toLowerCase()))
+  );
+}
+
 function buildKeywordReasons(matchedKeywords: string[]): string[] {
   if (matchedKeywords.length === 0) {
     return [];
@@ -224,6 +244,10 @@ export function scoreTenderRecommendation<TTender extends RecommendationTenderIn
   const title = normalizeText(tender.title);
   const description = normalizeText(tender.raw_description);
   const authority = normalizeText(tender.contracting_authority);
+  const authorityCity = normalizeText(tender.authority_city);
+  const authorityMunicipality = normalizeText(tender.authority_municipality);
+  const authorityCanton = normalizeText(tender.authority_canton);
+  const authorityEntity = normalizeText(tender.authority_entity);
   const normalizedCpvCode = normalizeCpvCode(tender.cpv_code);
 
   const titleMatches = context.keywords.filter((keyword) => title.includes(keyword.toLowerCase()));
@@ -251,11 +275,18 @@ export function scoreTenderRecommendation<TTender extends RecommendationTenderIn
   const contractMatch =
     context.preferredContractTypes.length === 0 ||
     (tender.contract_type ? context.preferredContractTypes.includes(tender.contract_type) : false);
-  const regionMatch =
-    context.regionTerms.length > 0 &&
-    [title, description, authority].some((value) =>
-      context.regionTerms.some((region) => value.includes(region.toLowerCase()))
-    );
+  const regionMatch = matchesRegionTerms(
+    [
+      title,
+      description,
+      authority,
+      authorityCity,
+      authorityMunicipality,
+      authorityCanton,
+      authorityEntity,
+    ],
+    context.regionTerms
+  );
 
   let score = 0;
   score += titleMatches.length * 5;
@@ -282,7 +313,12 @@ export function scoreTenderRecommendation<TTender extends RecommendationTenderIn
 
   const hasPositiveSignal = cpvMatch || titleMatches.length > 0 || matchedKeywords.length >= 2;
   const blockedByNegativeTitle = negativeTitleMatches.length > 0 && !cpvMatch && titleMatches.length === 0;
-  const qualifies = hasPositiveSignal && !blockedByNegativeTitle && score >= (cpvMatch ? 2 : 4);
+  const qualifies =
+    hasPositiveSignal &&
+    contractMatch &&
+    regionMatch &&
+    !blockedByNegativeTitle &&
+    score >= (cpvMatch ? 2 : 4);
 
   const reasons = [
     ...(cpvMatch ? ["Poklapa se s vašim CPV fokusom"] : []),

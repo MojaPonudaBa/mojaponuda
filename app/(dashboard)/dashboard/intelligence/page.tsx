@@ -1,34 +1,37 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import {
+  demoCompetitors,
   demoTopAuthorities,
   demoTopWinners,
   demoUpcomingProcurements,
+  isCompanyProfileComplete,
   isDemoUser,
 } from "@/lib/demo";
 import { generateMarketSummary } from "@/lib/ai/market-summary";
-import { getMarketOverview } from "@/lib/market-intelligence";
+import { formatCurrencyKM } from "@/lib/currency";
+import { getCompetitorAnalysis, getMarketOverview } from "@/lib/market-intelligence";
 import { getSubscriptionStatus } from "@/lib/subscription";
 import { ProGate } from "@/components/subscription/pro-gate";
 import { CategoryChart } from "@/components/intelligence/category-chart";
+import { CompetitorSignalChart } from "@/components/intelligence/competitor-signal-chart";
 import { MonthlyAwardsChart } from "@/components/intelligence/monthly-awards-chart";
 import { ProcedurePieChart } from "@/components/intelligence/procedure-pie-chart";
 import type { Company } from "@/types/database";
 import {
   ArrowUpRight,
-  BarChart3,
   Building2,
   CalendarDays,
   FileText,
+  Radar,
+  Swords,
   Trophy,
   TrendingUp,
 } from "lucide-react";
 import Link from "next/link";
 
-function formatKM(value: number): string {
-  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M KM`;
-  if (value >= 1_000) return `${(value / 1_000).toFixed(0)}K KM`;
-  return `${value.toFixed(0)} KM`;
+function formatPercent(value: number | null): string {
+  return value !== null ? `${value}%` : "—";
 }
 
 export default async function IntelligencePage() {
@@ -50,7 +53,11 @@ export default async function IntelligencePage() {
     .maybeSingle();
 
   const company = companyData as Pick<Company, "jib" | "industry" | "keywords" | "operating_regions"> | null;
+  const hasCompleteProfile = isCompanyProfileComplete(company ?? undefined);
   const marketOverview = await getMarketOverview(supabase, company ?? undefined);
+  const competitorAnalysis = hasCompleteProfile && company
+    ? await getCompetitorAnalysis(supabase, company)
+    : null;
   const displayCategoryData = marketOverview.categoryData.length > 0
     ? marketOverview.categoryData
     : isDemoAccount
@@ -107,11 +114,106 @@ export default async function IntelligencePage() {
           { month_key: "2026-06", label: "jun 2026", count: 9, total_value: 470000 },
         ]
       : [];
+
+  let displayCompetitors = competitorAnalysis?.competitors ?? [];
+  let usingCompetitionDemoFallback = false;
+
+  if (displayCompetitors.length === 0 && isDemoAccount) {
+    usingCompetitionDemoFallback = true;
+    displayCompetitors = demoCompetitors.map((competitor) => ({
+      name: competitor.name,
+      jib: competitor.jib,
+      wins: competitor.wins,
+      total_value: competitor.total_value,
+      categories: competitor.categories,
+      procedure_types: [],
+      last_win_date: competitor.last_win_date,
+      win_rate: competitor.win_rate,
+      total_bids: null,
+      total_market_wins: null,
+      total_market_value: null,
+      city: null,
+      municipality: null,
+      recent_wins_90d: 0,
+      recent_value_90d: 0,
+      avg_award_value: competitor.wins > 0 ? Math.round(competitor.total_value / competitor.wins) : null,
+      avg_discount: null,
+      avg_bidders: null,
+      authority_count: 0,
+      top_authorities: [],
+      category_match_wins: 0,
+      authority_match_wins: 0,
+      signal_score: competitor.wins,
+    }));
+  }
+
+  const competitionAuthorities = competitorAnalysis?.authorities ?? [];
+  const displayTotalWins = usingCompetitionDemoFallback
+    ? displayCompetitors.reduce((sum, competitor) => sum + competitor.wins, 0)
+    : competitorAnalysis?.totalCompetitorWins ?? 0;
+  const displayTotalValue = usingCompetitionDemoFallback
+    ? displayCompetitors.reduce((sum, competitor) => sum + competitor.total_value, 0)
+    : competitorAnalysis?.totalCompetitorValue ?? 0;
+  const leadingCompetitor = displayCompetitors[0] ?? null;
+  const hottestCompetitor = [...displayCompetitors].sort(
+    (a, b) => b.recent_wins_90d - a.recent_wins_90d || b.wins - a.wins
+  )[0] ?? null;
+
+  const primaryCards = [
+    {
+      title: "Otvoreni tenderi",
+      value: String(marketOverview.activeTenderCount),
+      description: "Tenderi na koje se trenutno još možete prijaviti.",
+      icon: FileText,
+      tone: "bg-blue-50 text-blue-600",
+    },
+    ...(marketOverview.activeTenderValueKnownCount > 0
+      ? [{
+          title: "Otvorena vrijednost",
+          value: formatCurrencyKM(marketOverview.activeTenderValue),
+          description: `Objavljena vrijednost postoji za ${marketOverview.activeTenderValueKnownCount} od ${marketOverview.activeTenderCount} otvorenih tendera.`,
+          icon: ArrowUpRight,
+          tone: "bg-cyan-50 text-cyan-600",
+        }]
+      : []),
+    ...(marketOverview.yearAwardValue > 0
+      ? [{
+          title: "Dodijeljeno ove godine",
+          value: formatCurrencyKM(marketOverview.yearAwardValue),
+          description: `Ukupna vrijednost ugovora u ${now.getFullYear()}. godini.`,
+          icon: TrendingUp,
+          tone: "bg-emerald-50 text-emerald-600",
+        }]
+      : []),
+    ...(marketOverview.plannedCount90d > 0
+      ? [{
+          title: "Nadolazeći tenderi",
+          value: String(marketOverview.plannedCount90d),
+          description: marketOverview.plannedValueKnownCount > 0
+            ? `${formatCurrencyKM(marketOverview.plannedValue90d)} poznate vrijednosti za ranije planiranje.`
+            : "Vrijednost još nije objavljena za nadolazeće tendere.",
+          icon: CalendarDays,
+          tone: "bg-violet-50 text-violet-600",
+        }]
+      : []),
+  ];
+
+  const showCategorySection = displayCategoryData.length > 0;
+  const showProcedureSection = displayProcedureData.length > 0;
+  const showMonthlySection = displayMonthlyAwards.some(
+    (item) => item.count > 0 || item.total_value > 0
+  );
+  const showAuthoritiesSection = displayTopAuthorities.length > 0;
+  const showWinnersSection = displayTopWinners.length > 0;
+  const showUpcomingSection = displayUpcomingPlans.length > 0;
+  const showCompetitionSection = displayCompetitors.length > 0;
+
   const usingAnyDemoFallback =
     (displayCategoryData.length === 0 && isDemoAccount) ||
     (marketOverview.topAuthorities.length === 0 && displayTopAuthorities.length > 0) ||
     (marketOverview.topWinners.length === 0 && displayTopWinners.length > 0) ||
-    (marketOverview.upcomingPlans.length === 0 && displayUpcomingPlans.length > 0);
+    (marketOverview.upcomingPlans.length === 0 && displayUpcomingPlans.length > 0) ||
+    usingCompetitionDemoFallback;
   const marketSummary = await generateMarketSummary(marketOverview);
 
   return (
@@ -124,10 +226,10 @@ export default async function IntelligencePage() {
             </span>
           </div>
           <h1 className="text-3xl font-heading font-bold text-slate-900 tracking-tight">
-            Pregled vašeg tržišta
+            Tržište i konkurencija
           </h1>
           <p className="mt-1.5 max-w-3xl text-base text-slate-500">
-            Ovdje vidite šta je trenutno otvoreno, gdje se dodjeljuju poslovi i šta dolazi uskoro u prostoru koji pratite.
+            Ovdje vidite šta je trenutno otvoreno, gdje se dodjeljuju poslovi, šta dolazi uskoro i ko vam uzima poslove u prostoru koji pratite.
           </p>
         </div>
         <div className="hidden sm:block text-right">
@@ -166,223 +268,165 @@ export default async function IntelligencePage() {
         </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        <div className="rounded-[1.5rem] border border-slate-100 bg-white p-6 shadow-sm">
-          <div className="mb-4 flex items-center justify-between">
-            <p className="text-sm font-bold uppercase tracking-wider text-slate-500">Otvoreni tenderi</p>
-            <div className="flex size-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
-              <FileText className="size-5" />
-            </div>
-          </div>
-          <p className="font-heading text-4xl font-extrabold text-slate-900">{marketOverview.activeTenderCount}</p>
-          <p className="mt-3 text-xs text-slate-500">Tenderi na koje se trenutno još možete prijaviti.</p>
-        </div>
-        <div className="rounded-[1.5rem] border border-slate-100 bg-white p-6 shadow-sm">
-          <div className="mb-4 flex items-center justify-between">
-            <p className="text-sm font-bold uppercase tracking-wider text-slate-500">Otvorena vrijednost</p>
-            <div className="flex size-10 items-center justify-center rounded-xl bg-cyan-50 text-cyan-600">
-              <ArrowUpRight className="size-5" />
-            </div>
-          </div>
-          <p className="font-heading text-4xl font-extrabold text-slate-900">{marketOverview.activeTenderValueKnownCount > 0 ? formatKM(marketOverview.activeTenderValue) : "—"}</p>
-          <p className="mt-3 text-xs text-slate-500">
-            {marketOverview.activeTenderValueKnownCount > 0
-              ? `Objavljena vrijednost postoji za ${marketOverview.activeTenderValueKnownCount} od ${marketOverview.activeTenderCount} otvorenih tendera.`
-              : "Otvoreni tenderi trenutno nemaju objavljenu procijenjenu vrijednost."}
-          </p>
-        </div>
-        <div className="rounded-[1.5rem] border border-slate-100 bg-white p-6 shadow-sm">
-          <div className="mb-4 flex items-center justify-between">
-            <p className="text-sm font-bold uppercase tracking-wider text-slate-500">Dodijeljeno ove godine</p>
-            <div className="flex size-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
-              <TrendingUp className="size-5" />
-            </div>
-          </div>
-          <p className="font-heading text-4xl font-extrabold text-slate-900">{formatKM(marketOverview.yearAwardValue)}</p>
-          <p className="mt-3 text-xs text-slate-500">Ukupna vrijednost ugovora u {now.getFullYear()}. godini.</p>
-        </div>
-        <div className="rounded-[1.5rem] border border-slate-100 bg-white p-6 shadow-sm">
-          <div className="mb-4 flex items-center justify-between">
-            <p className="text-sm font-bold uppercase tracking-wider text-slate-500">Nadolazeći tenderi</p>
-            <div className="flex size-10 items-center justify-center rounded-xl bg-violet-50 text-violet-600">
-              <CalendarDays className="size-5" />
-            </div>
-          </div>
-          <p className="font-heading text-4xl font-extrabold text-slate-900">{marketOverview.plannedCount90d}</p>
-          <p className="mt-3 text-xs text-slate-500">
-            {marketOverview.plannedValueKnownCount > 0
-              ? `${formatKM(marketOverview.plannedValue90d)} poznate vrijednosti za ranije planiranje.`
-              : "Vrijednost još nije objavljena za nadolazeće tendere."}
-          </p>
-        </div>
-        <div className="rounded-[1.5rem] border border-slate-100 bg-white p-6 shadow-sm">
-          <div className="mb-4 flex items-center justify-between">
-            <p className="text-sm font-bold uppercase tracking-wider text-slate-500">Tržišni pritisak</p>
-            <div className="flex size-10 items-center justify-center rounded-xl bg-amber-50 text-amber-600">
-              <BarChart3 className="size-5" />
-            </div>
-          </div>
-          <p className="font-heading text-4xl font-extrabold text-slate-900">{marketOverview.avgBidders90d ?? "—"}</p>
-          <p className="mt-3 text-xs text-slate-500">
-            {marketOverview.avgBiddersSampleCount > 0
-              ? `Prosjek na osnovu ${marketOverview.avgBiddersSampleCount} odluka u zadnjih 90 dana.`
-              : "Nema dovoljno podataka za zadnjih 90 dana."}
-          </p>
-        </div>
-        <div className="rounded-[1.5rem] border border-slate-100 bg-white p-6 shadow-sm">
-          <div className="mb-4 flex items-center justify-between">
-            <p className="text-sm font-bold uppercase tracking-wider text-slate-500">Cjenovni pritisak</p>
-            <div className="flex size-10 items-center justify-center rounded-xl bg-slate-100 text-slate-700">
-              <Trophy className="size-5" />
-            </div>
-          </div>
-          <p className="font-heading text-4xl font-extrabold text-slate-900">{marketOverview.avgDiscount90d !== null ? `${marketOverview.avgDiscount90d}%` : "—"}</p>
-          <p className="mt-3 text-xs text-slate-500">
-            {marketOverview.avgDiscountSampleCount > 0
-              ? `Prosjek na osnovu ${marketOverview.avgDiscountSampleCount} odluka u zadnjih 90 dana.`
-              : "Nema dovoljno podataka za zadnjih 90 dana."}
-          </p>
-        </div>
-      </div>
-
-      <div className="rounded-[1.5rem] border border-slate-100 bg-white p-8 shadow-sm">
-        <div className="mb-8 flex items-center justify-between gap-4">
-          <div>
-            <h2 className="font-heading text-xl font-bold text-slate-900">Ugovori po kategorijama</h2>
-            <p className="mt-1 text-sm text-slate-500">Pregled broja i vrijednosti ugovora za {now.getFullYear()}. godinu.</p>
-          </div>
-          <div className="hidden sm:block rounded-lg border border-slate-100 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-500">
-            Broj + vrijednost
-          </div>
-        </div>
-        <div className="h-[350px] w-full">
-          <CategoryChart data={displayCategoryData} />
-        </div>
-      </div>
-
-      <div className="grid gap-8 lg:grid-cols-2">
-        <div className="rounded-[1.5rem] border border-slate-100 bg-white p-6 shadow-sm">
-          <div className="border-b border-slate-100 pb-5">
-            <h2 className="font-heading text-lg font-bold text-slate-900">Vrste postupaka</h2>
-            <p className="mt-1 text-xs text-slate-500">Raspodjela po tipu postupka u vašem prostoru.</p>
-          </div>
-          <div className="mt-5 h-[320px] w-full">
-            <ProcedurePieChart data={displayProcedureData} />
-          </div>
-        </div>
-
-        <div className="rounded-[1.5rem] border border-slate-100 bg-white p-6 shadow-sm">
-          <div className="border-b border-slate-100 pb-5">
-            <h2 className="font-heading text-lg font-bold text-slate-900">Trend po mjesecima</h2>
-            <p className="mt-1 text-xs text-slate-500">Broj i vrijednost dodijeljenih ugovora za sve mjesece ove godine.</p>
-          </div>
-          <div className="mt-5 h-[320px] w-full">
-            <MonthlyAwardsChart data={displayMonthlyAwards} />
-          </div>
-        </div>
-      </div>
-
-      <div className="grid gap-8 lg:grid-cols-2">
-        <div className="rounded-[1.5rem] border border-slate-100 bg-white shadow-sm overflow-hidden">
-          <div className="border-b border-slate-100 bg-slate-50/30 p-6">
-            <div className="flex items-center gap-3">
-              <div className="flex size-10 items-center justify-center rounded-xl bg-blue-100 text-blue-600">
-                <Building2 className="size-5" />
-              </div>
-              <div>
-                <h2 className="font-heading text-lg font-bold text-slate-900">Najaktivniji naručioci u vašem prostoru</h2>
-                <p className="text-xs font-medium text-slate-500">Po broju tendera i poznatoj vrijednosti.</p>
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {primaryCards.map((card) => (
+          <div key={card.title} className="rounded-[1.5rem] border border-slate-100 bg-white p-6 shadow-sm">
+            <div className="mb-4 flex items-center justify-between">
+              <p className="text-sm font-bold uppercase tracking-wider text-slate-500">{card.title}</p>
+              <div className={`flex size-10 items-center justify-center rounded-xl ${card.tone}`}>
+                <card.icon className="size-5" />
               </div>
             </div>
+            <p className="font-heading text-4xl font-extrabold text-slate-900">{card.value}</p>
+            <p className="mt-3 text-xs text-slate-500">{card.description}</p>
           </div>
-          <div className="flex-1 p-2">
-            {displayTopAuthorities.length === 0 ? (
-              <div className="flex h-64 items-center justify-center">
-                <p className="text-sm font-medium text-slate-400">Nema dovoljno podataka u vašem prostoru.</p>
+        ))}
+      </div>
+
+      {showCategorySection ? (
+        <div className="rounded-[1.5rem] border border-slate-100 bg-white p-8 shadow-sm">
+          <div className="mb-8 flex items-center justify-between gap-4">
+            <div>
+              <h2 className="font-heading text-xl font-bold text-slate-900">Ugovori po kategorijama</h2>
+              <p className="mt-1 text-sm text-slate-500">Pregled broja i vrijednosti ugovora za {now.getFullYear()}. godinu.</p>
+            </div>
+            <div className="hidden sm:block rounded-lg border border-slate-100 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-500">
+              Broj + vrijednost
+            </div>
+          </div>
+          <div className="h-[350px] w-full">
+            <CategoryChart data={displayCategoryData} />
+          </div>
+        </div>
+      ) : null}
+
+      {(showProcedureSection || showMonthlySection) ? (
+        <div className="grid gap-8 lg:grid-cols-2">
+          {showProcedureSection ? (
+            <div className="rounded-[1.5rem] border border-slate-100 bg-white p-6 shadow-sm">
+              <div className="border-b border-slate-100 pb-5">
+                <h2 className="font-heading text-lg font-bold text-slate-900">Vrste postupaka</h2>
+                <p className="mt-1 text-xs text-slate-500">Raspodjela po tipu postupka u vašem prostoru.</p>
               </div>
-            ) : (
-              <div className="space-y-1">
-                {displayTopAuthorities.map((authority, index) => (
-                  <div key={`${authority.name}-${index}`} className="flex items-center justify-between rounded-xl px-4 py-3 transition-colors hover:bg-slate-50 group">
-                    <div className="flex items-center gap-4 min-w-0">
-                      <div className="flex size-6 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-slate-500 transition-colors group-hover:bg-blue-100 group-hover:text-blue-600">
-                        {index + 1}
-                      </div>
-                      <div className="min-w-0">
-                        {authority.jib ? (
-                          <Link href={`/dashboard/intelligence/authority/${authority.jib}`} className="truncate text-sm font-bold text-slate-700 transition-colors group-hover:text-primary">
-                            {authority.name}
-                          </Link>
-                        ) : (
-                          <span className="truncate text-sm font-bold text-slate-700">{authority.name}</span>
-                        )}
-                        <p className="text-xs text-slate-500">{[authority.city, authority.authority_type].filter(Boolean).join(" · ") || "Javni naručilac"}</p>
-                      </div>
-                    </div>
-                    <div className="ml-4 shrink-0 text-right">
-                      <p className="text-sm font-bold text-slate-900">{authority.count}</p>
-                      <p className="text-xs text-slate-400">{formatKM(authority.total_value)}</p>
-                    </div>
+              <div className="mt-5 h-[320px] w-full">
+                <ProcedurePieChart data={displayProcedureData} />
+              </div>
+            </div>
+          ) : null}
+
+          {showMonthlySection ? (
+            <div className="rounded-[1.5rem] border border-slate-100 bg-white p-6 shadow-sm">
+              <div className="border-b border-slate-100 pb-5">
+                <h2 className="font-heading text-lg font-bold text-slate-900">Trend po mjesecima</h2>
+                <p className="mt-1 text-xs text-slate-500">Broj i vrijednost dodijeljenih ugovora za sve mjesece ove godine.</p>
+              </div>
+              <div className="mt-5 h-[320px] w-full">
+                <MonthlyAwardsChart data={displayMonthlyAwards} />
+              </div>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
+      {(showAuthoritiesSection || showWinnersSection) ? (
+        <div className="grid gap-8 lg:grid-cols-2">
+          {showAuthoritiesSection ? (
+            <div className="rounded-[1.5rem] border border-slate-100 bg-white shadow-sm overflow-hidden">
+              <div className="border-b border-slate-100 bg-slate-50/30 p-6">
+                <div className="flex items-center gap-3">
+                  <div className="flex size-10 items-center justify-center rounded-xl bg-blue-100 text-blue-600">
+                    <Building2 className="size-5" />
                   </div>
-                ))}
+                  <div>
+                    <h2 className="font-heading text-lg font-bold text-slate-900">Najaktivniji naručioci u vašem prostoru</h2>
+                    <p className="text-xs font-medium text-slate-500">Po broju tendera i dostupnoj vrijednosti.</p>
+                  </div>
+                </div>
               </div>
-            )}
-          </div>
-        </div>
-
-        <div className="rounded-[1.5rem] border border-slate-100 bg-white shadow-sm overflow-hidden">
-          <div className="border-b border-slate-100 bg-slate-50/30 p-6">
-            <div className="flex items-center gap-3">
-              <div className="flex size-10 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600">
-                <Trophy className="size-5" />
-              </div>
-              <div>
-                <h2 className="font-heading text-lg font-bold text-slate-900">Najaktivniji ponuđači u vašem prostoru</h2>
-                <p className="text-xs font-medium text-slate-500">Po osvojenim poslovima u prostoru koji pratite.</p>
+              <div className="flex-1 p-2">
+                <div className="space-y-1">
+                  {displayTopAuthorities.map((authority, index) => (
+                    <div key={`${authority.name}-${index}`} className="flex items-center justify-between rounded-xl px-4 py-3 transition-colors hover:bg-slate-50 group">
+                      <div className="flex items-center gap-4 min-w-0">
+                        <div className="flex size-6 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-slate-500 transition-colors group-hover:bg-blue-100 group-hover:text-blue-600">
+                          {index + 1}
+                        </div>
+                        <div className="min-w-0">
+                          {authority.jib ? (
+                            <Link href={`/dashboard/intelligence/authority/${authority.jib}`} className="truncate text-sm font-bold text-slate-700 transition-colors group-hover:text-primary">
+                              {authority.name}
+                            </Link>
+                          ) : (
+                            <span className="truncate text-sm font-bold text-slate-700">{authority.name}</span>
+                          )}
+                          <p className="text-xs text-slate-500">{[authority.city, authority.authority_type].filter(Boolean).join(" · ") || "Javni naručilac"}</p>
+                        </div>
+                      </div>
+                      <div className="ml-4 shrink-0 text-right">
+                        <p className="text-sm font-bold text-slate-900">{authority.count}</p>
+                        {authority.total_value > 0 ? (
+                          <p className="text-xs text-slate-400">{formatCurrencyKM(authority.total_value)}</p>
+                        ) : null}
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
-          </div>
-          <div className="flex-1 p-2">
-            {displayTopWinners.length === 0 ? (
-              <div className="flex h-64 items-center justify-center">
-                <p className="text-sm font-medium text-slate-400">Nema dovoljno podataka u vašem prostoru.</p>
-              </div>
-            ) : (
-              <div className="space-y-1">
-                {displayTopWinners.map((winner, index) => (
-                  <div key={winner.jib} className="flex items-center justify-between rounded-xl px-4 py-3 transition-colors hover:bg-slate-50 group">
-                    <div className="flex items-center gap-4 min-w-0">
-                      <div className="flex size-6 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-slate-500 transition-colors group-hover:bg-emerald-100 group-hover:text-emerald-600">
-                        {index + 1}
-                      </div>
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-bold text-slate-700 transition-colors group-hover:text-primary">{winner.name}</p>
-                        <p className="text-xs text-slate-500">{winner.wins} ugovora · {winner.win_rate !== null ? `${winner.win_rate}% uspješnost` : "bez podatka"}</p>
-                      </div>
-                    </div>
-                    <div className="ml-4 shrink-0 text-right">
-                      <p className="text-sm font-bold text-emerald-600">{formatKM(winner.total_value)}</p>
-                      <p className="text-xs text-slate-400">{winner.total_bids !== null ? `${winner.total_bids} ponuda` : winner.city || winner.municipality || "—"}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
+          ) : null}
 
-      <div className="rounded-[1.5rem] border border-slate-100 bg-white p-6 shadow-sm">
-        <div className="flex items-center justify-between gap-3 border-b border-slate-100 pb-5">
-          <div>
-            <h2 className="font-heading text-lg font-bold text-slate-900">Nadolazeći tenderi</h2>
-            <p className="mt-1 text-xs text-slate-500">Planirane nabavke u vašem prostoru u narednih 90 dana.</p>
-          </div>
-          <CalendarDays className="size-5 text-violet-600" />
+          {showWinnersSection ? (
+            <div className="rounded-[1.5rem] border border-slate-100 bg-white shadow-sm overflow-hidden">
+              <div className="border-b border-slate-100 bg-slate-50/30 p-6">
+                <div className="flex items-center gap-3">
+                  <div className="flex size-10 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600">
+                    <Trophy className="size-5" />
+                  </div>
+                  <div>
+                    <h2 className="font-heading text-lg font-bold text-slate-900">Najaktivniji ponuđači u vašem prostoru</h2>
+                    <p className="text-xs font-medium text-slate-500">Po osvojenim poslovima u prostoru koji pratite.</p>
+                  </div>
+                </div>
+              </div>
+              <div className="flex-1 p-2">
+                <div className="space-y-1">
+                  {displayTopWinners.map((winner, index) => (
+                    <div key={winner.jib} className="flex items-center justify-between rounded-xl px-4 py-3 transition-colors hover:bg-slate-50 group">
+                      <div className="flex items-center gap-4 min-w-0">
+                        <div className="flex size-6 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-slate-500 transition-colors group-hover:bg-emerald-100 group-hover:text-emerald-600">
+                          {index + 1}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-bold text-slate-700 transition-colors group-hover:text-primary">{winner.name}</p>
+                          <p className="text-xs text-slate-500">{winner.wins} ugovora{winner.win_rate !== null ? ` · ${winner.win_rate}% uspješnost` : ""}</p>
+                        </div>
+                      </div>
+                      <div className="ml-4 shrink-0 text-right">
+                        {winner.total_value > 0 ? (
+                          <p className="text-sm font-bold text-emerald-600">{formatCurrencyKM(winner.total_value)}</p>
+                        ) : null}
+                        <p className="text-xs text-slate-400">{winner.total_bids !== null ? `${winner.total_bids} ponuda` : winner.city || winner.municipality || "—"}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ) : null}
         </div>
-        <div className="mt-5 grid gap-3 lg:grid-cols-2">
-          {displayUpcomingPlans.length > 0 ? (
-            displayUpcomingPlans.map((plan) => (
+      ) : null}
+
+      {showUpcomingSection ? (
+        <div className="rounded-[1.5rem] border border-slate-100 bg-white p-6 shadow-sm">
+          <div className="flex items-center justify-between gap-3 border-b border-slate-100 pb-5">
+            <div>
+              <h2 className="font-heading text-lg font-bold text-slate-900">Nadolazeći tenderi</h2>
+              <p className="mt-1 text-xs text-slate-500">Planirane nabavke u vašem prostoru u narednih 90 dana.</p>
+            </div>
+            <CalendarDays className="size-5 text-violet-600" />
+          </div>
+          <div className="mt-5 grid gap-3 lg:grid-cols-2">
+            {displayUpcomingPlans.map((plan) => (
               <div key={plan.id} className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
                 <p className="line-clamp-2 text-sm font-semibold text-slate-900">{plan.description || "Bez opisa"}</p>
                 <p className="mt-1 text-xs text-slate-500">{plan.contracting_authorities?.name ?? "Nepoznat naručilac"}</p>
@@ -397,18 +441,207 @@ export default async function IntelligencePage() {
                   ) : null}
                   {plan.estimated_value ? (
                     <span className="rounded-full bg-violet-50 px-2.5 py-1 font-semibold text-violet-700">
-                      {formatKM(plan.estimated_value)}
+                      {formatCurrencyKM(plan.estimated_value)}
                     </span>
                   ) : null}
                 </div>
               </div>
-            ))
-          ) : (
-            <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 text-sm text-slate-500 lg:col-span-2">
-              Trenutno nema planiranih nabavki za prikaz.
-            </div>
-          )}
+            ))}
+          </div>
         </div>
+      ) : null}
+
+      <div id="konkurencija" className="scroll-mt-24 space-y-6">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+          <div>
+            <h2 className="font-heading text-2xl font-bold text-slate-950">Ko vam uzima poslove</h2>
+            <p className="mt-1 text-sm text-slate-500">
+              Firme koje pobjeđuju u istim kategorijama i kod istih naručilaca u prostoru koji pratite.
+            </p>
+          </div>
+          <Swords className="size-5 text-rose-600" />
+        </div>
+
+        {showCompetitionSection ? (
+          <>
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              <Link href="#direct-rivals" className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm transition-colors hover:border-rose-200 hover:bg-rose-50/30">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-semibold text-slate-500">Direktni rivali</p>
+                  <Swords className="size-5 text-rose-600" />
+                </div>
+                <p className="mt-4 font-heading text-3xl font-bold text-slate-950">{displayCompetitors.length}</p>
+                <p className="mt-2 text-sm text-slate-500">Firmi koje vam izlaze na istom tržištu.</p>
+              </Link>
+              <div className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-semibold text-slate-500">Ukupne pobjede</p>
+                  <Trophy className="size-5 text-amber-500" />
+                </div>
+                <p className="mt-4 font-heading text-3xl font-bold text-slate-950">{displayTotalWins}</p>
+                <p className="mt-2 text-sm text-slate-500">Broj osvojenih ugovora u praćenom prostoru.</p>
+              </div>
+              <div className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-semibold text-slate-500">Ugovorena vrijednost</p>
+                  <TrendingUp className="size-5 text-blue-600" />
+                </div>
+                <p className="mt-4 font-heading text-3xl font-bold text-slate-950">{formatCurrencyKM(displayTotalValue)}</p>
+                <p className="mt-2 text-sm text-slate-500">Vrijednost poslova koje uzima praćena konkurencija.</p>
+              </div>
+              <div className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-semibold text-slate-500">Najjači rival</p>
+                  <Radar className="size-5 text-violet-600" />
+                </div>
+                <p className="mt-4 text-lg font-bold text-slate-950">{leadingCompetitor?.name ?? "—"}</p>
+                <p className="mt-2 text-sm text-slate-500">
+                  {leadingCompetitor ? `${leadingCompetitor.wins} pobjeda · ${formatCurrencyKM(leadingCompetitor.total_value)}` : "Nema dovoljno podataka."}
+                </p>
+              </div>
+            </div>
+
+            <div className="grid gap-6 xl:grid-cols-[minmax(0,1.25fr)_minmax(0,0.75fr)]">
+              <div className="rounded-[1.5rem] border border-slate-200 bg-white p-6 shadow-sm">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-5">
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Signal konkurencije</p>
+                    <h2 className="mt-2 font-heading text-2xl font-bold text-slate-950">Ko trenutno najjače pritiska vaš prostor</h2>
+                  </div>
+                  <Radar className="size-5 text-violet-600" />
+                </div>
+                <div className="mt-5 h-[320px] w-full">
+                  <CompetitorSignalChart
+                    data={displayCompetitors.slice(0, 8).map((competitor) => ({
+                      name: competitor.name,
+                      signal_score: competitor.signal_score,
+                      wins: competitor.wins,
+                      recent_wins_90d: competitor.recent_wins_90d,
+                    }))}
+                  />
+                </div>
+              </div>
+
+              <div className="rounded-[1.5rem] border border-slate-200 bg-white p-6 shadow-sm">
+                <div className="border-b border-slate-100 pb-5">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Sažetak</p>
+                  <h2 className="mt-2 font-heading text-2xl font-bold text-slate-950">Ko trenutno vuče poslove ispred vas</h2>
+                </div>
+                <div className="mt-5 grid gap-4">
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
+                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Najjači rival</p>
+                    <p className="mt-3 text-sm font-bold text-slate-900">{leadingCompetitor?.name ?? "—"}</p>
+                    <p className="mt-1 text-xs text-slate-500">
+                      {leadingCompetitor ? `${leadingCompetitor.wins} pobjeda · signal ${leadingCompetitor.signal_score}` : "—"}
+                    </p>
+                  </div>
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
+                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Najveća forma 90 dana</p>
+                    <p className="mt-3 text-sm font-bold text-slate-900">{hottestCompetitor?.name ?? "—"}</p>
+                    <p className="mt-1 text-xs text-slate-500">
+                      {hottestCompetitor ? `${hottestCompetitor.recent_wins_90d} svježih pobjeda` : "—"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div id="direct-rivals" className="scroll-mt-24 rounded-[1.5rem] border border-slate-200 bg-white p-6 shadow-sm">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-5">
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Direktni rivali</p>
+                  <h2 className="mt-2 font-heading text-2xl font-bold text-slate-950">Lista rivala koje trebate pratiti</h2>
+                </div>
+                <Swords className="size-5 text-rose-600" />
+              </div>
+              <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                {displayCompetitors.slice(0, 9).map((competitor) => (
+                  <div key={`${competitor.jib}-card`} className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-bold text-slate-900">{competitor.name}</p>
+                        <p className="mt-1 text-xs text-slate-500">
+                          {competitor.recent_wins_90d} pobjeda u 90 dana · {competitor.authority_count} naručilaca
+                        </p>
+                      </div>
+                      <span className="inline-flex rounded-md bg-violet-50 px-2 py-1 text-xs font-bold text-violet-700">
+                        {competitor.signal_score}
+                      </span>
+                    </div>
+                    <div className="mt-4 grid grid-cols-2 gap-3 text-xs text-slate-500">
+                      <div className="rounded-xl bg-white px-3 py-2">
+                        <p className="font-semibold text-slate-900">{competitor.wins}</p>
+                        <p>Pobjede</p>
+                      </div>
+                      <div className="rounded-xl bg-white px-3 py-2">
+                        <p className="font-semibold text-slate-900">{formatCurrencyKM(competitor.total_value)}</p>
+                        <p>Vrijednost</p>
+                      </div>
+                    </div>
+                    <div className="mt-4 flex flex-wrap gap-1.5">
+                      {competitor.categories.slice(0, 3).map((category) => (
+                        <span key={`${competitor.jib}-${category}`} className="rounded-md border border-slate-200 bg-white px-2 py-0.5 text-[10px] font-medium text-slate-600">
+                          {category}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {competitionAuthorities.length > 0 ? (
+              <div className="rounded-[1.5rem] border border-slate-200 bg-white p-6 shadow-sm">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-5">
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Naručioci</p>
+                    <h2 className="mt-2 font-heading text-2xl font-bold text-slate-950">Gdje se najviše sudarate</h2>
+                  </div>
+                  <Building2 className="size-5 text-blue-600" />
+                </div>
+                <div className="mt-5 grid gap-3 lg:grid-cols-2 xl:grid-cols-3">
+                  {competitionAuthorities.map((authority) => {
+                    const content = (
+                      <>
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="text-sm font-semibold text-slate-900">{authority.name}</p>
+                            <p className="mt-1 text-xs text-slate-500">
+                              {[authority.city, authority.authority_type].filter(Boolean).join(" · ") || "Javni naručilac"}
+                            </p>
+                          </div>
+                          <ArrowUpRight className="size-4 text-slate-300" />
+                        </div>
+                        <div className="mt-3 flex flex-wrap gap-2 text-xs text-slate-500">
+                          <span className="rounded-full bg-white px-2.5 py-1 font-medium">{authority.awards} odluka</span>
+                          <span className="rounded-full bg-blue-50 px-2.5 py-1 font-medium text-blue-700">{authority.unique_winners} pobjednika</span>
+                        </div>
+                      </>
+                    );
+
+                    return authority.jib ? (
+                      <Link
+                        key={`${authority.jib}-${authority.name}`}
+                        href={`/dashboard/intelligence/authority/${authority.jib}`}
+                        className="block rounded-2xl border border-slate-200 bg-slate-50/70 p-4 transition-colors hover:border-blue-200 hover:bg-white"
+                      >
+                        {content}
+                      </Link>
+                    ) : (
+                      <div key={authority.name} className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
+                        {content}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
+          </>
+        ) : (
+          <div className="rounded-[1.5rem] border border-dashed border-slate-200 bg-slate-50 p-8 text-sm text-slate-500">
+            Za vaš trenutni profil još nema dovoljno javnih odluka da izdvojimo jasnu konkurenciju.
+          </div>
+        )}
       </div>
     </div>
   );

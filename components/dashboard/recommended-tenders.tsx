@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getProfileOptionLabel } from "@/lib/company-profile";
+import { formatCurrencyKM } from "@/lib/currency";
 import { maybeRerankTenderRecommendationsWithAI } from "@/lib/tender-recommendation-rerank";
 import {
   buildRecommendationContext,
@@ -15,8 +16,14 @@ interface RecommendationCardTender {
   deadline: string | null;
   estimated_value: number | null;
   contracting_authority: string | null;
+  contracting_authority_jib: string | null;
   contract_type: string | null;
   raw_description: string | null;
+  cpv_code: string | null;
+  authority_city?: string | null;
+  authority_municipality?: string | null;
+  authority_canton?: string | null;
+  authority_entity?: string | null;
 }
 
 export async function RecommendedTenders() {
@@ -38,13 +45,19 @@ export async function RecommendedTenders() {
   const searchCondition = recommendationContext
     ? buildRecommendationSearchCondition(recommendationContext)
     : "";
+  const hasRecommendationSignals = recommendationContext
+    ? recommendationContext.keywords.length > 0 ||
+      recommendationContext.cpvPrefixes.length > 0 ||
+      recommendationContext.preferredContractTypes.length > 0 ||
+      recommendationContext.regionTerms.length > 0
+    : false;
   const focusLabel = recommendationContext?.profile.primaryIndustry
     ? getProfileOptionLabel(recommendationContext.profile.primaryIndustry)
     : null;
   const preferredLabels = recommendationContext?.profile.preferredTenderTypes.map((item) => getProfileOptionLabel(item)) ?? [];
   const regionLabels = recommendationContext?.regionLabels ?? [];
 
-  if (!company || !recommendationContext || !searchCondition) {
+  if (!company || !recommendationContext || !hasRecommendationSignals) {
     return (
       <section className="rounded-[1.75rem] border border-slate-200/80 bg-white p-6 shadow-[0_18px_50px_-34px_rgba(15,23,42,0.18)]">
         <div className="flex items-start justify-between gap-6">
@@ -81,7 +94,7 @@ export async function RecommendedTenders() {
   // Find matching tenders
   let query = supabase
     .from("tenders")
-    .select("id, title, deadline, estimated_value, contracting_authority, contract_type, raw_description")
+    .select("id, title, deadline, estimated_value, contracting_authority, contracting_authority_jib, contract_type, raw_description, cpv_code")
     .gt("deadline", new Date().toISOString());
 
   if (
@@ -91,14 +104,44 @@ export async function RecommendedTenders() {
     query = query.in("contract_type", resolvedRecommendationContext.preferredContractTypes);
   }
 
-  query = query.or(searchCondition);
+  if (searchCondition) {
+    query = query.or(searchCondition);
+  }
 
   const { data } = await query
     .order("deadline", { ascending: true })
     .limit(72);
 
+  const authorityJibs = [...new Set(((data ?? []) as RecommendationCardTender[])
+    .map((tender) => tender.contracting_authority_jib)
+    .filter(Boolean) as string[])];
+  const { data: authorityRows } = authorityJibs.length > 0
+    ? await supabase
+        .from("contracting_authorities")
+        .select("jib, city, municipality, canton, entity")
+        .in("jib", authorityJibs)
+    : { data: [] };
+
+  const authorityMap = new Map(
+    (authorityRows ?? []).map((authority) => [authority.jib, authority])
+  );
+
+  const scopedTenders = ((data ?? []) as RecommendationCardTender[]).map((tender) => {
+    const authority = tender.contracting_authority_jib
+      ? authorityMap.get(tender.contracting_authority_jib)
+      : null;
+
+    return {
+      ...tender,
+      authority_city: authority?.city ?? null,
+      authority_municipality: authority?.municipality ?? null,
+      authority_canton: authority?.canton ?? null,
+      authority_entity: authority?.entity ?? null,
+    };
+  });
+
   const rankedTenders = rankTenderRecommendations(
-    (data ?? []) as RecommendationCardTender[],
+    scopedTenders,
     resolvedRecommendationContext
   );
 
@@ -167,12 +210,7 @@ export async function RecommendedTenders() {
               </span>
               {tender.estimated_value && (
                 <span className="text-sm font-semibold text-emerald-700">
-                  {new Intl.NumberFormat("bs-BA", {
-                    compactDisplay: "short",
-                    notation: "compact",
-                    style: "currency",
-                    currency: "BAM"
-                  }).format(tender.estimated_value)}
+                  {formatCurrencyKM(tender.estimated_value)}
                 </span>
               )}
             </div>

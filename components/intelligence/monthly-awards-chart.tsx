@@ -1,5 +1,6 @@
 "use client";
 
+import { formatCurrencyKM } from "@/lib/currency";
 import {
   Area,
   Bar,
@@ -15,12 +16,6 @@ import type { MarketMonthlyInsight } from "@/lib/market-intelligence";
 
 interface MonthlyAwardsChartProps {
   data: MarketMonthlyInsight[];
-}
-
-function formatKM(value: number): string {
-  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M KM`;
-  if (value >= 1_000) return `${(value / 1_000).toFixed(0)}K KM`;
-  return `${value.toFixed(0)} KM`;
 }
 
 export function MonthlyAwardsChart({ data }: MonthlyAwardsChartProps) {
@@ -44,7 +39,7 @@ export function MonthlyAwardsChart({ data }: MonthlyAwardsChartProps) {
           axisLine={false}
           tickLine={false}
           tick={{ fill: "#94a3b8", fontSize: 11 }}
-          tickFormatter={(value: number) => formatKM(value)}
+          tickFormatter={(value: number) => formatCurrencyKM(value)}
         />
         <Tooltip
           contentStyle={{
@@ -55,7 +50,7 @@ export function MonthlyAwardsChart({ data }: MonthlyAwardsChartProps) {
             boxShadow: "0 10px 30px rgba(15, 23, 42, 0.08)",
           }}
           formatter={(value, name) => [
-            name === "count" ? String(value ?? "—") : formatKM(Number(value) || 0),
+            name === "count" ? String(value ?? "—") : formatCurrencyKM(Number(value) || 0),
             name === "count" ? "Broj ugovora" : "Vrijednost",
           ]}
         />

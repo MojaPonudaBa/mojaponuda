@@ -1,5 +1,6 @@
 "use client";
 
+import { formatCurrencyKM } from "@/lib/currency";
 import {
   Cell,
   Pie,
@@ -13,12 +14,6 @@ interface CategoryChartProps {
 }
 
 const COLORS = ["#3b82f6", "#06b6d4", "#8b5cf6", "#f59e0b", "#10b981"];
-
-function formatKM(value: number): string {
-  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M KM`;
-  if (value >= 1_000) return `${(value / 1_000).toFixed(0)}K KM`;
-  return `${value.toFixed(0)} KM`;
-}
 
 export function CategoryChart({ data }: CategoryChartProps) {
   if (data.length === 0) {
@@ -52,7 +47,7 @@ export function CategoryChart({ data }: CategoryChartProps) {
             formatter={(value, _name, item) => {
               const payload = item?.payload as { category: string; count: number; total_value: number } | undefined;
 
-              return [`${String(value ?? "0")} ugovora · ${formatKM(payload?.total_value ?? 0)}`, payload?.category ?? "Kategorija"];
+              return [`${String(value ?? "0")} ugovora · ${formatCurrencyKM(payload?.total_value ?? 0)}`, payload?.category ?? "Kategorija"];
             }}
             contentStyle={{
               backgroundColor: "#ffffff",
@@ -74,7 +69,7 @@ export function CategoryChart({ data }: CategoryChartProps) {
               />
               <p className="text-sm font-semibold text-slate-900">{entry.category}</p>
             </div>
-            <p className="mt-1 text-xs text-slate-500">{entry.count} ugovora · {formatKM(entry.total_value)}</p>
+            <p className="mt-1 text-xs text-slate-500">{entry.count} ugovora · {formatCurrencyKM(entry.total_value)}</p>
           </div>
         ))}
       </div>

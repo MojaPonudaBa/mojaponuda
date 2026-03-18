@@ -123,7 +123,14 @@ export interface MarketUpcomingInsight {
   planned_date: string | null;
   estimated_value: number | null;
   contract_type: string | null;
-  contracting_authorities: { name: string; jib: string } | null;
+  contracting_authorities: {
+    name: string;
+    jib: string;
+    city?: string | null;
+    municipality?: string | null;
+    canton?: string | null;
+    entity?: string | null;
+  } | null;
 }
 
 export interface MarketOverviewResult {
@@ -168,7 +175,7 @@ type AwardRow = Pick<
 
 type AuthorityRow = Pick<
   Database["public"]["Tables"]["contracting_authorities"]["Row"],
-  "jib" | "name" | "city" | "authority_type"
+  "jib" | "name" | "city" | "municipality" | "canton" | "entity" | "authority_type"
 >;
 
 type MarketCompanyRow = Pick<
@@ -193,7 +200,12 @@ type TenderScopeRow = Pick<
   | "estimated_value"
   | "deadline"
   | "created_at"
->;
+> & {
+  authority_city?: string | null;
+  authority_municipality?: string | null;
+  authority_canton?: string | null;
+  authority_entity?: string | null;
+};
 
 interface PlannedScopeRow extends MarketUpcomingInsight {
   cpv_code: string | null;
@@ -296,6 +308,32 @@ function matchesProfileScope(
   return keywordMatch && regionMatch && contractTypeMatch;
 }
 
+function withAuthorityLocation<T extends { contracting_authority_jib: string | null }>(
+  rows: T[],
+  authorityMap: Map<string, AuthorityRow>
+): Array<
+  T & {
+    authority_city: string | null;
+    authority_municipality: string | null;
+    authority_canton: string | null;
+    authority_entity: string | null;
+  }
+> {
+  return rows.map((row) => {
+    const authority = row.contracting_authority_jib
+      ? authorityMap.get(row.contracting_authority_jib)
+      : null;
+
+    return {
+      ...row,
+      authority_city: authority?.city ?? null,
+      authority_municipality: authority?.municipality ?? null,
+      authority_canton: authority?.canton ?? null,
+      authority_entity: authority?.entity ?? null,
+    };
+  });
+}
+
 function scoreMarketFit(
   fields: Array<string | null | undefined>,
   searchTerms: string[],
@@ -321,21 +359,8 @@ function isPlanRelevant(
   matchedCategories: string[],
   matchedAuthorityJibs: string[]
 ): boolean {
-  const categoryMatch = Boolean(
-    plan.contract_type && matchedCategories.includes(plan.contract_type)
-  );
   const authorityMatch = Boolean(
     plan.contracting_authorities?.jib && matchedAuthorityJibs.includes(plan.contracting_authorities.jib)
-  );
-  const score = scoreMarketFit(
-    [
-      plan.description,
-      plan.contract_type,
-      plan.cpv_code,
-      plan.contracting_authorities?.name,
-    ],
-    searchTerms,
-    operatingRegions
   );
   const profileMatch = matchesProfileScope(
     [
@@ -343,6 +368,10 @@ function isPlanRelevant(
       plan.contract_type,
       plan.cpv_code,
       plan.contracting_authorities?.name,
+      plan.contracting_authorities?.city,
+      plan.contracting_authorities?.municipality,
+      plan.contracting_authorities?.canton,
+      plan.contracting_authorities?.entity,
     ],
     plan.contract_type,
     searchTerms,
@@ -350,7 +379,13 @@ function isPlanRelevant(
     preferredContractTypes
   );
 
-  return categoryMatch || authorityMatch || profileMatch || score > 0;
+  if (operatingRegions.length > 0) {
+    return authorityMatch || profileMatch;
+  }
+
+  return authorityMatch || profileMatch || Boolean(
+    plan.contract_type && matchedCategories.includes(plan.contract_type)
+  );
 }
 
 export async function getCompetitorAnalysis(
@@ -386,6 +421,10 @@ export async function getCompetitorAnalysis(
     contract_type: string | null;
     title: string;
     raw_description: string | null;
+    authority_city?: string | null;
+    authority_municipality?: string | null;
+    authority_canton?: string | null;
+    authority_entity?: string | null;
   }[] = [];
 
   if (hasProfileScope) {
@@ -395,7 +434,24 @@ export async function getCompetitorAnalysis(
       .gt("deadline", nowIso)
       .limit(600);
 
-    profileAuthorityRows = ((tenderRows ?? []) as typeof profileAuthorityRows)
+    const tenderAuthorityJibs = uniqueStrings(
+      ((tenderRows ?? []) as typeof profileAuthorityRows).map((row) => row.contracting_authority_jib)
+    );
+    const { data: tenderAuthorityRows } = tenderAuthorityJibs.length > 0
+      ? await supabase
+          .from("contracting_authorities")
+          .select("jib, name, city, municipality, canton, entity, authority_type")
+          .in("jib", tenderAuthorityJibs)
+      : { data: [] };
+    const tenderAuthorityMap = new Map<string, AuthorityRow>(
+      ((tenderAuthorityRows ?? []) as AuthorityRow[]).map((authority) => [authority.jib, authority])
+    );
+    const scopedTenderRows = withAuthorityLocation(
+      (tenderRows ?? []) as typeof profileAuthorityRows,
+      tenderAuthorityMap
+    );
+
+    profileAuthorityRows = scopedTenderRows
       .filter((tender) =>
         matchesProfileScope(
           [
@@ -403,6 +459,10 @@ export async function getCompetitorAnalysis(
             tender.raw_description,
             tender.contracting_authority,
             tender.contract_type,
+            tender.authority_city,
+            tender.authority_municipality,
+            tender.authority_canton,
+            tender.authority_entity,
           ],
           tender.contract_type,
           searchTerms,
@@ -413,10 +473,18 @@ export async function getCompetitorAnalysis(
       .sort((a, b) => {
         const scoreA =
           scoreRegionMatch(a.contracting_authority, operatingRegions) +
+          scoreRegionMatch(a.authority_city, operatingRegions) +
+          scoreRegionMatch(a.authority_municipality, operatingRegions) +
+          scoreRegionMatch(a.authority_canton, operatingRegions) +
+          scoreRegionMatch(a.authority_entity, operatingRegions) +
           scoreRegionMatch(a.title, operatingRegions) +
           scoreRegionMatch(a.raw_description, operatingRegions);
         const scoreB =
           scoreRegionMatch(b.contracting_authority, operatingRegions) +
+          scoreRegionMatch(b.authority_city, operatingRegions) +
+          scoreRegionMatch(b.authority_municipality, operatingRegions) +
+          scoreRegionMatch(b.authority_canton, operatingRegions) +
+          scoreRegionMatch(b.authority_entity, operatingRegions) +
           scoreRegionMatch(b.title, operatingRegions) +
           scoreRegionMatch(b.raw_description, operatingRegions);
 
@@ -449,7 +517,7 @@ export async function getCompetitorAnalysis(
   const { data: authorityRows } = relevantAuthorityJibs.length > 0
     ? await supabase
         .from("contracting_authorities")
-        .select("jib, name, city, authority_type")
+        .select("jib, name, city, municipality, canton, entity, authority_type")
         .in("jib", relevantAuthorityJibs)
     : { data: [] };
 
@@ -489,7 +557,7 @@ export async function getCompetitorAnalysis(
   if (missingAuthorityJibs.length > 0) {
     const { data: fallbackAuthorityRows } = await supabase
       .from("contracting_authorities")
-      .select("jib, name, city, authority_type")
+      .select("jib, name, city, municipality, canton, entity, authority_type")
       .in("jib", missingAuthorityJibs);
 
     for (const authority of (fallbackAuthorityRows ?? []) as AuthorityRow[]) {
@@ -509,7 +577,15 @@ export async function getCompetitorAnalysis(
     const isCategoryMatch = Boolean(award.contract_type && matchedCategorySet.has(award.contract_type));
     const isAuthorityMatch = Boolean(authorityJib && matchedAuthoritySet.has(authorityJib));
     const isProfileMatch = matchesProfileScope(
-      [award.contract_type, authorityName, authorityMeta?.city, authorityMeta?.authority_type],
+      [
+        award.contract_type,
+        authorityName,
+        authorityMeta?.city,
+        authorityMeta?.municipality,
+        authorityMeta?.canton,
+        authorityMeta?.entity,
+        authorityMeta?.authority_type,
+      ],
       award.contract_type,
       searchTerms,
       operatingRegions,
@@ -522,7 +598,17 @@ export async function getCompetitorAnalysis(
 
     if (
       operatingRegions.length > 0 &&
-      !hasRegionMatch([authorityName, authorityMeta?.city, authorityMeta?.authority_type], operatingRegions)
+      !hasRegionMatch(
+        [
+          authorityName,
+          authorityMeta?.city,
+          authorityMeta?.municipality,
+          authorityMeta?.canton,
+          authorityMeta?.entity,
+          authorityMeta?.authority_type,
+        ],
+        operatingRegions
+      )
     ) {
       continue;
     }
@@ -807,7 +893,7 @@ export async function getMarketOverview(
     supabase
       .from("planned_procurements")
       .select(
-        "id, description, planned_date, estimated_value, contract_type, cpv_code, contracting_authorities(name, jib)"
+        "id, description, planned_date, estimated_value, contract_type, cpv_code, contracting_authorities(name, jib, city, municipality, canton, entity)"
       )
       .gte("planned_date", nowIso.split("T")[0])
       .lte("planned_date", ninetyDaysForward)
@@ -822,9 +908,27 @@ export async function getMarketOverview(
       : Promise.resolve({ data: [] }),
   ]);
 
-  const allActiveRows = ((allActiveTenderRows ?? []) as TenderScopeRow[]);
+  const tenderAuthorityJibs = uniqueStrings([
+    ...((allActiveTenderRows ?? []) as TenderScopeRow[]).map((row) => row.contracting_authority_jib),
+    ...((profileTenderRows ?? []) as TenderScopeRow[]).map((row) => row.contracting_authority_jib),
+    ...((allYearAwards ?? []) as AwardRow[]).map((row) => row.contracting_authority_jib),
+  ]);
+  const { data: tenderAuthorityRows } = tenderAuthorityJibs.length > 0
+    ? await supabase
+        .from("contracting_authorities")
+        .select("jib, name, city, municipality, canton, entity, authority_type")
+        .in("jib", tenderAuthorityJibs)
+    : { data: [] };
+  const tenderAuthorityMap = new Map<string, AuthorityRow>(
+    ((tenderAuthorityRows ?? []) as AuthorityRow[]).map((authority) => [authority.jib, authority])
+  );
+
+  const allActiveRows = withAuthorityLocation(
+    (allActiveTenderRows ?? []) as TenderScopeRow[],
+    tenderAuthorityMap
+  );
   const profileTenderCandidates = keywordConditions
-    ? ((profileTenderRows ?? []) as TenderScopeRow[])
+    ? withAuthorityLocation((profileTenderRows ?? []) as TenderScopeRow[], tenderAuthorityMap)
     : allActiveRows;
   const matchedActiveTenders = company && hasProfileScope
     ? profileTenderCandidates
@@ -836,6 +940,10 @@ export async function getMarketOverview(
               tender.raw_description,
               tender.contracting_authority,
               tender.contract_type,
+              tender.authority_city,
+              tender.authority_municipality,
+              tender.authority_canton,
+              tender.authority_entity,
             ],
             searchTerms,
             operatingRegions
@@ -848,6 +956,10 @@ export async function getMarketOverview(
               tender.raw_description,
               tender.contracting_authority,
               tender.contract_type,
+              tender.authority_city,
+              tender.authority_municipality,
+              tender.authority_canton,
+              tender.authority_entity,
             ],
             tender.contract_type,
             searchTerms,
@@ -876,16 +988,32 @@ export async function getMarketOverview(
 
   const scopedYearAwards = profileScoped
     ? ((allYearAwards ?? []) as AwardRow[]).filter((award) => {
+        const authorityMeta = award.contracting_authority_jib
+          ? tenderAuthorityMap.get(award.contracting_authority_jib)
+          : null;
         const categoryMatch = Boolean(
           award.contract_type && matchedCategories.includes(award.contract_type)
         );
         const authorityMatch = Boolean(
           award.contracting_authority_jib && matchedAuthorityJibs.includes(award.contracting_authority_jib)
         );
-        if (operatingRegions.length > 0) {
-          return authorityMatch;
-        }
-        return categoryMatch || authorityMatch;
+        const profileMatch = matchesProfileScope(
+          [
+            award.contract_type,
+            authorityMeta?.name,
+            authorityMeta?.city,
+            authorityMeta?.municipality,
+            authorityMeta?.canton,
+            authorityMeta?.entity,
+            authorityMeta?.authority_type,
+          ],
+          award.contract_type,
+          searchTerms,
+          operatingRegions,
+          preferredContractTypes
+        );
+
+        return authorityMatch || profileMatch || (operatingRegions.length === 0 && categoryMatch);
       })
     : [];
 
@@ -1104,7 +1232,7 @@ export async function getMarketOverview(
   const { data: authorityMetaRows } = authorityJibs.length > 0
     ? await supabase
         .from("contracting_authorities")
-        .select("jib, name, city, authority_type")
+        .select("jib, name, city, municipality, canton, entity, authority_type")
         .in("jib", authorityJibs)
     : { data: [] };
 

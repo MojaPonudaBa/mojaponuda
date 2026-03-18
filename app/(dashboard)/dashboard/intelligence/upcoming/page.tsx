@@ -1,17 +1,12 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { demoRecentProcurements, demoUpcomingProcurements, isDemoUser } from "@/lib/demo";
+import { formatCurrencyKM } from "@/lib/currency";
+import { demoUpcomingProcurements, isDemoUser } from "@/lib/demo";
 import { getMarketOverview } from "@/lib/market-intelligence";
 import { getSubscriptionStatus } from "@/lib/subscription";
 import { ProGate } from "@/components/subscription/pro-gate";
 import type { Company } from "@/types/database";
 import { Calendar, TrendingUp, CalendarDays, ArrowUpRight } from "lucide-react";
-
-function formatKM(value: number): string {
-  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M KM`;
-  if (value >= 1_000) return `${(value / 1_000).toFixed(0)}K KM`;
-  return `${value.toFixed(0)} KM`;
-}
 
 export default async function UpcomingPage() {
   const supabase = await createClient();
@@ -33,35 +28,6 @@ export default async function UpcomingPage() {
   const company = companyData as Pick<Company, "jib" | "industry" | "keywords" | "operating_regions"> | null;
   const marketOverview = await getMarketOverview(supabase, company ?? undefined);
 
-  const today = new Date().toISOString().split("T")[0];
-
-  // Planirani tenderi — budući ili nedavni (zadnjih 30 dana)
-  const now = new Date();
-  const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
-    .toISOString()
-    .split("T")[0];
-
-  const { data: planned } = await supabase
-    .from("planned_procurements")
-    .select("id, portal_id, description, estimated_value, planned_date, contract_type, cpv_code, contracting_authority_id, contracting_authorities(name, jib)")
-    .gte("planned_date", thirtyDaysAgo)
-    .order("planned_date", { ascending: true })
-    .limit(100);
-
-  interface PlannedRow {
-    id: string;
-    portal_id: string;
-    description: string | null;
-    estimated_value: number | null;
-    planned_date: string | null;
-    contract_type: string | null;
-    cpv_code: string | null;
-    contracting_authority_id: string | null;
-    contracting_authorities: { name: string; jib: string } | null;
-  }
-
-  const items = (planned ?? []) as unknown as PlannedRow[];
-
   const upcoming = marketOverview.upcomingPlans.length > 0
     ? marketOverview.upcomingPlans.map((plan) => ({
         id: plan.id,
@@ -75,19 +41,7 @@ export default async function UpcomingPage() {
         contracting_authorities: plan.contracting_authorities,
       }))
     : [];
-  const recentPool = items.filter((p) => p.planned_date && p.planned_date < today);
-  const recent = marketOverview.profileScoped
-    ? recentPool.filter(
-        (p) =>
-          Boolean(p.contract_type && marketOverview.matchedCategories.includes(p.contract_type)) ||
-          Boolean(
-            p.contracting_authorities?.jib &&
-              marketOverview.matchedAuthorityJibs.includes(p.contracting_authorities.jib)
-          )
-      )
-    : [];
   const displayUpcoming = upcoming.length > 0 ? upcoming : isDemoAccount ? demoUpcomingProcurements : [];
-  const displayRecent = recent.length > 0 ? recent : isDemoAccount ? demoRecentProcurements : [];
 
   const upcomingValueKnownCount = displayUpcoming.filter(
     (p) => p.estimated_value !== null && p.estimated_value !== undefined
@@ -141,7 +95,7 @@ export default async function UpcomingPage() {
               <ArrowUpRight className="size-5" />
             </div>
           </div>
-          <p className="text-4xl font-heading font-extrabold text-slate-900">{upcomingValueKnownCount > 0 ? formatKM(totalUpcomingValue) : "—"}</p>
+          <p className="text-4xl font-heading font-extrabold text-slate-900">{upcomingValueKnownCount > 0 ? formatCurrencyKM(totalUpcomingValue) : "—"}</p>
           <p className="mt-1 text-sm text-slate-500 font-medium">
             {upcomingValueKnownCount > 0
               ? `Vrijednost objavljena za ${upcomingValueKnownCount} tendera`
@@ -186,7 +140,7 @@ export default async function UpcomingPage() {
                   <div className="text-right shrink-0">
                      {p.estimated_value && (
                         <p className="font-mono font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-md inline-block">
-                          {formatKM(Number(p.estimated_value))}
+                          {formatCurrencyKM(Number(p.estimated_value))}
                         </p>
                       )}
                   </div>
@@ -215,39 +169,6 @@ export default async function UpcomingPage() {
           </div>
         )}
       </div>
-
-      {/* Nedavno planirani (možda već raspisani) */}
-      {displayRecent.length > 0 && (
-        <div className="rounded-[1.5rem] border border-slate-100 bg-white shadow-sm overflow-hidden opacity-80 hover:opacity-100 transition-opacity">
-          <div className="border-b border-slate-100 px-6 py-5 bg-slate-50/50">
-            <h2 className="font-heading text-lg font-bold text-slate-700">Nedavno planirani</h2>
-            <p className="mt-1 text-xs font-medium text-slate-500">
-              Tenderi planirani u zadnjih 30 dana — velika vjerovatnoća da su već otvoreni za prijavu
-            </p>
-          </div>
-          <div className="divide-y divide-slate-50">
-            {displayRecent.map((p) => (
-              <div key={p.id} className="px-6 py-4 hover:bg-slate-50 transition-colors">
-                <div className="flex justify-between gap-4">
-                  <p className="text-sm font-bold text-slate-700 line-clamp-1">
-                    {p.description || "Bez opisa"}
-                  </p>
-                  {p.estimated_value && (
-                    <span className="font-mono text-xs font-bold text-slate-400">
-                      {formatKM(Number(p.estimated_value))}
-                    </span>
-                  )}
-                </div>
-                <div className="mt-1 flex items-center gap-2 text-xs text-slate-400">
-                  <span>{p.contracting_authorities?.name}</span>
-                  <span>•</span>
-                  <span>{new Date(p.planned_date!).toLocaleDateString("bs-BA")}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
