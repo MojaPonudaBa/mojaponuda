@@ -153,18 +153,24 @@ function toPreviewTenders(
   recommendationContext: ReturnType<typeof buildRecommendationContext>
 ) {
   const rankedTenders = rankTenderRecommendations(candidates, recommendationContext);
+  const fallbackContractGate = (candidate: ReturnType<typeof scoreTenderRecommendation>) =>
+    recommendationContext.preferredContractTypes.length === 0 ||
+    candidate.contractMatch ||
+    !candidate.tender.contract_type;
 
   if (rankedTenders.length === 0 && candidates.length > 0) {
-    const broaderPreview = candidates
+    const scoredCandidates = candidates
       .map((candidate) => scoreTenderRecommendation(candidate, recommendationContext))
+      .filter((candidate) => fallbackContractGate(candidate));
+
+    const broaderPreview = scoredCandidates
       .filter(
         (candidate) =>
-          candidate.contractMatch &&
-          candidate.regionMatch &&
           (candidate.score >= 3 ||
             candidate.cpvMatch ||
             candidate.titleMatches.length > 0 ||
-            candidate.matchedKeywords.length > 0)
+            candidate.matchedKeywords.length > 0 ||
+            candidate.regionMatch)
       )
       .sort((a, b) => {
         if (a.score !== b.score) {
@@ -191,6 +197,41 @@ function toPreviewTenders(
         ),
         summary:
           "Prikazujemo širi početni pregled tendera na osnovu djelatnosti, tipa tendera i regije. U sljedećem koraku dodajte još konteksta za preciznije preporuke.",
+      });
+    }
+
+    const loosestPreview = scoredCandidates
+      .filter(
+        (candidate) =>
+          candidate.regionMatch ||
+          recommendationContext.regionTerms.length === 0 ||
+          !candidate.tender.contracting_authority_jib
+      )
+      .sort((a, b) => {
+        if (a.score !== b.score) {
+          return b.score - a.score;
+        }
+
+        return (
+          new Date(a.tender.deadline ?? 0).getTime() - new Date(b.tender.deadline ?? 0).getTime()
+        );
+      })
+      .slice(0, 6);
+
+    if (loosestPreview.length > 0) {
+      return Promise.resolve({
+        tenders: loosestPreview.map(
+          ({ tender }) =>
+            ({
+              id: tender.id,
+              title: tender.title,
+              deadline: tender.deadline,
+              estimated_value: tender.estimated_value,
+              contracting_authority: tender.contracting_authority,
+            }) satisfies PreviewTender
+        ),
+        summary:
+          "Prikazujemo najširi početni pregled otvorenih tendera koji mogu biti primjenjivi na osnovu vašeg djelovanja, tipa tendera i dostupnih podataka o naručiocima.",
       });
     }
   }
@@ -271,11 +312,65 @@ export async function POST(request: Request) {
       }
     );
 
+    let mergedCandidates = candidateTenders;
+
+    if (candidateTenders.length < 24) {
+      const { data: broadPoolRows } = await supabase
+        .from("tenders")
+        .select(
+          "id, title, deadline, estimated_value, contracting_authority, contracting_authority_jib, contract_type, raw_description, cpv_code"
+        )
+        .gt("deadline", new Date().toISOString())
+        .order("deadline", { ascending: true, nullsFirst: false })
+        .limit(600);
+
+      const authorityJibs = [
+        ...new Set(
+          ((broadPoolRows ?? []) as PreviewTenderCandidate[])
+            .map((tender) => tender.contracting_authority_jib)
+            .filter(Boolean) as string[]
+        ),
+      ];
+
+      const { data: authorityRows } = authorityJibs.length > 0
+        ? await supabase
+            .from("contracting_authorities")
+            .select("jib, city, municipality, canton, entity")
+            .in("jib", authorityJibs)
+        : { data: [] };
+
+      const authorityMap = new Map(
+        (authorityRows ?? []).map((authority) => [authority.jib, authority])
+      );
+
+      const broaderCandidates = ((broadPoolRows ?? []) as PreviewTenderCandidate[]).map((tender) => {
+        const authority = tender.contracting_authority_jib
+          ? authorityMap.get(tender.contracting_authority_jib)
+          : null;
+
+        return {
+          ...tender,
+          authority_city: authority?.city ?? null,
+          authority_municipality: authority?.municipality ?? null,
+          authority_canton: authority?.canton ?? null,
+          authority_entity: authority?.entity ?? null,
+        } satisfies PreviewTenderCandidate;
+      });
+
+      mergedCandidates = [
+        ...new Map(
+          [...candidateTenders, ...broaderCandidates].map((candidate) => [candidate.id, candidate])
+        ).values(),
+      ];
+    }
+
     return NextResponse.json(
       await toPreviewTenders(
-        candidateTenders,
+        mergedCandidates,
         candidateTenders.length > 0
           ? `Na osnovu osnovnih podataka izdvojili smo ${Math.min(candidateTenders.length, 6)} tendera koji najviše liče na ono što radite.`
+          : mergedCandidates.length > 0
+            ? "Prikazujemo širi početni pregled tendera kako ne biste propustili relevantne prilike već u prvom koraku."
           : "Za ovaj osnovni unos još nema dovoljno jasnih poklapanja. U sljedećem koraku dopunite profil i dobit ćete preciznije preporuke.",
         recommendationContext
       )
