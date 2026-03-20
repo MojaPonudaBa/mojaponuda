@@ -1,11 +1,14 @@
 import { Suspense } from "react";
 import { createClient } from "@/lib/supabase/server";
 import type { Tender } from "@/types/database";
+import { buildRegionSearchTerms } from "@/lib/constants/regions";
 import { maybeRerankTenderRecommendationsWithAI } from "@/lib/tender-recommendation-rerank";
 import {
   buildRecommendationContext,
+  enrichTendersWithAuthorityGeo,
   fetchRecommendedTenderCandidates,
   hasRecommendationSignals,
+  matchesTenderLocationTerms,
   rankTenderRecommendations,
   type RecommendationContext,
 } from "@/lib/tender-recommendations";
@@ -19,17 +22,42 @@ import { Button } from "@/components/ui/button";
 
 const PAGE_SIZE = 20;
 
+type SearchParamValue = string | string[] | undefined;
+
 interface TendersPageProps {
-  searchParams: Promise<{ [key: string]: string | undefined }>;
+  searchParams: Promise<{ [key: string]: SearchParamValue }>;
+}
+
+function getSingleParam(value: SearchParamValue): string | undefined {
+  return Array.isArray(value) ? value[0] : value;
+}
+
+function getMultiParam(value: SearchParamValue): string[] {
+  if (Array.isArray(value)) {
+    return value.filter((item) => typeof item === "string" && item.trim().length > 0);
+  }
+
+  return typeof value === "string" && value.trim().length > 0 ? [value] : [];
 }
 
 async function TendersContent({ searchParams }: TendersPageProps) {
   const params = await searchParams;
   const supabase = await createClient();
+  const pageParam = getSingleParam(params.page);
+  const tabParam = getSingleParam(params.tab);
+  const keywordParam = getSingleParam(params.q) ?? "";
+  const contractTypeParam = getSingleParam(params.contract_type) ?? "all";
+  const procedureTypeParam = getSingleParam(params.procedure_type) ?? "all";
+  const deadlineFromParam = getSingleParam(params.deadline_from) ?? "";
+  const deadlineToParam = getSingleParam(params.deadline_to) ?? "";
+  const valueMinParam = getSingleParam(params.value_min) ?? "";
+  const valueMaxParam = getSingleParam(params.value_max) ?? "";
+  const locationFilterValues = getMultiParam(params.location);
+  const locationFilterTerms = buildRegionSearchTerms(locationFilterValues);
 
-  const page = Math.max(1, parseInt(params.page || "1", 10));
+  const page = Math.max(1, parseInt(pageParam || "1", 10));
   const offset = (page - 1) * PAGE_SIZE;
-  const activeTab = params.tab === "all" ? "all" : "recommended";
+  const activeTab = tabParam === "all" ? "all" : "recommended";
 
   // Get current user and company for recommendations
   const {
@@ -86,7 +114,7 @@ async function TendersContent({ searchParams }: TendersPageProps) {
             Podesite svoj profil
           </h3>
           <p className="mb-6 max-w-md text-slate-500">
-            Da bismo izdvojili tendera koji stvarno imaju smisla za vašu firmu, trebamo znati šta nudite i gdje radite. Dopunite profil firme.
+            Da bismo izdvojili tendera koji stvarno imaju smisla za vašu firmu, trebamo znati šta nudite i gdje se firma nalazi. Dopunite profil firme.
           </p>
           <Button asChild>
             <Link href="/dashboard/settings">Uredi Profil</Link>
@@ -97,13 +125,14 @@ async function TendersContent({ searchParams }: TendersPageProps) {
   }
 
   const hasFilters =
-    params.q ||
-    (params.contract_type && params.contract_type !== "all") ||
-    (params.procedure_type && params.procedure_type !== "all") ||
-    params.deadline_from ||
-    params.deadline_to ||
-    params.value_min ||
-    params.value_max;
+    keywordParam ||
+    (contractTypeParam && contractTypeParam !== "all") ||
+    (procedureTypeParam && procedureTypeParam !== "all") ||
+    deadlineFromParam ||
+    deadlineToParam ||
+    valueMinParam ||
+    valueMaxParam ||
+    locationFilterValues.length > 0;
 
   let tenders: Tender[] = [];
   let totalCount = 0;
@@ -126,8 +155,8 @@ async function TendersContent({ searchParams }: TendersPageProps) {
       recommendationContext
     );
 
-    if (params.q) {
-      const searchTerm = params.q.toLowerCase();
+    if (keywordParam) {
+      const searchTerm = keywordParam.toLowerCase();
       rankedRecommendations = rankedRecommendations.filter(({ tender }) =>
         [tender.title, tender.raw_description, tender.contracting_authority]
           .filter(Boolean)
@@ -143,49 +172,111 @@ async function TendersContent({ searchParams }: TendersPageProps) {
       }
     );
 
+    if (locationFilterTerms.length > 0) {
+      rankedRecommendations = rankedRecommendations.filter(({ tender }) =>
+        matchesTenderLocationTerms(tender, locationFilterTerms)
+      );
+    }
+
     totalCount = rankedRecommendations.length;
     tenders = rankedRecommendations
       .slice(offset, offset + PAGE_SIZE)
       .map(({ tender }) => tender as Tender);
   } else {
-    let query = supabase
-      .from("tenders")
-      .select("*", { count: "exact" })
-      .gt("deadline", new Date().toISOString());
+    if (locationFilterTerms.length > 0) {
+      let locationQuery = supabase
+        .from("tenders")
+        .select("*")
+        .gt("deadline", new Date().toISOString());
 
-    if (params.q) {
-      const kw = `%${params.q}%`;
-      query = query.or(`title.ilike.${kw},raw_description.ilike.${kw}`);
-    }
+      if (keywordParam) {
+        const kw = `%${keywordParam}%`;
+        locationQuery = locationQuery.or(`title.ilike.${kw},raw_description.ilike.${kw}`);
+      }
 
-    if (params.contract_type && params.contract_type !== "all") {
-      query = query.ilike("contract_type", `%${params.contract_type}%`);
-    }
+      if (contractTypeParam !== "all") {
+        locationQuery = locationQuery.ilike("contract_type", `%${contractTypeParam}%`);
+      }
 
-    if (params.procedure_type && params.procedure_type !== "all") {
-      query = query.ilike("procedure_type", `%${params.procedure_type}%`);
-    }
+      if (procedureTypeParam !== "all") {
+        locationQuery = locationQuery.ilike("procedure_type", `%${procedureTypeParam}%`);
+      }
 
-    if (params.deadline_from) {
-      query = query.gte("deadline", new Date(params.deadline_from).toISOString());
-    }
-    if (params.deadline_to) {
-      query = query.lte("deadline", new Date(params.deadline_to + "T23:59:59").toISOString());
-    }
+      if (deadlineFromParam) {
+        locationQuery = locationQuery.gte("deadline", new Date(deadlineFromParam).toISOString());
+      }
+      if (deadlineToParam) {
+        locationQuery = locationQuery.lte("deadline", new Date(`${deadlineToParam}T23:59:59`).toISOString());
+      }
 
-    if (params.value_min) {
-      query = query.gte("estimated_value", parseFloat(params.value_min));
-    }
-    if (params.value_max) {
-      query = query.lte("estimated_value", parseFloat(params.value_max));
-    }
+      if (valueMinParam) {
+        locationQuery = locationQuery.gte("estimated_value", parseFloat(valueMinParam));
+      }
+      if (valueMaxParam) {
+        locationQuery = locationQuery.lte("estimated_value", parseFloat(valueMaxParam));
+      }
 
-    const { data, count } = await query
-      .order("deadline", { ascending: false, nullsFirst: false })
-      .range(offset, offset + PAGE_SIZE - 1);
+      const { data } = await locationQuery
+        .order("deadline", { ascending: false, nullsFirst: false })
+        .range(0, 2499);
 
-    tenders = (data ?? []) as Tender[];
-    totalCount = count ?? 0;
+      const enrichedRows = await enrichTendersWithAuthorityGeo(
+        supabase,
+        ((data ?? []) as Array<
+          Tender & {
+            authority_city: string | null;
+            authority_municipality: string | null;
+            authority_canton: string | null;
+            authority_entity: string | null;
+          }
+        >)
+      );
+      const filteredRows = enrichedRows.filter((tender) =>
+        matchesTenderLocationTerms(tender, locationFilterTerms)
+      );
+
+      totalCount = filteredRows.length;
+      tenders = filteredRows.slice(offset, offset + PAGE_SIZE).map((tender) => tender as Tender);
+    } else {
+      let query = supabase
+        .from("tenders")
+        .select("*", { count: "exact" })
+        .gt("deadline", new Date().toISOString());
+
+      if (keywordParam) {
+        const kw = `%${keywordParam}%`;
+        query = query.or(`title.ilike.${kw},raw_description.ilike.${kw}`);
+      }
+
+      if (contractTypeParam !== "all") {
+        query = query.ilike("contract_type", `%${contractTypeParam}%`);
+      }
+
+      if (procedureTypeParam !== "all") {
+        query = query.ilike("procedure_type", `%${procedureTypeParam}%`);
+      }
+
+      if (deadlineFromParam) {
+        query = query.gte("deadline", new Date(deadlineFromParam).toISOString());
+      }
+      if (deadlineToParam) {
+        query = query.lte("deadline", new Date(`${deadlineToParam}T23:59:59`).toISOString());
+      }
+
+      if (valueMinParam) {
+        query = query.gte("estimated_value", parseFloat(valueMinParam));
+      }
+      if (valueMaxParam) {
+        query = query.lte("estimated_value", parseFloat(valueMaxParam));
+      }
+
+      const { data, count } = await query
+        .order("deadline", { ascending: false, nullsFirst: false })
+        .range(offset, offset + PAGE_SIZE - 1);
+
+      tenders = (data ?? []) as Tender[];
+      totalCount = count ?? 0;
+    }
   }
 
   const totalPages = Math.ceil(totalCount / PAGE_SIZE);
@@ -214,7 +305,7 @@ async function TendersContent({ searchParams }: TendersPageProps) {
           </h3>
           <p className="text-sm text-slate-500 text-center max-w-sm">
             {activeTab === "recommended"
-              ? "Trenutno nema aktivnih tendera koji se dovoljno jasno poklapaju s vašim profilom, tipom tendera i regijama rada."
+              ? "Trenutno nema aktivnih tendera koji se dovoljno jasno poklapaju s vašim profilom, tipom tendera i lokacijom firme."
               : hasFilters
               ? "Pokušajte sa drugačijim filterima ili resetujte pretragu."
               : "Podaci se automatski sinhronizuju sa e-Nabavke portala."}
@@ -246,7 +337,7 @@ async function TendersContent({ searchParams }: TendersPageProps) {
 
 export default async function TendersPage(props: TendersPageProps) {
   const params = await props.searchParams;
-  const activeTab = params.tab === "all" ? "all" : "recommended";
+  const activeTab = getSingleParam(params.tab) === "all" ? "all" : "recommended";
 
   return (
     <div className="space-y-6">
@@ -256,7 +347,7 @@ export default async function TendersPage(props: TendersPageProps) {
             Tenderi i preporuke
           </h1>
           <p className="mt-1.5 text-base text-slate-500">
-            Pregledajte sve aktivne tendere ili otvorite samo one koji se najviše uklapaju u vaš profil.
+            Pregledajte sve aktivne tendere ili otvorite one koji se najbolje uklapaju u vaš profil i lokaciju firme.
           </p>
         </div>
         <Button variant="outline" asChild>

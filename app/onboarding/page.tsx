@@ -43,7 +43,7 @@ export default async function OnboardingPage() {
           Prvo pogledajte tendere koji vam imaju smisla
         </h1>
         <p className="mt-3 text-base text-slate-500 max-w-2xl mx-auto leading-7">
-          Ne tražimo od vas odmah sve podatke firme. Prvo odaberite čime se bavite i gdje radite, pogledajte prve relevantne tendere, a zatim dopunite profil da preporuke budu još preciznije.
+          Ne tražimo od vas odmah sve podatke firme. Prvo odaberite čime se bavite i gdje se firma nalazi, pogledajte prve relevantne i najbliže tendere, a zatim dopunite profil da preporuke budu još preciznije.
         </p>
         <div className="mt-5 flex items-center justify-center gap-3">
           <Link

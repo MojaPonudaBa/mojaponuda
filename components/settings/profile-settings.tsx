@@ -650,9 +650,9 @@ export function ProfileSettings({ company }: ProfileSettingsProps) {
             </div>
 
             <div className="space-y-2">
-              <Label>Regije interesa</Label>
+              <Label>Lokacija firme / poslovnica</Label>
               <p className="text-xs text-slate-500">
-                Možete označiti cijeli kanton ili samo pojedine gradove i općine.
+                Označite šire područje, gradove i općine gdje je firma ili poslovnica. Ovo koristimo da bliži tenderi imaju prednost u preporukama.
               </p>
               <RegionMultiSelect selectedRegions={regions} onChange={setRegions} />
               <div className="flex flex-wrap gap-2 p-3 bg-slate-50 rounded-xl border border-slate-100 min-h-[44px]">

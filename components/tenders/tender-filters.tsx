@@ -5,6 +5,7 @@ import { useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { RegionMultiSelect } from "@/components/ui/region-multi-select";
 import {
   Select,
   SelectContent,
@@ -53,6 +54,7 @@ export function TenderFilters() {
   const [valueMax, setValueMax] = useState(
     searchParams.get("value_max") || ""
   );
+  const [locations, setLocations] = useState<string[]>(searchParams.getAll("location"));
 
   const applyFilters = useCallback(() => {
     const params = new URLSearchParams();
@@ -70,9 +72,10 @@ export function TenderFilters() {
     if (deadlineTo) params.set("deadline_to", deadlineTo);
     if (valueMin) params.set("value_min", valueMin);
     if (valueMax) params.set("value_max", valueMax);
+    locations.forEach((location) => params.append("location", location));
     params.set("page", "1");
     router.push(`/dashboard/tenders?${params.toString()}`);
-  }, [keyword, contractType, procedureType, deadlineFrom, deadlineTo, valueMin, valueMax, router, searchParams]);
+  }, [keyword, contractType, procedureType, deadlineFrom, deadlineTo, valueMin, valueMax, locations, router, searchParams]);
 
   function resetFilters() {
     setKeyword("");
@@ -82,6 +85,7 @@ export function TenderFilters() {
     setDeadlineTo("");
     setValueMin("");
     setValueMax("");
+    setLocations([]);
     
     // Keep the current tab when resetting filters
     const currentTab = searchParams.get("tab");
@@ -157,6 +161,15 @@ export function TenderFilters() {
 
       {/* Red 2: Datumi + vrijednosti + dugmad */}
       <div className="flex flex-wrap items-end gap-5 border-t border-slate-50 pt-5">
+        <div className="min-w-[280px] flex-1 space-y-2">
+          <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+            Lokacija tendera
+          </Label>
+          <RegionMultiSelect selectedRegions={locations} onChange={setLocations} />
+          <p className="text-xs text-slate-500">
+            Filtrirajte po gradu, općini ili širem području ako želite pregled samo određenih lokacija.
+          </p>
+        </div>
         <div className="w-[150px] space-y-2">
           <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
             Rok od

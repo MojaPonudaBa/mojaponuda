@@ -18,12 +18,14 @@ import { getGeoEnrichmentFromAiAnalysis } from "@/lib/tender-area";
 import {
   buildRecommendationContext,
   scoreTenderRecommendation,
+  type RecommendationLocationScope,
+  type ScoredTenderRecommendation,
 } from "@/lib/tender-recommendations";
 import type { Json } from "@/types/database";
 
 export const maxDuration = 30;
 
-type PreviewAreaScope = "selected" | "same-group" | "neighboring" | "broad";
+type PreviewAreaScope = RecommendationLocationScope;
 
 interface PreviewTender {
   id: string;
@@ -60,12 +62,7 @@ interface PreviewSignalResponse {
   cpv_codes?: string[];
 }
 
-interface PreviewScoredTender {
-  tender: PreviewTenderCandidate;
-  cpvMatch: boolean;
-  matchedKeywords: string[];
-  titleMatches: string[];
-}
+type PreviewScoredTender = ScoredTenderRecommendation<PreviewTenderCandidate>;
 
 const PREVIEW_SIGNAL_SYSTEM_PROMPT = `Ti si ekspert za javne nabavke u Bosni i Hercegovini.
 Tvoj zadatak je da iz vrlo ranog onboarding unosa izvedeš sigurne i precizne pojmove za početni pregled tendera.
@@ -98,7 +95,9 @@ function buildPreviewProfileSummary(profile: ParsedCompanyProfile, regions: stri
           .map((item) => getProfileOptionLabel(item))
           .join(", ")}`
       : null,
-    regions.length > 0 ? `Regije rada: ${regions.join(", ")}` : "Regije rada: cijela Bosna i Hercegovina",
+    regions.length > 0
+      ? `Lokacija firme / poslovnica: ${regions.join(", ")}`
+      : "Lokacija firme / poslovnica: cijela Bosna i Hercegovina",
   ]
     .filter((line): line is string => Boolean(line))
     .join("\n");
@@ -201,10 +200,10 @@ function getPreviewAreaBadge(areaScope: PreviewAreaScope, hasRegionFilter: boole
   }
 
   if (areaScope === "selected") {
-    return "Odabrano područje";
+    return "Najbliže";
   }
 
-  if (areaScope === "same-group") {
+  if (areaScope === "same_group") {
     return "Blizina";
   }
 
@@ -517,29 +516,29 @@ export async function POST(request: Request) {
     if (qualified.length > 0) {
       previewTenders = qualified
         .slice(0, 6)
-        .map((item) => toPreviewTender(item, focusLabel, "selected", hasRegionFilter));
-      previewSummary = `Na osnovu osnovnih podataka izdvojili smo ${previewTenders.length} tendera koji najviše liče na ono što radite.`;
+        .map((item) => toPreviewTender(item, focusLabel, item.locationScope, hasRegionFilter));
+      previewSummary = `Na osnovu osnovnih podataka izdvojili smo ${previewTenders.length} tendera koji vam djeluju najrelevantnije i najbliže.`;
       tier = "qualified";
     } else if (businessSignalAndRegion.length > 0) {
       previewTenders = businessSignalAndRegion
         .slice(0, 6)
         .map((item) => toPreviewTender(item, focusLabel, "selected", hasRegionFilter));
       previewSummary =
-        "Prikazujemo početni pregled tendera na osnovu djelatnosti i odabrane regije. U sljedećem koraku dodajte kontekst za preciznije preporuke.";
+        "Prikazujemo početni pregled tendera na osnovu djelatnosti i lokacije firme. U sljedećem koraku dodajte kontekst za preciznije preporuke.";
       tier = "business+region";
     } else if (hasRegionFilter && businessSignalSameGroup.length > 0) {
       previewTenders = businessSignalSameGroup
         .slice(0, 6)
-        .map((item) => toPreviewTender(item, focusLabel, "same-group", hasRegionFilter));
+        .map((item) => toPreviewTender(item, focusLabel, "same_group", hasRegionFilter));
       previewSummary =
-        "Na odabranom području trenutno nema više tendera iz vaše djelatnosti. Zato prikazujemo relevantne prilike iz obližnjih općina i gradova.";
+        "Na samoj lokaciji firme trenutno nema više tendera iz vaše djelatnosti. Zato prikazujemo relevantne prilike iz najbližih gradova i općina.";
       tier = "business+same-group";
     } else if (hasRegionFilter && businessSignalNeighboring.length > 0) {
       previewTenders = businessSignalNeighboring
         .slice(0, 6)
         .map((item) => toPreviewTender(item, focusLabel, "neighboring", hasRegionFilter));
       previewSummary =
-        "Na odabranom području trenutno nema više tendera iz vaše djelatnosti. Zato prikazujemo relevantne prilike iz šireg, ali i dalje bliskog područja.";
+        "Na samoj lokaciji firme trenutno nema više tendera iz vaše djelatnosti. Zato prikazujemo relevantne prilike iz šireg, ali i dalje bliskog područja.";
       tier = "business+neighboring";
     } else if (!hasRegionFilter && withBusinessSignal.length > 0) {
       previewTenders = withBusinessSignal
@@ -551,7 +550,7 @@ export async function POST(request: Request) {
     } else if (hasRegionFilter) {
       previewTenders = [];
       previewSummary =
-        "Trenutno nema otvorenih tendera iz vaše djelatnosti na odabranom području ni u obližnjim područjima. Nastavite dalje i dopunite profil za šire, ali i dalje relevantne preporuke.";
+        "Trenutno nema otvorenih tendera iz vaše djelatnosti na lokaciji firme ni u obližnjim područjima. Nastavite dalje i dopunite profil za šire, ali i dalje relevantne preporuke.";
       tier = "no-business-match-in-area";
     } else {
       previewTenders = [];

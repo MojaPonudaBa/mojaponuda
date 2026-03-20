@@ -74,8 +74,8 @@ interface PreviewTender {
 const STEPS = [
   {
     id: "focus",
-    title: "Čime se bavite i gdje radite",
-    description: "Prvo nam recite osnovno. Na osnovu toga odmah ćemo izdvojiti tendere koji imaju smisla za vašu firmu.",
+    title: "Čime se bavite i gdje se nalazite",
+    description: "Prvo nam recite osnovno. Na osnovu toga odmah ćemo izdvojiti tendere koji imaju smisla za vašu firmu i koji su vam najbliži.",
     icon: Brain,
     completionLabel: "Profil 40%",
   },
@@ -149,7 +149,7 @@ export function OnboardingValueFirstForm({
   );
   const [previewTenders, setPreviewTenders] = useState<PreviewTender[]>([]);
   const [previewSummary, setPreviewSummary] = useState(
-    "Nakon osnovnog unosa ovdje ćete odmah vidjeti prve tendere koji odgovaraju vašoj firmi."
+    "Nakon osnovnog unosa ovdje ćete odmah vidjeti prve tendere koji odgovaraju vašoj firmi i njenoj lokaciji."
   );
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
@@ -357,8 +357,8 @@ export function OnboardingValueFirstForm({
         ? `Najviše prati tendere za ${preferredTenderTypes.map((item) => getProfileOptionLabel(item)).join(", ")}.`
         : null,
       regionSelectionLabels.length > 0
-        ? `Radi u regijama ${regionSelectionLabels.join(", ")}.`
-        : "Radi na području cijele Bosne i Hercegovine.",
+        ? `Firma se nalazi ili ima poslovnicu u: ${regionSelectionLabels.join(", ")}.`
+        : "Lokacija firme nije sužena, pa sistem gleda prilike sa nivoa cijele Bosne i Hercegovine.",
     ]
       .filter((item): item is string => Boolean(item))
       .join(" ");
@@ -448,8 +448,8 @@ export function OnboardingValueFirstForm({
         ? `Najviše prati tendere za ${preferredTenderTypes.map((item) => getProfileOptionLabel(item)).join(", ")}.`
         : null,
       regionSelectionLabels.length > 0
-        ? `Radi u regijama ${regionSelectionLabels.join(", ")}.`
-        : "Radi na području cijele Bosne i Hercegovine.",
+        ? `Firma se nalazi ili ima poslovnicu u: ${regionSelectionLabels.join(", ")}.`
+        : "Lokacija firme nije sužena, pa sistem gleda prilike sa nivoa cijele Bosne i Hercegovine.",
     ]
       .filter((item): item is string => Boolean(item))
       .join(" ");
@@ -658,9 +658,9 @@ export function OnboardingValueFirstForm({
       {step === 0 ? (
         <div className="space-y-6 rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-sm sm:p-7">
           <div className="rounded-2xl border border-blue-100 bg-blue-50/70 p-5">
-            <p className="text-sm font-semibold text-slate-900">Za početak je dovoljno da odaberete šta radite i gdje radite</p>
+            <p className="text-sm font-semibold text-slate-900">Za početak je dovoljno da odaberete šta radite i gdje se nalazite</p>
             <p className="mt-2 text-sm leading-6 text-slate-600">
-              Ne tražimo odmah JIB i sve podatke firme. Prvo želimo da vidite vrijednost i prve relevantne tendere.
+              Ne tražimo odmah JIB i sve podatke firme. Prvo želimo da vidite vrijednost i prve relevantne tendera koji su vam najbliži.
             </p>
           </div>
 
@@ -709,14 +709,14 @@ export function OnboardingValueFirstForm({
           <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-5">
             <div className="flex items-center gap-2 text-slate-900">
               <MapPin className="size-4 text-blue-600" />
-              <p className="text-sm font-semibold">Gdje realno možete raditi</p>
+              <p className="text-sm font-semibold">Gdje se nalazite</p>
             </div>
             <p className="mt-2 text-sm leading-6 text-slate-500">
-              Odaberite regije u kojima stvarno možete izvršiti ugovor. Možete označiti cijeli kanton odjednom ili samo pojedine gradove i općine.
+              Odaberite šire područje, gradove i općine gdje je firma ili poslovnica. Na osnovu toga prvo prikazujemo najbliže relevantne tendere.
             </p>
             <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4">
               <p className="text-sm font-bold uppercase tracking-wide text-amber-800">
-                Ako ništa ne odaberete, tretirat ćemo vas kao firmu koja radi na nivou cijele BiH.
+                Ako ništa ne odaberete, prikazivat ćemo prilike sa nivoa cijele BiH.
               </p>
             </div>
             <div className="mt-4">
@@ -740,7 +740,7 @@ export function OnboardingValueFirstForm({
             <div className="flex min-h-[260px] flex-col items-center justify-center rounded-[1.5rem] border border-slate-200 bg-slate-50/70 text-center">
               <Loader2 className="size-8 animate-spin text-blue-600" />
               <p className="mt-4 text-sm font-semibold text-slate-900">Pripremamo prve preporuke tendera</p>
-              <p className="mt-2 text-sm text-slate-500">Na osnovu djelatnosti i lokacije tražimo tendera koji liče na ono što radite.</p>
+              <p className="mt-2 text-sm text-slate-500">Na osnovu djelatnosti i lokacije firme tražimo tendera koji liče na ono što radite i koji su vam najbliži.</p>
             </div>
           ) : previewError ? (
             <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm leading-6 text-amber-900">

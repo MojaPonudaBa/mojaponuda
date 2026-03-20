@@ -16,9 +16,10 @@ Tvoj zadatak je da preurediš mali shortlist tendera prema stvarnoj relevantnost
 
 Pravila:
 - Gledaj šta firma zaista prodaje, isporučuje ili izvodi.
-- Pozitivno vrednuj precizna poklapanja po robi/usluzi, CPV fokusu, tipu tendera i regiji.
+- Pozitivno vrednuj precizna poklapanja po robi/usluzi, CPV fokusu, tipu tendera i lokaciji firme.
 - Negativno vrednuj tendere koji liče na drugu industriju, posebno ako nose jasne negativne signale.
 - Nemoj favorizovati tender samo zato što ima raniji rok ili veću vrijednost.
+- Ako su dva tendera vrlo slična po relevantnosti, prednost daj onome koji je bliži lokaciji firme.
 - Vraćaj isključivo ID-eve tendera iz dostavljene liste, od najrelevantnijeg ka najmanje relevantnom.
 - Ako su dva tendera vrlo slična, prednost daj onome koji je preciznije usklađen s profilom firme.`;
 
@@ -89,8 +90,8 @@ function buildProfileSummary(context: RecommendationContext): string {
           .join(", ")}`
       : null,
     context.regionLabels.length > 0
-      ? `Regije rada: ${context.regionLabels.join(", ")}`
-      : "Regije rada: cijela Bosna i Hercegovina",
+      ? `Lokacija firme / poslovnica: ${context.regionLabels.join(", ")}`
+      : "Lokacija firme / poslovnica: cijela Bosna i Hercegovina",
     context.keywords.length > 0
       ? `Pozitivni pojmovi: ${context.keywords.slice(0, 10).join(", ")}`
       : null,

@@ -8,7 +8,12 @@ import {
   parseCompanyProfile,
   type ParsedCompanyProfile,
 } from "@/lib/company-profile";
-import { buildRegionSearchTerms, getRegionSelectionLabels } from "@/lib/constants/regions";
+import {
+  buildNeighboringGroupRegionFallback,
+  buildRegionSearchTerms,
+  buildSameGroupRegionFallback,
+  getRegionSelectionLabels,
+} from "@/lib/constants/regions";
 import { getGeoEnrichmentFromAiAnalysis } from "@/lib/tender-area";
 import type { Database, Json } from "@/types/database";
 
@@ -26,9 +31,13 @@ export interface RecommendationContext {
   negativeSignals: string[];
   preferredContractTypes: string[];
   regionTerms: string[];
+  sameGroupRegionTerms: string[];
+  neighboringRegionTerms: string[];
   regionLabels: string[];
   cpvPrefixes: string[];
 }
+
+export type RecommendationLocationScope = "selected" | "same_group" | "neighboring" | "broad";
 
 export interface RecommendationTenderInput {
   id: string;
@@ -59,6 +68,10 @@ export interface ScoredTenderRecommendation<TTender extends RecommendationTender
   cpvMatch: boolean;
   contractMatch: boolean;
   regionMatch: boolean;
+  sameGroupRegionMatch: boolean;
+  neighboringRegionMatch: boolean;
+  locationScope: RecommendationLocationScope;
+  locationPriority: number;
   reasons: string[];
 }
 
@@ -288,6 +301,68 @@ function matchesRegionTerms(
   );
 }
 
+function getTenderLocationValues<TTender extends RecommendationTenderInput>(
+  tender: TTender
+): Array<string | null | undefined> {
+  const geoEnrichment = getGeoEnrichmentFromAiAnalysis(tender.ai_analysis ?? null);
+
+  return [
+    tender.title,
+    tender.raw_description,
+    tender.contracting_authority,
+    geoEnrichment?.area_label ?? null,
+    tender.authority_city,
+    tender.authority_municipality,
+    tender.authority_canton,
+    tender.authority_entity,
+  ];
+}
+
+export function matchesTenderLocationTerms<TTender extends RecommendationTenderInput>(
+  tender: TTender,
+  regionTerms: string[]
+): boolean {
+  return matchesRegionTerms(getTenderLocationValues(tender), regionTerms);
+}
+
+export function getTenderLocationScope<TTender extends RecommendationTenderInput>(
+  tender: TTender,
+  context: Pick<RecommendationContext, "regionTerms" | "sameGroupRegionTerms" | "neighboringRegionTerms">
+): RecommendationLocationScope {
+  if (context.regionTerms.length > 0 && matchesTenderLocationTerms(tender, context.regionTerms)) {
+    return "selected";
+  }
+
+  if (
+    context.sameGroupRegionTerms.length > 0 &&
+    matchesTenderLocationTerms(tender, context.sameGroupRegionTerms)
+  ) {
+    return "same_group";
+  }
+
+  if (
+    context.neighboringRegionTerms.length > 0 &&
+    matchesTenderLocationTerms(tender, context.neighboringRegionTerms)
+  ) {
+    return "neighboring";
+  }
+
+  return "broad";
+}
+
+function getLocationPriority(scope: RecommendationLocationScope): number {
+  switch (scope) {
+    case "selected":
+      return 0;
+    case "same_group":
+      return 1;
+    case "neighboring":
+      return 2;
+    default:
+      return 3;
+  }
+}
+
 function buildKeywordReasons(matchedKeywords: string[]): string[] {
   if (matchedKeywords.length === 0) {
     return [];
@@ -299,6 +374,7 @@ function buildKeywordReasons(matchedKeywords: string[]): string[] {
 export function buildRecommendationContext(
   source: RecommendationCompanySource
 ): RecommendationContext {
+  const selectedRegions = source.operating_regions ?? [];
   const profile = parseCompanyProfile(source.industry);
   const focusIndustry = derivePrimaryIndustry(
     profile.offeringCategories,
@@ -325,8 +401,14 @@ export function buildRecommendationContext(
           }),
     negativeSignals: buildNegativeSignals(profile, focusIndustry),
     preferredContractTypes: getPreferredContractTypes(profile.preferredTenderTypes),
-    regionTerms: buildRegionSearchTerms(source.operating_regions ?? []),
-    regionLabels: getRegionSelectionLabels(source.operating_regions ?? []),
+    regionTerms: buildRegionSearchTerms(selectedRegions),
+    sameGroupRegionTerms: buildRegionSearchTerms(
+      buildSameGroupRegionFallback(selectedRegions)
+    ),
+    neighboringRegionTerms: buildRegionSearchTerms(
+      buildNeighboringGroupRegionFallback(selectedRegions)
+    ),
+    regionLabels: getRegionSelectionLabels(selectedRegions),
     cpvPrefixes: buildCpvPrefixes(
       strictCpvCodes.length > 0 ? strictCpvCodes : (source.cpv_codes ?? [])
     ),
@@ -393,6 +475,16 @@ export async function fetchRecommendedTenderCandidates<
     .limit(limit);
 
   const rows = (data ?? []) as unknown as TTender[];
+
+  return enrichTendersWithAuthorityGeo(supabase, rows);
+}
+
+export async function enrichTendersWithAuthorityGeo<
+  TTender extends RecommendationTenderInput,
+>(
+  supabase: SupabaseClient<Database>,
+  rows: TTender[]
+): Promise<TTender[]> {
   const authorityJibs = [
     ...new Set(
       rows
@@ -467,18 +559,12 @@ export function scoreTenderRecommendation<TTender extends RecommendationTenderIn
     tender.contract_type,
     context.preferredContractTypes
   );
-  const regionMatch = matchesRegionTerms(
-    [
-      title,
-      description,
-      authority,
-      authorityCity,
-      authorityMunicipality,
-      authorityCanton,
-      authorityEntity,
-    ],
-    context.regionTerms
-  );
+  const locationScope = getTenderLocationScope(tender, context);
+  const regionMatch = locationScope === "selected";
+  const sameGroupRegionMatch = locationScope === "same_group";
+  const neighboringRegionMatch = locationScope === "neighboring";
+  const hasLocationPreference = context.regionTerms.length > 0;
+  const locationPriority = getLocationPriority(locationScope);
 
   let score = 0;
   score += titleMatches.length * 5;
@@ -494,6 +580,8 @@ export function scoreTenderRecommendation<TTender extends RecommendationTenderIn
   }
 
   if (regionMatch) {
+    score += 2;
+  } else if (sameGroupRegionMatch) {
     score += 1;
   }
 
@@ -509,12 +597,12 @@ export function scoreTenderRecommendation<TTender extends RecommendationTenderIn
     !hasBusinessSignalInProfile &&
     context.preferredContractTypes.length > 0 &&
     contractMatch &&
-    regionMatch;
+    (!hasLocationPreference || locationScope !== "broad");
   const blockedByNegativeTitle = negativeTitleMatches.length > 0 && !cpvMatch && titleMatches.length === 0;
   const qualifies =
     ((hasPositiveSignal && score >= (cpvMatch ? 2 : 4)) || fallbackTypeScopedMatch) &&
     contractMatch &&
-    regionMatch &&
+    (!hasLocationPreference || locationScope !== "broad") &&
     !blockedByNegativeTitle;
 
   const reasons = [
@@ -524,8 +612,10 @@ export function scoreTenderRecommendation<TTender extends RecommendationTenderIn
       ? [`Odgovara tipu tendera: ${context.preferredContractTypes.join(", ")}`]
       : []),
     ...(regionMatch && context.regionLabels.length > 0
-      ? [`Odgovara području rada: ${context.regionLabels.slice(0, 2).join(", ")}`]
+      ? [`Blizu lokacije firme: ${context.regionLabels.slice(0, 2).join(", ")}`]
       : []),
+    ...(sameGroupRegionMatch ? ["Blizu lokacije firme i poslovnica"] : []),
+    ...(neighboringRegionMatch ? ["U širem području firme"] : []),
   ].slice(0, 3);
 
   return {
@@ -540,6 +630,10 @@ export function scoreTenderRecommendation<TTender extends RecommendationTenderIn
     cpvMatch,
     contractMatch,
     regionMatch,
+    sameGroupRegionMatch,
+    neighboringRegionMatch,
+    locationScope,
+    locationPriority,
     reasons,
   };
 }
@@ -555,6 +649,10 @@ export function rankTenderRecommendations<TTender extends RecommendationTenderIn
     .sort((a, b) => {
       if (a.score !== b.score) {
         return b.score - a.score;
+      }
+
+      if (a.locationPriority !== b.locationPriority) {
+        return a.locationPriority - b.locationPriority;
       }
 
       return (
