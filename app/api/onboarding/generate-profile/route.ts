@@ -5,7 +5,10 @@ import {
   buildProfileCpvSeeds,
   buildProfileContextText,
   buildProfileKeywordSeeds,
+  buildStrictRecommendationCpvCodes,
+  buildStrictRecommendationKeywords,
   sanitizeSearchKeywords,
+  type ParsedCompanyProfile,
 } from "@/lib/company-profile";
 
 export const maxDuration = 30;
@@ -47,6 +50,7 @@ export async function POST(request: NextRequest) {
       description,
       primaryIndustry,
       offeringCategories = [],
+      specializationIds = [],
       preferredTenderTypes = [],
       regions = [],
     } = await request.json();
@@ -62,23 +66,21 @@ export async function POST(request: NextRequest) {
       description,
       primaryIndustry: primaryIndustry ?? null,
       offeringCategories,
+      specializationIds,
       preferredTenderTypes,
       regions,
     });
-    const keywordSeeds = buildProfileKeywordSeeds({
+    const baseProfile: ParsedCompanyProfile = {
       primaryIndustry: primaryIndustry ?? null,
       offeringCategories,
+      specializationIds,
       preferredTenderTypes,
       companyDescription: description,
       legacyIndustryText: null,
-    });
-    const cpvSeeds = buildProfileCpvSeeds({
-      primaryIndustry: primaryIndustry ?? null,
-      offeringCategories,
-      preferredTenderTypes,
-      companyDescription: description,
-      legacyIndustryText: null,
-    });
+      manualKeywords: [],
+    };
+    const keywordSeeds = buildProfileKeywordSeeds(baseProfile);
+    const cpvSeeds = buildProfileCpvSeeds(baseProfile);
 
     const openai = getOpenAIClient();
     const completion = await openai.chat.completions.create({
@@ -104,9 +106,36 @@ export async function POST(request: NextRequest) {
       summary?: string;
     };
 
+    const aiKeywords = Array.isArray(profile.keywords)
+      ? profile.keywords.filter((item): item is string => typeof item === "string")
+      : [];
+    const aiCpvCodes = Array.isArray(profile.cpv_codes)
+      ? profile.cpv_codes.filter((item): item is string => typeof item === "string")
+      : [];
+    const strictKeywords = buildStrictRecommendationKeywords({
+      explicitKeywords: aiKeywords,
+      profile: baseProfile,
+    });
+    const strictCpvCodes = buildStrictRecommendationCpvCodes({
+      explicitCpvCodes: aiCpvCodes,
+      profile: baseProfile,
+    });
+    const aiOnlyKeywords = sanitizeSearchKeywords(aiKeywords).slice(0, 18);
+    const aiOnlyCpvCodes = [...new Set(aiCpvCodes.map((code) => code.trim()).filter((code) => code.length >= 5))].slice(0, 12);
+
     return NextResponse.json({
-      cpv_codes: [...new Set([...(profile.cpv_codes ?? []), ...cpvSeeds].filter(Boolean))].slice(0, 18),
-      keywords: sanitizeSearchKeywords([...(profile.keywords ?? []), ...keywordSeeds]).slice(0, 24),
+      cpv_codes:
+        strictCpvCodes.length > 0
+          ? strictCpvCodes
+          : aiOnlyCpvCodes.length > 0
+            ? aiOnlyCpvCodes
+            : cpvSeeds.slice(0, 8),
+      keywords:
+        strictKeywords.length > 0
+          ? strictKeywords
+          : aiOnlyKeywords.length > 0
+            ? aiOnlyKeywords
+            : keywordSeeds.slice(0, 12),
       suggested_regions: regions.length > 0 ? regions : [...new Set(profile.suggested_regions ?? [])],
       summary: profile.summary ?? null,
     });

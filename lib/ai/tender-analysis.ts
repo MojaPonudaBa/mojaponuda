@@ -1,5 +1,6 @@
 import { getOpenAIClient } from "@/lib/openai";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { mergeGeoEnrichmentIntoAiAnalysis } from "@/lib/tender-area";
 import type { Tender, Json } from "@/types/database";
 
 const SYSTEM_PROMPT = `Ti si ekspert za javne nabavke u Bosni i Hercegovini sa dubokim poznavanjem Zakona o javnim nabavkama BiH (Službeni glasnik BiH, br. 39/14).
@@ -145,21 +146,36 @@ const RESPONSE_SCHEMA = {
   },
 };
 
-export async function analyzeTender(tender: Tender): Promise<AnalysisResult> {
-  // 1. Check if analysis already exists in the database
-  if (tender.ai_analysis) {
-    // Validate that it has the expected structure
-    const cached = tender.ai_analysis as unknown as AnalysisResult;
-    if (
-      cached.checklist_items &&
-      Array.isArray(cached.checklist_items) &&
-      cached.checklist_items.length > 0
-    ) {
-      return cached;
-    }
+function isPlainObject(value: Json | null | undefined): value is Record<string, Json | undefined> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function extractCachedTenderAnalysis(aiAnalysis: Json | null | undefined): AnalysisResult | null {
+  if (!isPlainObject(aiAnalysis)) {
+    return null;
   }
 
-  // 2. Prepare text for analysis
+  const nested = aiAnalysis.tender_analysis;
+  const candidate = isPlainObject(nested) ? nested : aiAnalysis;
+
+  if (
+    Array.isArray(candidate.checklist_items) &&
+    Array.isArray(candidate.deadlines) &&
+    Array.isArray(candidate.eligibility_conditions) &&
+    Array.isArray(candidate.risk_flags)
+  ) {
+    return candidate as unknown as AnalysisResult;
+  }
+
+  return null;
+}
+
+export async function analyzeTender(tender: Tender): Promise<AnalysisResult> {
+  const cached = extractCachedTenderAnalysis(tender.ai_analysis);
+  if (cached?.checklist_items.length) {
+    return cached;
+  }
+
   const tenderText = [
     `Naziv tendera: ${tender.title}`,
     tender.contracting_authority
@@ -180,7 +196,6 @@ export async function analyzeTender(tender: Tender): Promise<AnalysisResult> {
     .filter(Boolean)
     .join("\n");
 
-  // 3. Call OpenAI
   const openai = getOpenAIClient();
   const completion = await openai.chat.completions.create({
     model: "gpt-4o-mini",
@@ -202,12 +217,15 @@ export async function analyzeTender(tender: Tender): Promise<AnalysisResult> {
 
   const analysis: AnalysisResult = JSON.parse(rawContent);
 
-  // 4. Cache result
   try {
     const supabaseAdmin = createAdminClient();
+    const mergedAiAnalysis = mergeGeoEnrichmentIntoAiAnalysis(tender.ai_analysis, null);
+    const nextAiAnalysis = isPlainObject(mergedAiAnalysis)
+      ? ({ ...mergedAiAnalysis, tender_analysis: analysis as unknown as Json } as Json)
+      : ({ tender_analysis: analysis as unknown as Json } as Json);
     const { error: cacheError } = await supabaseAdmin
       .from("tenders")
-      .update({ ai_analysis: analysis as unknown as Json })
+      .update({ ai_analysis: nextAiAnalysis })
       .eq("id", tender.id);
 
     if (cacheError) {

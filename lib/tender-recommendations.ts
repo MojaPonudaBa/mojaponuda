@@ -1,13 +1,16 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   buildRecommendationKeywords,
+  buildStrictRecommendationCpvCodes,
+  buildStrictRecommendationKeywords,
   derivePrimaryIndustry,
   getPreferredContractTypes,
   parseCompanyProfile,
   type ParsedCompanyProfile,
 } from "@/lib/company-profile";
 import { buildRegionSearchTerms, getRegionSelectionLabels } from "@/lib/constants/regions";
-import type { Database } from "@/types/database";
+import { getGeoEnrichmentFromAiAnalysis } from "@/lib/tender-area";
+import type { Database, Json } from "@/types/database";
 
 export interface RecommendationCompanySource {
   industry: string | null | undefined;
@@ -37,6 +40,7 @@ export interface RecommendationTenderInput {
   contract_type?: string | null;
   raw_description?: string | null;
   cpv_code?: string | null;
+  ai_analysis?: Json | null;
   authority_city?: string | null;
   authority_municipality?: string | null;
   authority_canton?: string | null;
@@ -300,19 +304,32 @@ export function buildRecommendationContext(
     profile.offeringCategories,
     profile.primaryIndustry
   );
+  const strictKeywords = buildStrictRecommendationKeywords({
+    explicitKeywords: source.keywords ?? [],
+    profile,
+  });
+  const strictCpvCodes = buildStrictRecommendationCpvCodes({
+    explicitCpvCodes: source.cpv_codes ?? [],
+    profile,
+  });
 
   return {
     profile,
     focusIndustry,
-    keywords: buildRecommendationKeywords({
-      explicitKeywords: source.keywords ?? [],
-      profile,
-    }),
+    keywords:
+      strictKeywords.length > 0
+        ? strictKeywords
+        : buildRecommendationKeywords({
+            explicitKeywords: source.keywords ?? [],
+            profile,
+          }),
     negativeSignals: buildNegativeSignals(profile, focusIndustry),
     preferredContractTypes: getPreferredContractTypes(profile.preferredTenderTypes),
     regionTerms: buildRegionSearchTerms(source.operating_regions ?? []),
     regionLabels: getRegionSelectionLabels(source.operating_regions ?? []),
-    cpvPrefixes: buildCpvPrefixes(source.cpv_codes ?? []),
+    cpvPrefixes: buildCpvPrefixes(
+      strictCpvCodes.length > 0 ? strictCpvCodes : (source.cpv_codes ?? [])
+    ),
   };
 }
 
@@ -399,13 +416,14 @@ export async function fetchRecommendedTenderCandidates<
     const authority = tender.contracting_authority_jib
       ? authorityMap.get(tender.contracting_authority_jib)
       : null;
+    const geoEnrichment = getGeoEnrichmentFromAiAnalysis(tender.ai_analysis ?? null);
 
     return {
       ...tender,
       authority_city: authority?.city ?? null,
-      authority_municipality: authority?.municipality ?? null,
-      authority_canton: authority?.canton ?? null,
-      authority_entity: authority?.entity ?? null,
+      authority_municipality: geoEnrichment?.municipality ?? authority?.municipality ?? null,
+      authority_canton: geoEnrichment?.canton ?? authority?.canton ?? null,
+      authority_entity: geoEnrichment?.entity ?? authority?.entity ?? null,
     } as TTender;
   });
 }

@@ -12,7 +12,7 @@ import {
 import { TenderFilters } from "@/components/tenders/tender-filters";
 import { TenderCard } from "@/components/tenders/tender-card";
 import { Pagination } from "@/components/tenders/pagination";
-import { Search, Sparkles } from "lucide-react";
+import { MapPinned, Search, Sparkles } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -259,6 +259,12 @@ export default async function TendersPage(props: TendersPageProps) {
             Pregledajte sve aktivne tendere ili otvorite samo one koji se najviše uklapaju u vaš profil.
           </p>
         </div>
+        <Button variant="outline" asChild>
+          <Link href="/dashboard/tenders/geo-report">
+            <MapPinned className="size-4" />
+            Geo izvještaj
+          </Link>
+        </Button>
       </div>
 
       <Tabs defaultValue={activeTab} className="w-full">

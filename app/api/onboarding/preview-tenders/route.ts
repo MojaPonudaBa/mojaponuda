@@ -14,12 +14,16 @@ import {
   buildRegionSearchTerms,
   buildSameGroupRegionFallback,
 } from "@/lib/constants/regions";
+import { getGeoEnrichmentFromAiAnalysis } from "@/lib/tender-area";
 import {
   buildRecommendationContext,
   scoreTenderRecommendation,
 } from "@/lib/tender-recommendations";
+import type { Json } from "@/types/database";
 
 export const maxDuration = 30;
+
+type PreviewAreaScope = "selected" | "same-group" | "neighboring" | "broad";
 
 interface PreviewTender {
   id: string;
@@ -27,6 +31,10 @@ interface PreviewTender {
   deadline: string | null;
   estimated_value: number | null;
   contracting_authority: string | null;
+  match_badge: string;
+  area_badge: string | null;
+  match_reason: string;
+  area_label: string | null;
 }
 
 interface PreviewTenderCandidate {
@@ -39,6 +47,8 @@ interface PreviewTenderCandidate {
   contract_type: string | null;
   raw_description: string | null;
   cpv_code: string | null;
+  ai_analysis?: Json | null;
+  area_label?: string | null;
   authority_city?: string | null;
   authority_municipality?: string | null;
   authority_canton?: string | null;
@@ -48,6 +58,13 @@ interface PreviewTenderCandidate {
 interface PreviewSignalResponse {
   keywords?: string[];
   cpv_codes?: string[];
+}
+
+interface PreviewScoredTender {
+  tender: PreviewTenderCandidate;
+  cpvMatch: boolean;
+  matchedKeywords: string[];
+  titleMatches: string[];
 }
 
 const PREVIEW_SIGNAL_SYSTEM_PROMPT = `Ti si ekspert za javne nabavke u Bosni i Hercegovini.
@@ -72,6 +89,9 @@ function buildPreviewProfileSummary(profile: ParsedCompanyProfile, regions: stri
     focusIndustry ? `Fokus firme: ${getProfileOptionLabel(focusIndustry)}` : null,
     profile.offeringCategories.length > 0
       ? `Ponuda firme: ${profile.offeringCategories.map((item) => getProfileOptionLabel(item)).join(", ")}`
+      : null,
+    (profile.specializationIds?.length ?? 0) > 0
+      ? `Uži smjerovi: ${(profile.specializationIds ?? []).map((item) => getProfileOptionLabel(item)).join(", ")}`
       : null,
     profile.preferredTenderTypes.length > 0
       ? `Vrste tendera: ${profile.preferredTenderTypes
@@ -148,13 +168,71 @@ async function mediatePreviewSignals(
   }
 }
 
-function toPreviewTender(candidate: PreviewTenderCandidate): PreviewTender {
+function getPreviewAreaLabel(candidate: PreviewTenderCandidate): string | null {
+  return (
+    candidate.area_label ??
+    candidate.authority_municipality ??
+    candidate.authority_city ??
+    candidate.authority_canton ??
+    candidate.authority_entity ??
+    null
+  );
+}
+
+function buildPreviewMatchReason(item: PreviewScoredTender, focusLabel: string): string {
+  if (item.titleMatches.length > 0) {
+    return `Naziv tendera direktno upućuje na djelatnost: ${focusLabel}.`;
+  }
+
+  if (item.matchedKeywords.length > 0) {
+    return `Opis tendera sadrži pojmove povezane s djelatnošću: ${focusLabel}.`;
+  }
+
+  if (item.cpvMatch) {
+    return `Klasifikacija tendera odgovara djelatnosti: ${focusLabel}.`;
+  }
+
+  return `Tender je izdvojen jer se poklapa s djelatnošću: ${focusLabel}.`;
+}
+
+function getPreviewAreaBadge(areaScope: PreviewAreaScope, hasRegionFilter: boolean): string | null {
+  if (!hasRegionFilter) {
+    return null;
+  }
+
+  if (areaScope === "selected") {
+    return "Odabrano područje";
+  }
+
+  if (areaScope === "same-group") {
+    return "Blizina";
+  }
+
+  if (areaScope === "neighboring") {
+    return "Šire područje";
+  }
+
+  return null;
+}
+
+function toPreviewTender(
+  item: PreviewScoredTender,
+  focusLabel: string,
+  areaScope: PreviewAreaScope,
+  hasRegionFilter: boolean
+): PreviewTender {
+  const areaLabel = getPreviewAreaLabel(item.tender);
+
   return {
-    id: candidate.id,
-    title: candidate.title,
-    deadline: candidate.deadline,
-    estimated_value: candidate.estimated_value,
-    contracting_authority: candidate.contracting_authority,
+    id: item.tender.id,
+    title: item.tender.title,
+    deadline: item.tender.deadline,
+    estimated_value: item.tender.estimated_value,
+    contracting_authority: item.tender.contracting_authority,
+    match_badge: `Djelatnost: ${focusLabel}`,
+    area_badge: getPreviewAreaBadge(areaScope, hasRegionFilter),
+    match_reason: buildPreviewMatchReason(item, focusLabel),
+    area_label: areaLabel,
   };
 }
 
@@ -174,6 +252,7 @@ function matchesPreviewRegionTerms(
     normalizePreviewText(candidate.title),
     normalizePreviewText(candidate.raw_description),
     normalizePreviewText(candidate.contracting_authority),
+    normalizePreviewText(candidate.area_label),
     normalizePreviewText(candidate.authority_city),
     normalizePreviewText(candidate.authority_municipality),
     normalizePreviewText(candidate.authority_canton),
@@ -190,11 +269,16 @@ export async function POST(request: Request) {
     const nowIso = new Date().toISOString();
     const body = (await request.json()) as {
       offeringCategories?: unknown[];
+      specializationIds?: unknown[];
       preferredTenderTypes?: unknown[];
       regions?: unknown[];
+      description?: unknown;
     };
     const offeringCategories = Array.isArray(body.offeringCategories)
       ? body.offeringCategories.filter((item: unknown): item is string => typeof item === "string")
+      : [];
+    const specializationIds = Array.isArray(body.specializationIds)
+      ? body.specializationIds.filter((item: unknown): item is string => typeof item === "string")
       : [];
     const preferredTenderTypes = Array.isArray(body.preferredTenderTypes)
       ? body.preferredTenderTypes.filter((item: unknown): item is string => typeof item === "string")
@@ -202,16 +286,27 @@ export async function POST(request: Request) {
     const regions = Array.isArray(body.regions)
       ? body.regions.filter((item: unknown): item is string => typeof item === "string")
       : [];
+    const description = typeof body.description === "string" ? body.description.trim() : "";
 
-    console.log("[PREVIEW] Input:", { offeringCategories, preferredTenderTypes, regions });
+    console.log("[PREVIEW] Input:", {
+      offeringCategories,
+      specializationIds,
+      preferredTenderTypes,
+      regions,
+      hasDescription: description.length > 0,
+    });
 
     const previewProfile: ParsedCompanyProfile = {
       primaryIndustry: derivePrimaryIndustry(offeringCategories, null),
       offeringCategories,
+      specializationIds,
       preferredTenderTypes,
-      companyDescription: null,
+      companyDescription: description || null,
       legacyIndustryText: null,
     };
+    const focusLabel = previewProfile.primaryIndustry
+      ? getProfileOptionLabel(previewProfile.primaryIndustry)
+      : "odabrani profil";
 
     const mediatedSignals = await mediatePreviewSignals(previewProfile, regions);
     console.log("[PREVIEW] Mediated signals:", {
@@ -224,8 +319,9 @@ export async function POST(request: Request) {
         version: 1,
         primaryIndustry: previewProfile.primaryIndustry,
         offeringCategories,
+        specializationIds,
         preferredTenderTypes,
-        companyDescription: null,
+        companyDescription: description || null,
       }),
       keywords: mediatedSignals.keywords,
       cpv_codes: mediatedSignals.cpvCodes,
@@ -253,7 +349,7 @@ export async function POST(request: Request) {
       supabase
         .from("tenders")
         .select(
-          "id, title, deadline, estimated_value, contracting_authority, contracting_authority_jib, contract_type, raw_description"
+          "id, title, deadline, estimated_value, contracting_authority, contracting_authority_jib, contract_type, raw_description, ai_analysis"
         )
         .gt("deadline", nowIso)
         .order("deadline", { ascending: true, nullsFirst: false })
@@ -261,7 +357,7 @@ export async function POST(request: Request) {
       supabase
         .from("tenders")
         .select(
-          "id, title, deadline, estimated_value, contracting_authority, contracting_authority_jib, contract_type, raw_description"
+          "id, title, deadline, estimated_value, contracting_authority, contracting_authority_jib, contract_type, raw_description, ai_analysis"
         )
         .is("deadline", null)
         .order("created_at", { ascending: false })
@@ -269,7 +365,7 @@ export async function POST(request: Request) {
       supabase
         .from("tenders")
         .select(
-          "id, title, deadline, estimated_value, contracting_authority, contracting_authority_jib, contract_type, raw_description"
+          "id, title, deadline, estimated_value, contracting_authority, contracting_authority_jib, contract_type, raw_description, ai_analysis"
         )
         .lte("deadline", nowIso)
         .gte("deadline", ninetyDaysAgoIso)
@@ -339,13 +435,15 @@ export async function POST(request: Request) {
       const authority = tender.contracting_authority_jib
         ? authorityMap.get(tender.contracting_authority_jib)
         : null;
+      const geoEnrichment = getGeoEnrichmentFromAiAnalysis(tender.ai_analysis ?? null);
 
       return {
         ...tender,
         authority_city: authority?.city ?? null,
-        authority_municipality: authority?.municipality ?? null,
-        authority_canton: authority?.canton ?? null,
-        authority_entity: authority?.entity ?? null,
+        authority_municipality: geoEnrichment?.municipality ?? authority?.municipality ?? null,
+        authority_canton: geoEnrichment?.canton ?? authority?.canton ?? null,
+        authority_entity: geoEnrichment?.entity ?? authority?.entity ?? null,
+        area_label: geoEnrichment?.area_label ?? null,
       };
     });
 
@@ -417,26 +515,36 @@ export async function POST(request: Request) {
     let tier: string;
 
     if (qualified.length > 0) {
-      previewTenders = qualified.slice(0, 6).map((item) => toPreviewTender(item.tender));
+      previewTenders = qualified
+        .slice(0, 6)
+        .map((item) => toPreviewTender(item, focusLabel, "selected", hasRegionFilter));
       previewSummary = `Na osnovu osnovnih podataka izdvojili smo ${previewTenders.length} tendera koji najviše liče na ono što radite.`;
       tier = "qualified";
     } else if (businessSignalAndRegion.length > 0) {
-      previewTenders = businessSignalAndRegion.slice(0, 6).map((item) => toPreviewTender(item.tender));
+      previewTenders = businessSignalAndRegion
+        .slice(0, 6)
+        .map((item) => toPreviewTender(item, focusLabel, "selected", hasRegionFilter));
       previewSummary =
         "Prikazujemo početni pregled tendera na osnovu djelatnosti i odabrane regije. U sljedećem koraku dodajte kontekst za preciznije preporuke.";
       tier = "business+region";
     } else if (hasRegionFilter && businessSignalSameGroup.length > 0) {
-      previewTenders = businessSignalSameGroup.slice(0, 6).map((item) => toPreviewTender(item.tender));
+      previewTenders = businessSignalSameGroup
+        .slice(0, 6)
+        .map((item) => toPreviewTender(item, focusLabel, "same-group", hasRegionFilter));
       previewSummary =
-        "Na odabranom području trenutno nema više tendera iz vaše djelatnosti. Izdvojili smo relevantne prilike iz obližnjih općina i gradova.";
+        "Na odabranom području trenutno nema više tendera iz vaše djelatnosti. Zato prikazujemo relevantne prilike iz obližnjih općina i gradova.";
       tier = "business+same-group";
     } else if (hasRegionFilter && businessSignalNeighboring.length > 0) {
-      previewTenders = businessSignalNeighboring.slice(0, 6).map((item) => toPreviewTender(item.tender));
+      previewTenders = businessSignalNeighboring
+        .slice(0, 6)
+        .map((item) => toPreviewTender(item, focusLabel, "neighboring", hasRegionFilter));
       previewSummary =
-        "Na odabranom području trenutno nema više tendera iz vaše djelatnosti. Izdvojili smo najbliže relevantne prilike iz okolnih područja.";
+        "Na odabranom području trenutno nema više tendera iz vaše djelatnosti. Zato prikazujemo relevantne prilike iz šireg, ali i dalje bliskog područja.";
       tier = "business+neighboring";
     } else if (!hasRegionFilter && withBusinessSignal.length > 0) {
-      previewTenders = withBusinessSignal.slice(0, 6).map((item) => toPreviewTender(item.tender));
+      previewTenders = withBusinessSignal
+        .slice(0, 6)
+        .map((item) => toPreviewTender(item, focusLabel, "broad", hasRegionFilter));
       previewSummary =
         "Prikazujemo širi početni pregled tendera na osnovu djelatnosti i dostupnih signala. U sljedećem koraku dodajte kontekst za preciznije preporuke.";
       tier = "business-anywhere";

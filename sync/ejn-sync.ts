@@ -22,6 +22,14 @@ import {
   type EjnSupplierGroupSupplierLink,
   type EjnPlannedProcurement,
 } from "@/lib/ejn-api";
+import {
+  getGeoEnrichmentFromAiAnalysis,
+  mergeGeoEnrichmentIntoAiAnalysis,
+  normalizeGeoText,
+  resolveBestTenderArea,
+  resolveTenderAreaWithAiHint,
+} from "@/lib/tender-area";
+import type { Json } from "@/types/database";
 
 interface SyncResult {
   endpoint: string;
@@ -29,6 +37,103 @@ interface SyncResult {
   updated: number;
   error?: string;
 }
+
+export interface TenderAreaMaintenanceResult extends SyncResult {
+  scanned: number;
+  unresolved: number;
+}
+
+interface FullSyncOptions {
+  authorityBackfillTarget?: number;
+  authorityScanBatchSize?: number;
+  authorityScanLimit?: number;
+  runAuthorityMaintenanceAfterSync?: boolean;
+  tenderAreaBackfillTarget?: number;
+  tenderAreaScanBatchSize?: number;
+  tenderAreaScanLimit?: number;
+  runTenderAreaMaintenanceAfterSync?: boolean;
+}
+
+interface NightlyMaintenanceSweepOptions {
+  supabase?: ReturnType<typeof createServiceClient>;
+  authorityTarget?: number;
+  authorityScanBatchSize?: number;
+  authorityScanLimit?: number;
+  tenderTarget?: number;
+  tenderScanBatchSize?: number;
+  tenderScanLimit?: number;
+  maxCycles?: number;
+  timeBudgetMs?: number;
+}
+
+interface ContractingAuthorityMaintenanceOptions {
+  supabase?: ReturnType<typeof createServiceClient>;
+  targetUpdates?: number;
+  scanBatchSize?: number;
+  maxScanRows?: number;
+  endpoint?: string;
+  writeLog?: boolean;
+  allowAi?: boolean;
+}
+
+export interface ContractingAuthorityMaintenanceResult extends SyncResult {
+  scanned: number;
+  unresolved: number;
+}
+
+interface TenderAreaMaintenanceOptions {
+  supabase?: ReturnType<typeof createServiceClient>;
+  targetUpdates?: number;
+  scanBatchSize?: number;
+  maxScanRows?: number;
+  endpoint?: string;
+  writeLog?: boolean;
+}
+
+interface TenderAreaCandidate {
+  id: string;
+  title: string;
+  contracting_authority: string | null;
+  contracting_authority_jib: string | null;
+  raw_description: string | null;
+  ai_analysis: Json | null;
+}
+
+interface AuthorityGeoRecord {
+  city: string | null;
+  municipality: string | null;
+  canton: string | null;
+  entity: string | null;
+}
+
+interface AuthoritySeedCandidate {
+  jib: string;
+  name: string;
+  portalId?: string | null;
+  city?: string | null;
+  municipality?: string | null;
+  canton?: string | null;
+  entity?: string | null;
+  authorityType?: string | null;
+  activityType?: string | null;
+}
+
+interface AuthorityGeoMaps {
+  byJib: Map<string, AuthorityGeoRecord>;
+  byExactName: Map<string, AuthorityGeoRecord>;
+  byNormalizedName: Map<string, AuthorityGeoRecord>;
+}
+
+const DEFAULT_TENDER_AREA_BACKFILL_TARGET = 120;
+const DEFAULT_TENDER_AREA_SCAN_BATCH_SIZE = 250;
+const DEFAULT_TENDER_AREA_SCAN_LIMIT = 4000;
+const DEFAULT_AUTHORITY_BACKFILL_TARGET = 150;
+const DEFAULT_AUTHORITY_SCAN_BATCH_SIZE = 250;
+const DEFAULT_AUTHORITY_SCAN_LIMIT = 4000;
+const DEFAULT_NIGHTLY_MAINTENANCE_MAX_CYCLES = 6;
+const DEFAULT_NIGHTLY_MAINTENANCE_TIME_BUDGET_MS = 210000;
+const SARAJEVO_TIME_ZONE = "Europe/Sarajevo";
+const MORNING_SYNC_ENDPOINT = "MorningSync4AM";
 
 function createServiceClient() {
   return createClient(
@@ -69,6 +174,393 @@ function uniqueNonEmpty(values: Array<string | null | undefined>): string[] {
   return [...new Set(values.map((value) => value?.trim()).filter(Boolean) as string[])];
 }
 
+function buildAuthorityGeoRecord(row: {
+  city: string | null;
+  municipality: string | null;
+  canton: string | null;
+  entity: string | null;
+}): AuthorityGeoRecord {
+  return {
+    city: row.city ?? null,
+    municipality: row.municipality ?? null,
+    canton: row.canton ?? null,
+    entity: row.entity ?? null,
+  };
+}
+
+function assignAuthorityGeoRecord(
+  maps: AuthorityGeoMaps,
+  authority: AuthorityGeoRecord,
+  options: {
+    jib?: string | null;
+    name?: string | null;
+  }
+) {
+  const trimmedJib = options.jib?.trim();
+  const trimmedName = options.name?.trim();
+  const normalizedName = normalizeGeoText(trimmedName);
+
+  if (trimmedJib) {
+    maps.byJib.set(trimmedJib, authority);
+  }
+
+  if (trimmedName) {
+    maps.byExactName.set(trimmedName, authority);
+  }
+
+  if (normalizedName && !maps.byNormalizedName.has(normalizedName)) {
+    maps.byNormalizedName.set(normalizedName, authority);
+  }
+}
+
+function getAuthorityGeoFromMaps(
+  maps: AuthorityGeoMaps,
+  authorityJib: string | null | undefined,
+  authorityName: string | null | undefined
+): AuthorityGeoRecord | null {
+  const trimmedJib = authorityJib?.trim();
+  if (trimmedJib) {
+    const byJib = maps.byJib.get(trimmedJib);
+    if (byJib) {
+      return byJib;
+    }
+  }
+
+  const trimmedName = authorityName?.trim();
+  if (trimmedName) {
+    const byExactName = maps.byExactName.get(trimmedName);
+    if (byExactName) {
+      return byExactName;
+    }
+
+    const byNormalizedName = maps.byNormalizedName.get(normalizeGeoText(trimmedName));
+    if (byNormalizedName) {
+      return byNormalizedName;
+    }
+  }
+
+  return null;
+}
+
+function hasAuthorityGeo(record: {
+  city?: string | null;
+  municipality?: string | null;
+  canton?: string | null;
+  entity?: string | null;
+}): boolean {
+  return Boolean(
+    record.city?.trim() ||
+      record.municipality?.trim() ||
+      record.canton?.trim() ||
+      record.entity?.trim()
+  );
+}
+
+function isSeedPortalId(value: string | null | undefined): boolean {
+  const normalized = value?.trim();
+  return Boolean(normalized?.startsWith("notice-seed:") || normalized?.startsWith("tender-seed:"));
+}
+
+function chooseAuthorityPortalId(
+  existingPortalId: string | null | undefined,
+  candidatePortalId: string | null | undefined,
+  jib: string
+): string {
+  const normalizedExisting = existingPortalId?.trim() || null;
+  const normalizedCandidate = candidatePortalId?.trim() || null;
+
+  if (normalizedCandidate && !isSeedPortalId(normalizedCandidate)) {
+    return normalizedCandidate;
+  }
+
+  if (normalizedExisting && !isSeedPortalId(normalizedExisting)) {
+    return normalizedExisting;
+  }
+
+  if (normalizedCandidate) {
+    return normalizedCandidate;
+  }
+
+  if (normalizedExisting) {
+    return normalizedExisting;
+  }
+
+  return `notice-seed:${jib}`;
+}
+
+function mergeAuthoritySeedCandidate(
+  current: AuthoritySeedCandidate | undefined,
+  next: AuthoritySeedCandidate
+): AuthoritySeedCandidate {
+  if (!current) {
+    return next;
+  }
+
+  return {
+    jib: current.jib,
+    name: next.name?.trim() || current.name,
+    portalId:
+      next.portalId && !isSeedPortalId(next.portalId)
+        ? next.portalId
+        : current.portalId && !isSeedPortalId(current.portalId)
+          ? current.portalId
+          : next.portalId ?? current.portalId,
+    city: current.city ?? next.city ?? null,
+    municipality: current.municipality ?? next.municipality ?? null,
+    canton: current.canton ?? next.canton ?? null,
+    entity: current.entity ?? next.entity ?? null,
+    authorityType: current.authorityType ?? next.authorityType ?? null,
+    activityType: current.activityType ?? next.activityType ?? null,
+  };
+}
+
+function addAuthoritySeedCandidate(
+  target: Map<string, AuthoritySeedCandidate>,
+  candidate: AuthoritySeedCandidate | null
+) {
+  const jib = candidate?.jib?.trim();
+  const name = candidate?.name?.trim();
+
+  if (!jib || !name) {
+    return;
+  }
+
+  target.set(
+    jib,
+    mergeAuthoritySeedCandidate(target.get(jib), {
+      ...candidate,
+      jib,
+      name,
+      portalId: candidate?.portalId?.trim() || null,
+      city: candidate?.city?.trim() || null,
+      municipality: candidate?.municipality?.trim() || null,
+      canton: candidate?.canton?.trim() || null,
+      entity: candidate?.entity?.trim() || null,
+      authorityType: candidate?.authorityType?.trim() || null,
+      activityType: candidate?.activityType?.trim() || null,
+    })
+  );
+}
+
+async function loadExistingAuthoritiesByJib(
+  supabase: ReturnType<typeof createServiceClient>,
+  jibs: string[]
+): Promise<
+  Map<
+    string,
+    {
+      portal_id: string;
+      name: string;
+      jib: string;
+      city: string | null;
+      municipality: string | null;
+      canton: string | null;
+      entity: string | null;
+      authority_type: string | null;
+      activity_type: string | null;
+    }
+  >
+> {
+  const map = new Map<
+    string,
+    {
+      portal_id: string;
+      name: string;
+      jib: string;
+      city: string | null;
+      municipality: string | null;
+      canton: string | null;
+      entity: string | null;
+      authority_type: string | null;
+      activity_type: string | null;
+    }
+  >();
+
+  for (const batch of chunkArray(uniqueNonEmpty(jibs), 250)) {
+    const { data } = await supabase
+      .from("contracting_authorities")
+      .select("portal_id, name, jib, city, municipality, canton, entity, authority_type, activity_type")
+      .in("jib", batch);
+
+    for (const row of data ?? []) {
+      if (row.jib) {
+        map.set(row.jib, row);
+      }
+    }
+  }
+
+  return map;
+}
+
+async function resolveAuthorityGeoForCandidate(
+  candidate: AuthoritySeedCandidate,
+  allowAi: boolean
+): Promise<AuthorityGeoRecord> {
+  const context = {
+    contracting_authority: candidate.name,
+    authority_city: candidate.city ?? null,
+    authority_municipality: candidate.municipality ?? null,
+    authority_canton: candidate.canton ?? null,
+    authority_entity: candidate.entity ?? null,
+  };
+
+  let geoEnrichment = resolveBestTenderArea(context, null);
+
+  if (!geoEnrichment?.area_label && allowAi) {
+    geoEnrichment = await resolveTenderAreaWithAiHint(context);
+  }
+
+  return {
+    city: candidate.city ?? null,
+    municipality: candidate.municipality ?? geoEnrichment?.municipality ?? null,
+    canton: candidate.canton ?? geoEnrichment?.canton ?? null,
+    entity: candidate.entity ?? geoEnrichment?.entity ?? null,
+  };
+}
+
+async function upsertAuthoritySeedCandidates(
+  supabase: ReturnType<typeof createServiceClient>,
+  candidates: Iterable<AuthoritySeedCandidate>,
+  options: { allowAi?: boolean } = {}
+): Promise<{ added: number; updated: number; scanned: number; unresolved: number }> {
+  const mergedCandidates = new Map<string, AuthoritySeedCandidate>();
+
+  for (const candidate of candidates) {
+    addAuthoritySeedCandidate(mergedCandidates, candidate);
+  }
+
+  if (mergedCandidates.size === 0) {
+    return { added: 0, updated: 0, scanned: 0, unresolved: 0 };
+  }
+
+  const existingByJib = await loadExistingAuthoritiesByJib(supabase, [...mergedCandidates.keys()]);
+  const rowsToUpsert: Array<{
+    portal_id: string;
+    name: string;
+    jib: string;
+    city: string | null;
+    municipality: string | null;
+    canton: string | null;
+    entity: string | null;
+    authority_type: string | null;
+    activity_type: string | null;
+  }> = [];
+  let added = 0;
+  let updated = 0;
+  let unresolved = 0;
+
+  for (const candidate of mergedCandidates.values()) {
+    const existing = existingByJib.get(candidate.jib);
+    const mergedCandidate: AuthoritySeedCandidate = {
+      jib: candidate.jib,
+      name: candidate.name || existing?.name || "Nepoznato",
+      portalId: chooseAuthorityPortalId(existing?.portal_id, candidate.portalId, candidate.jib),
+      city: candidate.city ?? existing?.city ?? null,
+      municipality: candidate.municipality ?? existing?.municipality ?? null,
+      canton: candidate.canton ?? existing?.canton ?? null,
+      entity: candidate.entity ?? existing?.entity ?? null,
+      authorityType: candidate.authorityType ?? existing?.authority_type ?? null,
+      activityType: candidate.activityType ?? existing?.activity_type ?? null,
+    };
+    const resolvedGeo = await resolveAuthorityGeoForCandidate(
+      mergedCandidate,
+      options.allowAi ?? false
+    );
+
+    if (!hasAuthorityGeo(resolvedGeo)) {
+      unresolved += 1;
+    }
+
+    rowsToUpsert.push({
+      portal_id: mergedCandidate.portalId ?? `notice-seed:${mergedCandidate.jib}`,
+      name: mergedCandidate.name,
+      jib: mergedCandidate.jib,
+      city: resolvedGeo.city,
+      municipality: resolvedGeo.municipality,
+      canton: resolvedGeo.canton,
+      entity: resolvedGeo.entity,
+      authority_type: mergedCandidate.authorityType ?? null,
+      activity_type: mergedCandidate.activityType ?? null,
+    });
+
+    if (existing) {
+      updated += 1;
+    } else {
+      added += 1;
+    }
+  }
+
+  for (const batch of chunkArray(rowsToUpsert, 250)) {
+    await supabase.from("contracting_authorities").upsert(batch, {
+      onConflict: "jib",
+      ignoreDuplicates: false,
+    });
+  }
+
+  return {
+    added,
+    updated,
+    scanned: mergedCandidates.size,
+    unresolved,
+  };
+}
+
+async function loadContractingAuthorityMaintenanceCandidates(
+  supabase: ReturnType<typeof createServiceClient>,
+  targetUpdates: number,
+  scanBatchSize: number,
+  maxScanRows: number
+): Promise<AuthoritySeedCandidate[]> {
+  const candidates: AuthoritySeedCandidate[] = [];
+  let offset = 0;
+
+  while (offset < maxScanRows && candidates.length < targetUpdates) {
+    const currentBatchSize = Math.min(scanBatchSize, maxScanRows - offset);
+    const { data } = await supabase
+      .from("contracting_authorities")
+      .select("portal_id, name, jib, city, municipality, canton, entity, authority_type, activity_type")
+      .order("created_at", { ascending: false })
+      .range(offset, offset + currentBatchSize - 1);
+
+    const batch = data ?? [];
+    if (batch.length === 0) {
+      break;
+    }
+
+    for (const row of batch) {
+      if (!row.jib || !row.name) {
+        continue;
+      }
+
+      if (!hasAuthorityGeo(row)) {
+        candidates.push({
+          jib: row.jib,
+          name: row.name,
+          portalId: row.portal_id,
+          city: row.city ?? null,
+          municipality: row.municipality ?? null,
+          canton: row.canton ?? null,
+          entity: row.entity ?? null,
+          authorityType: row.authority_type ?? null,
+          activityType: row.activity_type ?? null,
+        });
+
+        if (candidates.length >= targetUpdates) {
+          break;
+        }
+      }
+    }
+
+    offset += batch.length;
+
+    if (batch.length < currentBatchSize) {
+      break;
+    }
+  }
+
+  return candidates;
+}
+
 async function writeSyncLog(
   supabase: ReturnType<typeof createServiceClient>,
   endpoint: string,
@@ -82,6 +574,85 @@ async function writeSyncLog(
     records_added: added,
     records_updated: updated,
   });
+}
+
+function getSarajevoLocalParts(date: Date) {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: SARAJEVO_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(date);
+
+  const getPart = (type: string) => parts.find((part) => part.type === type)?.value ?? "00";
+
+  return {
+    dayKey: `${getPart("year")}-${getPart("month")}-${getPart("day")}`,
+    hour: Number(getPart("hour")),
+    minute: Number(getPart("minute")),
+  };
+}
+
+async function hasSyncRunOnSarajevoDay(
+  supabase: ReturnType<typeof createServiceClient>,
+  endpoint: string,
+  dayKey: string
+): Promise<boolean> {
+  const { data } = await supabase
+    .from("sync_log")
+    .select("ran_at")
+    .eq("endpoint", endpoint)
+    .order("ran_at", { ascending: false })
+    .limit(10);
+
+  return (data ?? []).some((row) => getSarajevoLocalParts(new Date(row.ran_at)).dayKey === dayKey);
+}
+
+async function loadTenderAreaCandidates(
+  supabase: ReturnType<typeof createServiceClient>,
+  targetUpdates: number,
+  scanBatchSize: number,
+  maxScanRows: number
+): Promise<TenderAreaCandidate[]> {
+  const candidates: TenderAreaCandidate[] = [];
+  let offset = 0;
+
+  while (offset < maxScanRows && candidates.length < targetUpdates) {
+    const currentBatchSize = Math.min(scanBatchSize, maxScanRows - offset);
+    const { data } = await supabase
+      .from("tenders")
+      .select(
+        "id, title, contracting_authority, contracting_authority_jib, raw_description, ai_analysis"
+      )
+      .order("created_at", { ascending: false })
+      .range(offset, offset + currentBatchSize - 1);
+
+    const batch = (data ?? []) as TenderAreaCandidate[];
+
+    if (batch.length === 0) {
+      break;
+    }
+
+    for (const tender of batch) {
+      if (!getGeoEnrichmentFromAiAnalysis(tender.ai_analysis)?.area_label) {
+        candidates.push(tender);
+        if (candidates.length >= targetUpdates) {
+          break;
+        }
+      }
+    }
+
+    offset += batch.length;
+
+    if (batch.length < currentBatchSize) {
+      break;
+    }
+  }
+
+  return candidates;
 }
 
 async function buildTenderIdMap(
@@ -99,6 +670,469 @@ async function buildTenderIdMap(
     for (const row of data ?? []) {
       if (row.portal_id) {
         map.set(row.portal_id, row.id);
+      }
+    }
+  }
+
+  return map;
+}
+
+async function loadAuthoritySeedCandidatesFromTenderHistory(
+  supabase: ReturnType<typeof createServiceClient>,
+  targetUpdates: number,
+  scanBatchSize: number,
+  maxScanRows: number
+): Promise<AuthoritySeedCandidate[]> {
+  const candidates = new Map<string, AuthoritySeedCandidate>();
+  let offset = 0;
+
+  while (offset < maxScanRows && candidates.size < targetUpdates) {
+    const currentBatchSize = Math.min(scanBatchSize, maxScanRows - offset);
+    const { data } = await supabase
+      .from("tenders")
+      .select("contracting_authority, contracting_authority_jib")
+      .order("created_at", { ascending: false })
+      .range(offset, offset + currentBatchSize - 1);
+
+    const batch = data ?? [];
+    if (batch.length === 0) {
+      break;
+    }
+
+    for (const row of batch) {
+      const jib = row.contracting_authority_jib?.trim();
+      const name = row.contracting_authority?.trim();
+
+      if (!jib || !name) {
+        continue;
+      }
+
+      addAuthoritySeedCandidate(candidates, {
+        jib,
+        name,
+        portalId: `tender-seed:${jib}`,
+      });
+
+      if (candidates.size >= targetUpdates) {
+        break;
+      }
+    }
+
+    offset += batch.length;
+
+    if (batch.length < currentBatchSize) {
+      break;
+    }
+  }
+
+  return [...candidates.values()];
+}
+
+async function seedMissingContractingAuthoritiesFromNotices(
+  supabase: ReturnType<typeof createServiceClient>,
+  notices: EjnProcurementNotice[]
+): Promise<void> {
+  const seedCandidates = notices.map((notice) => ({
+    jib: notice.ContractingAuthorityJib?.trim() || "",
+    name: notice.ContractingAuthorityName?.trim() || "",
+    portalId: notice.ContractingAuthorityJib?.trim()
+      ? `notice-seed:${notice.ContractingAuthorityJib.trim()}`
+      : null,
+  }));
+
+  await upsertAuthoritySeedCandidates(supabase, seedCandidates, {
+    allowAi: false,
+  });
+}
+
+async function buildAuthorityGeoMaps(
+  supabase: ReturnType<typeof createServiceClient>,
+  authorityJibs: string[],
+  authorityNames: string[]
+): Promise<AuthorityGeoMaps> {
+  const maps: AuthorityGeoMaps = {
+    byJib: new Map<string, AuthorityGeoRecord>(),
+    byExactName: new Map<string, AuthorityGeoRecord>(),
+    byNormalizedName: new Map<string, AuthorityGeoRecord>(),
+  };
+
+  const exactNameMap = await buildAuthorityGeoMapByName(supabase, authorityNames);
+  for (const [name, authority] of exactNameMap.entries()) {
+    assignAuthorityGeoRecord(maps, authority, { name });
+  }
+
+  for (const batch of chunkArray(uniqueNonEmpty(authorityJibs), 250)) {
+    const { data } = await supabase
+      .from("contracting_authorities")
+      .select("jib, name, city, municipality, canton, entity")
+      .in("jib", batch);
+
+    for (const row of data ?? []) {
+      if (!row.jib) {
+        continue;
+      }
+
+      const authority = buildAuthorityGeoRecord(row);
+      assignAuthorityGeoRecord(maps, authority, {
+        jib: row.jib,
+        name: row.name ?? null,
+      });
+    }
+  }
+
+  const { data: allAuthorities } = await supabase
+    .from("contracting_authorities")
+    .select("jib, name, city, municipality, canton, entity");
+
+  for (const row of allAuthorities ?? []) {
+    if (!row.name) {
+      continue;
+    }
+
+    const normalizedName = normalizeGeoText(row.name);
+    if (!normalizedName || maps.byNormalizedName.has(normalizedName)) {
+      continue;
+    }
+
+    assignAuthorityGeoRecord(maps, buildAuthorityGeoRecord(row), {
+      jib: row.jib ?? null,
+      name: row.name,
+    });
+  }
+
+  return maps;
+}
+
+async function buildAuthorityGeoMapByName(
+  supabase: ReturnType<typeof createServiceClient>,
+  authorityNames: string[]
+): Promise<Map<string, AuthorityGeoRecord>> {
+  const map = new Map<string, AuthorityGeoRecord>();
+
+  for (const batch of chunkArray(uniqueNonEmpty(authorityNames), 100)) {
+    const { data } = await supabase
+      .from("contracting_authorities")
+      .select("name, city, municipality, canton, entity")
+      .in("name", batch);
+
+    for (const row of data ?? []) {
+      if (row.name) {
+        map.set(row.name, {
+          city: row.city ?? null,
+          municipality: row.municipality ?? null,
+          canton: row.canton ?? null,
+          entity: row.entity ?? null,
+        });
+      }
+    }
+  }
+
+  return map;
+}
+
+export async function runContractingAuthorityMaintenance(
+  options: ContractingAuthorityMaintenanceOptions = {}
+): Promise<ContractingAuthorityMaintenanceResult> {
+  const supabase = options.supabase ?? createServiceClient();
+  const endpoint = options.endpoint ?? "ContractingAuthorityMaintenance";
+  const targetUpdates = options.targetUpdates ?? DEFAULT_AUTHORITY_BACKFILL_TARGET;
+  const scanBatchSize = options.scanBatchSize ?? DEFAULT_AUTHORITY_SCAN_BATCH_SIZE;
+  const maxScanRows = options.maxScanRows ?? DEFAULT_AUTHORITY_SCAN_LIMIT;
+
+  try {
+    const [registryCandidates, tenderHistoryCandidates] = await Promise.all([
+      loadContractingAuthorityMaintenanceCandidates(
+        supabase,
+        Math.max(1, targetUpdates),
+        Math.max(1, scanBatchSize),
+        Math.max(1, maxScanRows)
+      ),
+      loadAuthoritySeedCandidatesFromTenderHistory(
+        supabase,
+        Math.max(1, targetUpdates),
+        Math.max(1, scanBatchSize),
+        Math.max(1, maxScanRows)
+      ),
+    ]);
+
+    const result = await upsertAuthoritySeedCandidates(
+      supabase,
+      [...registryCandidates, ...tenderHistoryCandidates],
+      { allowAi: options.allowAi ?? false }
+    );
+
+    if (options.writeLog) {
+      await writeSyncLog(supabase, endpoint, new Date().toISOString(), result.added, result.updated);
+    }
+
+    return {
+      endpoint,
+      added: result.added,
+      updated: result.updated,
+      scanned: result.scanned,
+      unresolved: result.unresolved,
+    };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return {
+      endpoint,
+      added: 0,
+      updated: 0,
+      scanned: 0,
+      unresolved: 0,
+      error: msg,
+    };
+  }
+}
+
+export async function runTenderAreaMaintenance(
+  options: TenderAreaMaintenanceOptions = {}
+): Promise<TenderAreaMaintenanceResult> {
+  const supabase = options.supabase ?? createServiceClient();
+  const endpoint = options.endpoint ?? "TenderAreaMaintenance";
+  const targetUpdates = options.targetUpdates ?? DEFAULT_TENDER_AREA_BACKFILL_TARGET;
+  const scanBatchSize = options.scanBatchSize ?? DEFAULT_TENDER_AREA_SCAN_BATCH_SIZE;
+  const maxScanRows = options.maxScanRows ?? DEFAULT_TENDER_AREA_SCAN_LIMIT;
+
+  try {
+    const candidates = await loadTenderAreaCandidates(
+      supabase,
+      Math.max(1, targetUpdates),
+      Math.max(1, scanBatchSize),
+      Math.max(1, maxScanRows)
+    );
+
+    if (candidates.length === 0) {
+      if (options.writeLog) {
+        await writeSyncLog(supabase, endpoint, new Date().toISOString(), 0, 0);
+      }
+
+      return {
+        endpoint,
+        added: 0,
+        updated: 0,
+        scanned: 0,
+        unresolved: 0,
+      };
+    }
+
+    const authorityGeoMaps = await buildAuthorityGeoMaps(
+      supabase,
+      uniqueNonEmpty(candidates.map((tender) => tender.contracting_authority_jib)),
+      uniqueNonEmpty(candidates.map((tender) => tender.contracting_authority))
+    );
+
+    let updated = 0;
+
+    for (const tender of candidates) {
+      const fallbackAuthority = getAuthorityGeoFromMaps(
+        authorityGeoMaps,
+        tender.contracting_authority_jib,
+        tender.contracting_authority
+      );
+      const areaContext = {
+        title: tender.title,
+        raw_description: tender.raw_description,
+        contracting_authority: tender.contracting_authority,
+        authority_city: fallbackAuthority?.city ?? null,
+        authority_municipality: fallbackAuthority?.municipality ?? null,
+        authority_canton: fallbackAuthority?.canton ?? null,
+        authority_entity: fallbackAuthority?.entity ?? null,
+      };
+      let geoEnrichment = resolveBestTenderArea(areaContext, null);
+
+      if (!geoEnrichment?.area_label) {
+        geoEnrichment = await resolveTenderAreaWithAiHint(areaContext);
+      }
+
+      if (!geoEnrichment?.area_label) {
+        continue;
+      }
+
+      await supabase
+        .from("tenders")
+        .update({
+          ai_analysis: mergeGeoEnrichmentIntoAiAnalysis(tender.ai_analysis, geoEnrichment),
+        })
+        .eq("id", tender.id);
+
+      updated += 1;
+    }
+
+    if (options.writeLog) {
+      await writeSyncLog(supabase, endpoint, new Date().toISOString(), 0, updated);
+    }
+
+    return {
+      endpoint,
+      added: 0,
+      updated,
+      scanned: candidates.length,
+      unresolved: Math.max(candidates.length - updated, 0),
+    };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return {
+      endpoint,
+      added: 0,
+      updated: 0,
+      scanned: 0,
+      unresolved: 0,
+      error: msg,
+    };
+  }
+}
+
+async function runNightlyMaintenanceSweep(
+  options: NightlyMaintenanceSweepOptions = {}
+): Promise<SyncResult[]> {
+  const supabase = options.supabase ?? createServiceClient();
+  const authorityTarget = options.authorityTarget ?? DEFAULT_AUTHORITY_BACKFILL_TARGET;
+  const authorityScanBatchSize =
+    options.authorityScanBatchSize ?? DEFAULT_AUTHORITY_SCAN_BATCH_SIZE;
+  const authorityScanLimit = options.authorityScanLimit ?? DEFAULT_AUTHORITY_SCAN_LIMIT;
+  const tenderTarget = options.tenderTarget ?? DEFAULT_TENDER_AREA_BACKFILL_TARGET;
+  const tenderScanBatchSize =
+    options.tenderScanBatchSize ?? DEFAULT_TENDER_AREA_SCAN_BATCH_SIZE;
+  const tenderScanLimit = options.tenderScanLimit ?? DEFAULT_TENDER_AREA_SCAN_LIMIT;
+  const maxCycles = options.maxCycles ?? DEFAULT_NIGHTLY_MAINTENANCE_MAX_CYCLES;
+  const timeBudgetMs = options.timeBudgetMs ?? DEFAULT_NIGHTLY_MAINTENANCE_TIME_BUDGET_MS;
+  const startedAt = Date.now();
+
+  let authorityAdded = 0;
+  let authorityUpdated = 0;
+  let tenderUpdated = 0;
+  let authorityError: string | undefined;
+  let tenderError: string | undefined;
+
+  for (let cycle = 1; cycle <= maxCycles; cycle += 1) {
+    if (Date.now() - startedAt >= timeBudgetMs) {
+      break;
+    }
+
+    const authorityMaintenance = await runContractingAuthorityMaintenance({
+      supabase,
+      endpoint: `ContractingAuthorityMaintenance4AM#${cycle}`,
+      targetUpdates: authorityTarget,
+      scanBatchSize: authorityScanBatchSize,
+      maxScanRows: authorityScanLimit,
+      writeLog: false,
+      allowAi: false,
+    });
+    const tenderMaintenance = await runTenderAreaMaintenance({
+      supabase,
+      endpoint: `TenderAreaMaintenance4AM#${cycle}`,
+      targetUpdates: tenderTarget,
+      scanBatchSize: tenderScanBatchSize,
+      maxScanRows: tenderScanLimit,
+      writeLog: false,
+    });
+
+    authorityAdded += authorityMaintenance.added;
+    authorityUpdated += authorityMaintenance.updated;
+    tenderUpdated += tenderMaintenance.updated;
+
+    if (!authorityError && authorityMaintenance.error) {
+      authorityError = authorityMaintenance.error;
+    }
+
+    if (!tenderError && tenderMaintenance.error) {
+      tenderError = tenderMaintenance.error;
+    }
+
+    if (authorityMaintenance.error || tenderMaintenance.error) {
+      break;
+    }
+
+    const madeProgress =
+      authorityMaintenance.added +
+        authorityMaintenance.updated +
+        tenderMaintenance.updated >
+      0;
+    const hasBacklog =
+      authorityMaintenance.unresolved > 0 || tenderMaintenance.unresolved > 0;
+
+    if (!madeProgress || !hasBacklog) {
+      break;
+    }
+  }
+
+  await writeSyncLog(
+    supabase,
+    "ContractingAuthorityMaintenance4AM",
+    new Date().toISOString(),
+    authorityAdded,
+    authorityUpdated
+  );
+  await writeSyncLog(
+    supabase,
+    "TenderAreaMaintenance4AM",
+    new Date().toISOString(),
+    0,
+    tenderUpdated
+  );
+
+  return [
+    {
+      endpoint: "ContractingAuthorityMaintenance4AM",
+      added: authorityAdded,
+      updated: authorityUpdated,
+      ...(authorityError ? { error: authorityError } : {}),
+    },
+    {
+      endpoint: "TenderAreaMaintenance4AM",
+      added: 0,
+      updated: tenderUpdated,
+      ...(tenderError ? { error: tenderError } : {}),
+    },
+  ];
+}
+
+async function buildExistingTenderMap(
+  supabase: ReturnType<typeof createServiceClient>,
+  portalIds: string[]
+): Promise<Map<string, { id: string; ai_analysis: Json | null }>> {
+  const map = new Map<string, { id: string; ai_analysis: Json | null }>();
+
+  for (const batch of chunkArray(uniqueNonEmpty(portalIds), 250)) {
+    const { data } = await supabase
+      .from("tenders")
+      .select("id, portal_id, ai_analysis")
+      .in("portal_id", batch);
+
+    for (const row of data ?? []) {
+      if (row.portal_id) {
+        map.set(row.portal_id, {
+          id: row.id,
+          ai_analysis: (row.ai_analysis as Json | null | undefined) ?? null,
+        });
+      }
+    }
+  }
+
+  return map;
+}
+
+async function buildAuthorityGeoMap(
+  supabase: ReturnType<typeof createServiceClient>,
+  authorityJibs: string[]
+): Promise<Map<string, AuthorityGeoRecord>> {
+  const map = new Map<string, AuthorityGeoRecord>();
+
+  for (const batch of chunkArray(uniqueNonEmpty(authorityJibs), 250)) {
+    const { data } = await supabase
+      .from("contracting_authorities")
+      .select("jib, city, municipality, canton, entity")
+      .in("jib", batch);
+
+    for (const row of data ?? []) {
+      if (row.jib) {
+        map.set(row.jib, {
+          city: row.city ?? null,
+          municipality: row.municipality ?? null,
+          canton: row.canton ?? null,
+          entity: row.entity ?? null,
+        });
       }
     }
   }
@@ -256,17 +1290,56 @@ async function refreshMarketCompanyAwardStats(
 // --- Sync: Tenders (ProcurementNotices) ---
 
 async function syncTenders(
-  supabase: ReturnType<typeof createServiceClient>
+  supabase: ReturnType<typeof createServiceClient>,
+  options: FullSyncOptions = {}
 ): Promise<SyncResult> {
   const endpoint = "ProcurementNotices";
   try {
     const lastSync = await getLastSyncAt(supabase, endpoint);
     const notices = await fetchProcurementNotices(lastSync);
+    await seedMissingContractingAuthoritiesFromNotices(supabase, notices);
+    const existingTenderMap = await buildExistingTenderMap(
+      supabase,
+      notices.map((notice) => notice.NoticeId)
+    );
+    const authorityGeoMaps = await buildAuthorityGeoMaps(
+      supabase,
+      uniqueNonEmpty(
+        notices
+          .map((notice) => notice.ContractingAuthorityJib)
+          .filter((value): value is string => Boolean(value?.trim()))
+      ),
+      uniqueNonEmpty(notices.map((notice) => notice.ContractingAuthorityName))
+    );
 
     let added = 0;
     let updated = 0;
 
     for (const n of notices) {
+      const existingTender = existingTenderMap.get(n.NoticeId) ?? null;
+      const fallbackAuthority = getAuthorityGeoFromMaps(
+        authorityGeoMaps,
+        n.ContractingAuthorityJib,
+        n.ContractingAuthorityName
+      );
+      const areaContext = {
+        title: n.Title || null,
+        raw_description: n.Description || null,
+        contracting_authority: n.ContractingAuthorityName || null,
+        authority_city: fallbackAuthority?.city ?? null,
+        authority_municipality: fallbackAuthority?.municipality ?? null,
+        authority_canton: fallbackAuthority?.canton ?? null,
+        authority_entity: fallbackAuthority?.entity ?? null,
+      };
+      let geoEnrichment = resolveBestTenderArea(
+        areaContext,
+        getGeoEnrichmentFromAiAnalysis(existingTender?.ai_analysis ?? null)
+      );
+
+      if (!geoEnrichment?.area_label) {
+        geoEnrichment = await resolveTenderAreaWithAiHint(areaContext);
+      }
+
       const row = {
         portal_id: n.NoticeId,
         title: n.Title || "Bez naziva",
@@ -279,21 +1352,34 @@ async function syncTenders(
         status: n.Status || null,
         portal_url: n.NoticeUrl || null,
         raw_description: n.Description || null,
+        authority_city: fallbackAuthority?.city ?? null,
+        authority_municipality: fallbackAuthority?.municipality ?? null,
+        authority_canton: fallbackAuthority?.canton ?? null,
+        authority_entity: fallbackAuthority?.entity ?? null,
+        ai_analysis: mergeGeoEnrichmentIntoAiAnalysis(
+          existingTender?.ai_analysis ?? null,
+          geoEnrichment
+        ),
       };
 
-      const { data: existing } = await supabase
-        .from("tenders")
-        .select("id")
-        .eq("portal_id", n.NoticeId)
-        .single();
-
-      if (existing) {
+      if (existingTender) {
         await supabase.from("tenders").update(row).eq("portal_id", n.NoticeId);
         updated++;
       } else {
         await supabase.from("tenders").insert(row);
         added++;
       }
+    }
+
+    if (options.runTenderAreaMaintenanceAfterSync !== false) {
+      const maintenance = await runTenderAreaMaintenance({
+        supabase,
+        targetUpdates: options.tenderAreaBackfillTarget,
+        scanBatchSize: options.tenderAreaScanBatchSize,
+        maxScanRows: options.tenderAreaScanLimit,
+        writeLog: false,
+      });
+      updated += maintenance.updated;
     }
 
     const syncAt = new Date().toISOString();
@@ -408,44 +1494,26 @@ async function syncContractingAuthorities(
     const lastSync = await getLastSyncAt(supabase, endpoint);
     const authorities = await fetchContractingAuthorities(lastSync);
 
-    let added = 0;
-    let updated = 0;
-
-    for (const ca of authorities) {
-      const row = {
-        portal_id: ca.AuthorityId,
-        name: ca.Name || "Nepoznato",
+    const result = await upsertAuthoritySeedCandidates(
+      supabase,
+      authorities.map((ca) => ({
         jib: ca.Jib,
+        name: ca.Name || "Nepoznato",
+        portalId: ca.AuthorityId,
         city: ca.City || null,
         entity: ca.Entity || null,
         canton: ca.Canton || null,
         municipality: ca.Municipality || null,
-        authority_type: ca.AuthorityType || null,
-        activity_type: ca.ActivityType || null,
-      };
-
-      const { data: existing } = await supabase
-        .from("contracting_authorities")
-        .select("id")
-        .eq("jib", ca.Jib)
-        .single();
-
-      if (existing) {
-        await supabase
-          .from("contracting_authorities")
-          .update(row)
-          .eq("jib", ca.Jib);
-        updated++;
-      } else {
-        await supabase.from("contracting_authorities").insert(row);
-        added++;
-      }
-    }
+        authorityType: ca.AuthorityType || null,
+        activityType: ca.ActivityType || null,
+      })),
+      { allowAi: false }
+    );
 
     const syncAt = new Date().toISOString();
-    await writeSyncLog(supabase, endpoint, syncAt, added, updated);
+    await writeSyncLog(supabase, endpoint, syncAt, result.added, result.updated);
 
-    return { endpoint, added, updated };
+    return { endpoint, added: result.added, updated: result.updated };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     return { endpoint, added: 0, updated: 0, error: msg };
@@ -570,18 +1638,105 @@ export async function runFullSync(): Promise<{
   results: SyncResult[];
   duration_ms: number;
 }> {
+  return runFullSyncWithOptions();
+}
+
+async function runFullSyncWithOptions(options: FullSyncOptions = {}): Promise<{
+  results: SyncResult[];
+  duration_ms: number;
+}> {
   const supabase = createServiceClient();
   const start = Date.now();
 
-  // Sync u redoslijedu zavisnosti: authorities → suppliers → tenders → awards → plans
   const results: SyncResult[] = [];
 
   results.push(await syncContractingAuthorities(supabase));
   results.push(await syncSuppliers(supabase));
-  results.push(await syncTenders(supabase));
+  results.push(await syncTenders(supabase, options));
+  if (options.runAuthorityMaintenanceAfterSync !== false) {
+    const authorityMaintenance = await runContractingAuthorityMaintenance({
+      supabase,
+      endpoint: "ContractingAuthorityMaintenance",
+      targetUpdates: options.authorityBackfillTarget,
+      scanBatchSize: options.authorityScanBatchSize,
+      maxScanRows: options.authorityScanLimit,
+      writeLog: false,
+      allowAi: false,
+    });
+    results.push(authorityMaintenance);
+  }
   results.push(await syncAwardDecisions(supabase));
   results.push(await syncPlannedProcurements(supabase));
 
   const duration_ms = Date.now() - start;
   return { results, duration_ms };
+}
+
+export async function runMorningSyncAtSarajevo4AM(): Promise<{
+  status: "ok" | "partial" | "skipped";
+  reason?: string;
+  duration_ms: number;
+  local_day: string;
+  local_hour: number;
+  results: SyncResult[];
+}> {
+  const supabase = createServiceClient();
+  const now = new Date();
+  const localTime = getSarajevoLocalParts(now);
+
+  if (localTime.hour !== 4) {
+    return {
+      status: "skipped",
+      reason: "Outside 04:00 Europe/Sarajevo window.",
+      duration_ms: 0,
+      local_day: localTime.dayKey,
+      local_hour: localTime.hour,
+      results: [],
+    };
+  }
+
+  if (await hasSyncRunOnSarajevoDay(supabase, MORNING_SYNC_ENDPOINT, localTime.dayKey)) {
+    return {
+      status: "skipped",
+      reason: "Morning sync already completed for the current Sarajevo day.",
+      duration_ms: 0,
+      local_day: localTime.dayKey,
+      local_hour: localTime.hour,
+      results: [],
+    };
+  }
+
+  const start = Date.now();
+  const { results, duration_ms } = await runFullSyncWithOptions({
+    authorityBackfillTarget: DEFAULT_AUTHORITY_BACKFILL_TARGET,
+    authorityScanBatchSize: DEFAULT_AUTHORITY_SCAN_BATCH_SIZE,
+    authorityScanLimit: DEFAULT_AUTHORITY_SCAN_LIMIT,
+    runAuthorityMaintenanceAfterSync: false,
+    tenderAreaBackfillTarget: DEFAULT_TENDER_AREA_BACKFILL_TARGET,
+    tenderAreaScanBatchSize: DEFAULT_TENDER_AREA_SCAN_BATCH_SIZE,
+    tenderAreaScanLimit: DEFAULT_TENDER_AREA_SCAN_LIMIT,
+    runTenderAreaMaintenanceAfterSync: false,
+  });
+  const maintenanceResults = await runNightlyMaintenanceSweep({
+    supabase,
+    authorityTarget: DEFAULT_AUTHORITY_BACKFILL_TARGET,
+    authorityScanBatchSize: DEFAULT_AUTHORITY_SCAN_BATCH_SIZE,
+    authorityScanLimit: DEFAULT_AUTHORITY_SCAN_LIMIT,
+    tenderTarget: DEFAULT_TENDER_AREA_BACKFILL_TARGET,
+    tenderScanBatchSize: DEFAULT_TENDER_AREA_SCAN_BATCH_SIZE,
+    tenderScanLimit: DEFAULT_TENDER_AREA_SCAN_LIMIT,
+  });
+  const combinedResults: SyncResult[] = [...results, ...maintenanceResults];
+  const totalAdded = combinedResults.reduce((sum, result) => sum + result.added, 0);
+  const totalUpdated = combinedResults.reduce((sum, result) => sum + result.updated, 0);
+
+  await writeSyncLog(supabase, MORNING_SYNC_ENDPOINT, new Date().toISOString(), totalAdded, totalUpdated);
+
+  return {
+    status: combinedResults.some((result) => result.error) ? "partial" : "ok",
+    duration_ms: Math.max(duration_ms, Date.now() - start),
+    local_day: localTime.dayKey,
+    local_hour: localTime.hour,
+    results: combinedResults,
+  };
 }

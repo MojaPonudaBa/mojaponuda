@@ -17,6 +17,7 @@ import {
   Box,
   Settings,
   ChevronDown,
+  Shield,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -45,12 +46,17 @@ const accountItems: NavItem[] = [
   { href: "/dashboard/subscription", label: "Pretplata", icon: CreditCard },
 ];
 
+const adminItems: NavItem[] = [
+  { href: "/dashboard/admin", label: "Admin pregled", icon: Shield, exact: true },
+];
+
 interface DashboardSidebarProps {
   userEmail: string;
   companyName?: string;
+  isAdmin?: boolean;
 }
 
-export function DashboardSidebar({ userEmail, companyName }: DashboardSidebarProps) {
+export function DashboardSidebar({ userEmail, companyName, isAdmin = false }: DashboardSidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -130,6 +136,19 @@ export function DashboardSidebar({ userEmail, companyName }: DashboardSidebarPro
             <NavLink key={item.href} item={item} />
           ))}
         </div>
+
+        {isAdmin ? (
+          <>
+            <div className="mb-6 mt-7 px-2">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">Admin</p>
+            </div>
+            <div className="space-y-1">
+              {adminItems.map((item) => (
+                <NavLink key={item.href} item={item} />
+              ))}
+            </div>
+          </>
+        ) : null}
       </nav>
 
       <div className="mt-auto border-t border-white/8 pt-4">

@@ -14,6 +14,7 @@ import {
   buildProfileContextText,
   buildProfileKeywordSeeds,
   derivePrimaryIndustry,
+  getCategorySpecializationOptions,
   getProfileOptionLabel,
   OFFERING_CATEGORY_GROUPS,
   OFFERING_CATEGORY_OPTIONS,
@@ -64,6 +65,10 @@ interface PreviewTender {
   deadline: string | null;
   estimated_value: number | null;
   contracting_authority: string | null;
+  match_badge: string;
+  area_badge: string | null;
+  match_reason: string;
+  area_label: string | null;
 }
 
 const STEPS = [
@@ -136,6 +141,7 @@ export function OnboardingValueFirstForm({
   const [contactEmail, setContactEmail] = useState(initialContactEmail);
   const [contactPhone, setContactPhone] = useState(initialContactPhone);
   const [offeringCategories, setOfferingCategories] = useState<string[]>(parsedProfile.offeringCategories);
+  const [specializationIds, setSpecializationIds] = useState<string[]>(parsedProfile.specializationIds ?? []);
   const [preferredTenderTypes, setPreferredTenderTypes] = useState<string[]>(parsedProfile.preferredTenderTypes);
   const [regions, setRegions] = useState<string[]>(initialRegions);
   const [description, setDescription] = useState(
@@ -157,14 +163,51 @@ export function OnboardingValueFirstForm({
     [offeringCategories, parsedProfile.primaryIndustry]
   );
   const regionSelectionLabels = useMemo(() => getRegionSelectionLabels(regions), [regions]);
+  const specializationSections = useMemo(
+    () =>
+      offeringCategories
+        .map((categoryId) => {
+          const options = getCategorySpecializationOptions(categoryId);
+          return options.length > 0
+            ? {
+                categoryId,
+                categoryLabel: getProfileOptionLabel(categoryId),
+                options,
+              }
+            : null;
+        })
+        .filter(
+          (
+            section
+          ): section is {
+            categoryId: string;
+            categoryLabel: string;
+            options: ReturnType<typeof getCategorySpecializationOptions>;
+          } => Boolean(section)
+        ),
+    [offeringCategories]
+  );
   const previewRequestKey = useMemo(
     () => JSON.stringify({
       offeringCategories: [...offeringCategories].sort(),
+      specializationIds: [...specializationIds].sort(),
       preferredTenderTypes: [...preferredTenderTypes].sort(),
       regions: [...regions].sort(),
     }),
-    [offeringCategories, preferredTenderTypes, regions]
+    [offeringCategories, specializationIds, preferredTenderTypes, regions]
   );
+
+  useEffect(() => {
+    const allowedSpecializationIds = new Set(
+      offeringCategories.flatMap((categoryId) =>
+        getCategorySpecializationOptions(categoryId).map((option) => option.id)
+      )
+    );
+
+    setSpecializationIds((current) =>
+      current.filter((specializationId) => allowedSpecializationIds.has(specializationId))
+    );
+  }, [offeringCategories]);
 
   async function seedDemoData(userId: string, savedCompanyId: string) {
     const supabase = createClient();
@@ -305,14 +348,33 @@ export function OnboardingValueFirstForm({
     setPreviewLoading(true);
     setPreviewError(null);
 
+    const descriptionFallback = [
+      derivedPrimaryIndustry ? `Fokus firme je ${getProfileOptionLabel(derivedPrimaryIndustry)}.` : null,
+      offeringCategories.length > 0
+        ? `Firma nudi ${offeringCategories.map((item) => getProfileOptionLabel(item)).join(", ")}.`
+        : null,
+      preferredTenderTypes.length > 0
+        ? `Najviše prati tendere za ${preferredTenderTypes.map((item) => getProfileOptionLabel(item)).join(", ")}.`
+        : null,
+      regionSelectionLabels.length > 0
+        ? `Radi u regijama ${regionSelectionLabels.join(", ")}.`
+        : "Radi na području cijele Bosne i Hercegovine.",
+    ]
+      .filter((item): item is string => Boolean(item))
+      .join(" ");
+
+    const effectivePreviewDescription = description.trim() || descriptionFallback;
+
     try {
       const response = await fetch("/api/onboarding/preview-tenders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           offeringCategories,
+          specializationIds,
           preferredTenderTypes,
           regions,
+          description: effectivePreviewDescription,
         }),
       });
 
@@ -398,6 +460,7 @@ export function OnboardingValueFirstForm({
       description: effectiveDescription,
       primaryIndustry: derivedPrimaryIndustry,
       offeringCategories,
+      specializationIds,
       preferredTenderTypes,
       regions: regionSelectionLabels,
     });
@@ -405,6 +468,7 @@ export function OnboardingValueFirstForm({
     const profileSeeds = buildProfileKeywordSeeds({
       primaryIndustry: derivedPrimaryIndustry,
       offeringCategories,
+      specializationIds,
       preferredTenderTypes,
       companyDescription: effectiveDescription,
       legacyIndustryText: null,
@@ -421,6 +485,7 @@ export function OnboardingValueFirstForm({
           description: effectiveDescription,
           primaryIndustry: derivedPrimaryIndustry,
           offeringCategories,
+          specializationIds,
           preferredTenderTypes,
           regions: regionSelectionLabels,
         }),
@@ -452,6 +517,7 @@ export function OnboardingValueFirstForm({
         serializeCompanyProfile({
           primaryIndustry: derivedPrimaryIndustry,
           offeringCategories,
+          specializationIds,
           preferredTenderTypes,
           companyDescription: effectiveDescription,
           legacyIndustryText: null,
@@ -686,7 +752,16 @@ export function OnboardingValueFirstForm({
                 <div key={tender.id} className="rounded-[1.5rem] border border-slate-200 bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-5">
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <p className="text-xs font-bold uppercase tracking-[0.16em] text-blue-700">Zašto odgovara</p>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="rounded-full border border-blue-100 bg-blue-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-blue-700">
+                          {tender.match_badge}
+                        </span>
+                        {tender.area_badge ? (
+                          <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-600">
+                            {tender.area_badge}
+                          </span>
+                        ) : null}
+                      </div>
                       <h3 className="mt-3 text-base font-bold leading-6 text-slate-950">{tender.title}</h3>
                     </div>
                     {tender.estimated_value ? (
@@ -695,9 +770,16 @@ export function OnboardingValueFirstForm({
                       </span>
                     ) : null}
                   </div>
+                  <p className="mt-3 text-sm leading-6 text-slate-600">{tender.match_reason}</p>
                   <p className="mt-2 text-sm text-slate-500">{tender.contracting_authority ?? "Nepoznat naručilac"}</p>
-                  <div className="mt-4 border-t border-slate-100 pt-4 text-xs font-medium text-slate-500">
-                    Rok: {formatDate(tender.deadline)}
+                  <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-slate-100 pt-4 text-xs font-medium text-slate-500">
+                    {tender.area_label ? (
+                      <span className="inline-flex items-center gap-1.5">
+                        <MapPin className="size-3.5 text-slate-400" />
+                        {tender.area_label}
+                      </span>
+                    ) : null}
+                    <span>Rok: {formatDate(tender.deadline)}</span>
                   </div>
                 </div>
               ))}
@@ -752,6 +834,57 @@ export function OnboardingValueFirstForm({
               );
             })}
           </div>
+
+          {specializationSections.length > 0 ? (
+            <div className="space-y-4 rounded-2xl border border-slate-200 bg-slate-50/70 p-5">
+              <div>
+                <p className="text-sm font-semibold text-slate-900">Preciznije usmjerite preporuke prema onome što zaista nudite</p>
+                <p className="mt-1 text-sm leading-6 text-slate-500">
+                  Ovo je opcionalno. Ovi izbori ne zaključavaju profil na usku nišu, nego pomažu da sistem više naginje tenderima koji su bliži vašem stvarnom poslovnom fokusu.
+                </p>
+              </div>
+
+              <div className="space-y-5">
+                {specializationSections.map((section) => (
+                  <div key={section.categoryId} className="rounded-2xl border border-slate-200 bg-white p-5">
+                    <div className="mb-4">
+                      <p className="text-sm font-semibold text-slate-900">{section.categoryLabel}</p>
+                      <p className="mt-1 text-sm text-slate-500">
+                        Označite smjerove koji najbolje opisuju vaš glavni fokus unutar ove oblasti.
+                      </p>
+                    </div>
+                    <div className="grid gap-3 md:grid-cols-2">
+                      {section.options.map((option) => {
+                        const selected = specializationIds.includes(option.id);
+
+                        return (
+                          <button
+                            key={option.id}
+                            type="button"
+                            onClick={() => toggleSelection(option.id, specializationIds, setSpecializationIds)}
+                            className={cn(
+                              "rounded-2xl border p-4 text-left transition-all",
+                              selected
+                                ? "border-blue-200 bg-blue-50/80 shadow-sm"
+                                : "border-slate-200 bg-slate-50/60 hover:border-slate-300 hover:bg-white"
+                            )}
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div>
+                                <p className="text-sm font-semibold text-slate-900">{option.label}</p>
+                                <p className="mt-2 text-sm leading-6 text-slate-500">{option.description}</p>
+                              </div>
+                              {selected ? <Check className="mt-0.5 size-4 text-blue-700" /> : null}
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
 
           <div className="space-y-2">
             <Label htmlFor="description" className="text-sm font-semibold text-slate-700">Opišite firmu svojim riječima</Label>
@@ -816,6 +949,11 @@ export function OnboardingValueFirstForm({
               ) : null}
               {offeringCategories.map((item) => (
                 <span key={item} className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700">
+                  {getProfileOptionLabel(item)}
+                </span>
+              ))}
+              {specializationIds.map((item) => (
+                <span key={item} className="rounded-full border border-amber-100 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
                   {getProfileOptionLabel(item)}
                 </span>
               ))}

@@ -534,6 +534,33 @@ export interface Database {
           }
         ];
       };
+      sync_log: {
+        Row: {
+          id: string;
+          endpoint: string;
+          last_sync_at: string | null;
+          records_added: number;
+          records_updated: number;
+          ran_at: string;
+        };
+        Insert: {
+          id?: string;
+          endpoint: string;
+          last_sync_at?: string | null;
+          records_added?: number;
+          records_updated?: number;
+          ran_at?: string;
+        };
+        Update: {
+          id?: string;
+          endpoint?: string;
+          last_sync_at?: string | null;
+          records_added?: number;
+          records_updated?: number;
+          ran_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: {
       documents_with_expiry: {

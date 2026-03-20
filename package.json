@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "backfill:tender-areas": "npx tsx scripts/backfill-tender-areas.ts",
+    "backfill:authorities": "npx tsx scripts/backfill-contracting-authorities.ts"
   },
   "dependencies": {
     "@fontsource/ibm-plex-mono": "^5.2.7",

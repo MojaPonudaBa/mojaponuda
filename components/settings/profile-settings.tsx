@@ -1,10 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import {
   derivePrimaryIndustry,
+  getCategorySpecializationOptions,
   getProfileOptionLabel,
   OFFERING_CATEGORY_GROUPS,
   OFFERING_CATEGORY_OPTIONS,
@@ -62,6 +63,9 @@ export function ProfileSettings({ company }: ProfileSettingsProps) {
   const [offeringCategories, setOfferingCategories] = useState<string[]>(
     parsedProfile.offeringCategories ?? []
   );
+  const [specializationIds, setSpecializationIds] = useState<string[]>(
+    parsedProfile.specializationIds ?? []
+  );
   const [preferredTenderTypes, setPreferredTenderTypes] = useState<string[]>(
     parsedProfile.preferredTenderTypes ?? []
   );
@@ -87,6 +91,42 @@ export function ProfileSettings({ company }: ProfileSettingsProps) {
     [offeringCategories, parsedProfile.primaryIndustry]
   );
   const regionSelectionLabels = useMemo(() => getRegionSelectionLabels(regions), [regions]);
+  const specializationSections = useMemo(
+    () =>
+      offeringCategories
+        .map((categoryId) => {
+          const options = getCategorySpecializationOptions(categoryId);
+          return options.length > 0
+            ? {
+                categoryId,
+                categoryLabel: getProfileOptionLabel(categoryId),
+                options,
+              }
+            : null;
+        })
+        .filter(
+          (
+            section
+          ): section is {
+            categoryId: string;
+            categoryLabel: string;
+            options: ReturnType<typeof getCategorySpecializationOptions>;
+          } => Boolean(section)
+        ),
+    [offeringCategories]
+  );
+
+  useEffect(() => {
+    const allowedSpecializationIds = new Set(
+      offeringCategories.flatMap((categoryId) =>
+        getCategorySpecializationOptions(categoryId).map((option) => option.id)
+      )
+    );
+
+    setSpecializationIds((current) =>
+      current.filter((specializationId) => allowedSpecializationIds.has(specializationId))
+    );
+  }, [offeringCategories]);
 
   async function generateProfile() {
     if (!description.trim() || description.length < 10) return;
@@ -100,6 +140,7 @@ export function ProfileSettings({ company }: ProfileSettingsProps) {
           description,
           primaryIndustry: derivedPrimaryIndustry,
           offeringCategories,
+          specializationIds,
           preferredTenderTypes,
           regions: regionSelectionLabels,
         }),
@@ -206,6 +247,7 @@ export function ProfileSettings({ company }: ProfileSettingsProps) {
           ...parsedProfile,
           primaryIndustry: derivedPrimaryIndustry,
           offeringCategories,
+          specializationIds,
           preferredTenderTypes,
           companyDescription: description,
           manualKeywords,
@@ -331,6 +373,11 @@ export function ProfileSettings({ company }: ProfileSettingsProps) {
                     {getProfileOptionLabel(item)}
                   </Badge>
                 ))}
+                {specializationIds.slice(0, 2).map((item) => (
+                  <Badge key={item} variant="outline" className="border-amber-100 bg-amber-50 text-amber-700">
+                    {getProfileOptionLabel(item)}
+                  </Badge>
+                ))}
                 {offeringCategories.length > 3 ? (
                   <Badge variant="outline" className="bg-white text-slate-500">
                     +{offeringCategories.length - 3}
@@ -424,6 +471,56 @@ export function ProfileSettings({ company }: ProfileSettingsProps) {
                     </div>
                   );
                 })}
+
+                {specializationSections.length > 0 ? (
+                  <div className="rounded-2xl border border-slate-200 bg-white p-5">
+                    <div className="mb-4">
+                      <Label className="text-base font-bold text-slate-900">Preciznije usmjerite preporuke prema onome što zaista nudite</Label>
+                      <p className="mt-1 text-sm text-slate-500">
+                        Ovi izbori služe kao smjer za preporuke i analizu tržišta. Ne zaključavaju vas tvrdo na usku nišu, nego pomažu da sistem bolje razumije vaš stvarni poslovni fokus.
+                      </p>
+                    </div>
+                    <div className="space-y-5">
+                      {specializationSections.map((section) => (
+                        <div key={section.categoryId} className="rounded-2xl border border-slate-200 bg-slate-50/60 p-5">
+                          <div className="mb-4">
+                            <p className="text-sm font-semibold text-slate-900">{section.categoryLabel}</p>
+                            <p className="mt-1 text-sm text-slate-500">
+                              Označite smjerove koji najbolje opisuju vaš glavni fokus unutar ove oblasti.
+                            </p>
+                          </div>
+                          <div className="grid gap-3 md:grid-cols-2">
+                            {section.options.map((option) => {
+                              const selected = specializationIds.includes(option.id);
+
+                              return (
+                                <button
+                                  key={option.id}
+                                  type="button"
+                                  onClick={() => toggleSelection(option.id, specializationIds, setSpecializationIds)}
+                                  className={cn(
+                                    "rounded-2xl border p-4 text-left transition-all",
+                                    selected
+                                      ? "border-amber-200 bg-amber-50/80 shadow-sm"
+                                      : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50"
+                                  )}
+                                >
+                                  <div className="flex items-start justify-between gap-3">
+                                    <div>
+                                      <p className="text-sm font-semibold text-slate-900">{option.label}</p>
+                                      <p className="mt-2 text-sm leading-6 text-slate-500">{option.description}</p>
+                                    </div>
+                                    {selected ? <Check className="mt-0.5 size-4 text-amber-700" /> : null}
+                                  </div>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
               </div>
             </div>
           ) : null}
