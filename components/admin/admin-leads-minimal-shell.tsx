@@ -44,14 +44,6 @@ function formatCurrency(value: number): string {
   }).format(value);
 }
 
-function formatMetricValue(value: number | null): string {
-  if (value === null) {
-    return "—";
-  }
-
-  return String(value);
-}
-
 function getStatusTone(status: AdminLeadOutreachStatus): string {
   switch (status) {
     case "contacted":
@@ -78,9 +70,37 @@ function getStatusLabel(status: AdminLeadOutreachStatus): string {
   }
 }
 
-function SummaryCard({ title, value, hint }: { title: string; value: string; hint: string }) {
+function getTemperatureTone(temperature: AdminPortalLead["temperature"]): string {
+  switch (temperature) {
+    case "Vruć lead":
+      return "border-emerald-200 bg-emerald-50 text-emerald-700";
+    case "Dobar lead":
+      return "border-blue-200 bg-blue-50 text-blue-700";
+    default:
+      return "border-slate-200 bg-slate-50 text-slate-700";
+  }
+}
+
+function SummaryCard({
+  title,
+  value,
+  hint,
+  tone = "default",
+}: {
+  title: string;
+  value: string;
+  hint: string;
+  tone?: "default" | "emerald" | "blue" | "amber";
+}) {
+  const toneClasses = {
+    default: "border-slate-200/80 bg-white",
+    emerald: "border-emerald-200/80 bg-emerald-50/70",
+    blue: "border-blue-200/80 bg-blue-50/70",
+    amber: "border-amber-200/80 bg-amber-50/70",
+  };
+
   return (
-    <Card className="border-slate-200/80 bg-white shadow-[0_18px_50px_-34px_rgba(15,23,42,0.28)]">
+    <Card className={cn("shadow-[0_18px_50px_-34px_rgba(15,23,42,0.28)]", toneClasses[tone])}>
       <CardHeader className="pb-3">
         <CardDescription className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">{title}</CardDescription>
         <CardTitle className="mt-2 text-3xl font-bold tracking-tight text-slate-950">{value}</CardTitle>
@@ -102,6 +122,33 @@ function formatDate(value: string | null): string {
     month: "2-digit",
     year: "numeric",
   }).format(new Date(value));
+}
+
+function LeadSignalCard({
+  title,
+  value,
+  hint,
+  tone = "default",
+}: {
+  title: string;
+  value: string;
+  hint: string;
+  tone?: "default" | "emerald" | "blue" | "amber";
+}) {
+  const toneClasses = {
+    default: "border-slate-200 bg-slate-50 text-slate-700",
+    emerald: "border-emerald-200 bg-emerald-50 text-emerald-800",
+    blue: "border-blue-200 bg-blue-50 text-blue-800",
+    amber: "border-amber-200 bg-amber-50 text-amber-800",
+  };
+
+  return (
+    <div className={cn("min-w-0 rounded-2xl border px-3 py-3 text-sm", toneClasses[tone])}>
+      <p className="text-[11px] uppercase tracking-[0.14em] text-slate-500">{title}</p>
+      <p className="mt-1 break-words text-lg font-semibold leading-tight text-slate-950">{value}</p>
+      <p className="mt-1 text-xs leading-5 text-slate-600">{hint}</p>
+    </div>
+  );
 }
 
 function LeadRow({ lead, onSaved }: { lead: AdminPortalLead; onSaved: (lead: AdminPortalLead) => void }) {
@@ -146,10 +193,19 @@ function LeadRow({ lead, onSaved }: { lead: AdminPortalLead; onSaved: (lead: Adm
   }
 
   return (
-    <Card className="overflow-hidden border-slate-200/80 bg-white shadow-[0_20px_45px_-34px_rgba(15,23,42,0.22)]">
+    <Card
+      className={cn(
+        "overflow-hidden bg-white shadow-[0_20px_45px_-34px_rgba(15,23,42,0.22)]",
+        lead.temperature === "Vruć lead"
+          ? "border-emerald-200/80"
+          : lead.temperature === "Dobar lead"
+            ? "border-blue-200/80"
+            : "border-slate-200/80"
+      )}
+    >
       <CardContent className="space-y-4 p-5">
         <div className="grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(360px,0.85fr)] xl:items-start">
-          <div className="min-w-0 space-y-2">
+          <div className="min-w-0 space-y-3">
             <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
@@ -162,6 +218,9 @@ function LeadRow({ lead, onSaved }: { lead: AdminPortalLead; onSaved: (lead: Adm
               <Badge variant="outline" className={cn("rounded-full border px-2.5 py-1 text-[11px] font-semibold", getStatusTone(status))}>
                 {getStatusLabel(status)}
               </Badge>
+              <Badge variant="outline" className={cn("rounded-full border px-2.5 py-1 text-[11px] font-semibold", getTemperatureTone(lead.temperature))}>
+                {lead.temperature}
+              </Badge>
               <Badge variant="outline" className="rounded-full border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-semibold text-slate-700">
                 score {lead.score}
               </Badge>
@@ -171,41 +230,58 @@ function LeadRow({ lead, onSaved }: { lead: AdminPortalLead; onSaved: (lead: Adm
               <span className="inline-flex items-center gap-1"><MapPin className="size-3.5" />{lead.city ?? lead.municipality ?? "Lokacija nije dostupna"}</span>
               <span className="inline-flex items-center gap-1"><Building2 className="size-3.5" />{lead.mainAuthorityName ?? "Nema dominantnog naručioca"}</span>
             </div>
-            <p className="text-sm font-medium leading-6 text-slate-900">{lead.rationale}</p>
-            <p className="text-sm leading-6 text-slate-600">{lead.reasons[0] ?? lead.recommendedAction}</p>
+            <div
+              className={cn(
+                "rounded-2xl border px-4 py-3",
+                lead.temperature === "Vruć lead"
+                  ? "border-emerald-200 bg-emerald-50/70"
+                  : lead.temperature === "Dobar lead"
+                    ? "border-blue-200 bg-blue-50/70"
+                    : "border-slate-200 bg-slate-50/70"
+              )}
+            >
+              <p className="text-sm font-medium leading-6 text-slate-900">{lead.rationale}</p>
+              <p className="mt-2 text-sm leading-6 text-slate-600">{lead.reasons[0] ?? lead.recommendedAction}</p>
+            </div>
+            <div className="rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-3">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Preporučeni pristup</p>
+              <p className="mt-2 text-sm font-medium leading-6 text-slate-900">{lead.recommendedAction}</p>
+            </div>
             <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs text-slate-500">
               <span>Zadnji kontakt: {formatDateTime(lead.lastContactedAt)}</span>
               <span>Bilješka ažurirana: {formatDateTime(lead.noteUpdatedAt)}</span>
             </div>
           </div>
 
-          <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.15fr)_132px]">
-            <div className="min-w-0 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-700">
-              <p className="text-[11px] uppercase tracking-[0.14em] text-slate-500">Potvrđene pobjede</p>
-              <p className="mt-1 break-words text-lg font-semibold leading-tight text-slate-950">{lead.totalWinsCount}</p>
-              <p className="mt-1 text-xs text-slate-500">Povezano sa konkretnim dodjelama iz portala.</p>
-            </div>
-            <div className="min-w-0 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-700">
-              <p className="text-[11px] uppercase tracking-[0.14em] text-slate-500">Portal učešća</p>
-              <p className="mt-1 break-words text-base font-semibold leading-tight text-slate-950 xl:text-lg">
-                {formatMetricValue(lead.totalBidsCount)}
-              </p>
-              <p className="mt-1 text-xs text-slate-500">
-                {lead.totalBidsCount !== null ? "Ukupan broj učešća dostupan iz portal agregata." : "Portal ne daje pouzdano ukupan broj učešća za ovu firmu."}
-              </p>
-            </div>
-            <div className="min-w-0 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-700">
-              <p className="text-[11px] uppercase tracking-[0.14em] text-slate-500">Signal bez pobjede</p>
-              <p className="mt-1 break-words text-sm font-semibold leading-tight text-slate-950">
-                {lead.lostTendersCount !== null ? `${lead.lostTendersCount}${lead.lossRate !== null ? ` · ${lead.lossRate}%` : ""}` : "Nije pouzdano dostupno"}
-              </p>
-              <p className="mt-1 text-xs text-slate-500">Prikazujemo samo kad portal agregati daju smislen odnos učešća i pobjeda.</p>
-            </div>
-            <div className="min-w-0 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-700">
-              <p className="text-[11px] uppercase tracking-[0.14em] text-slate-500">Vrijednost pobjeda</p>
-              <p className="mt-1 break-words text-sm font-semibold leading-tight text-slate-950">{formatCurrency(lead.totalWonValue)}</p>
-              <p className="mt-1 text-xs text-slate-500">Zbir potvrđenih dodjela koje prikazujemo ispod.</p>
-            </div>
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+            <LeadSignalCard
+              title="Potvrđene pobjede"
+              value={String(lead.totalWinsCount)}
+              hint="Broj pobjeda koje možemo povezati sa konkretnim portal dodjelama."
+              tone="emerald"
+            />
+            <LeadSignalCard
+              title="Vrijednost pobjeda"
+              value={formatCurrency(lead.totalWonValue)}
+              hint="Zbir potvrđenih vrijednosti iz dostupnih javnih dodjela."
+              tone="emerald"
+            />
+            <LeadSignalCard
+              title="Svježa aktivnost"
+              value={lead.recentAwards180d > 0 ? `${lead.recentAwards180d} u 180 dana` : "Nema svježih"}
+              hint={lead.lastAwardDate ? `Zadnja potvrđena pobjeda: ${formatDate(lead.lastAwardDate)}` : "Nema novije potvrđene pobjede u prikazanom periodu."}
+              tone="amber"
+            />
+            <LeadSignalCard
+              title="Pipeline naručioca"
+              value={lead.authorityPlannedCount90d > 0 ? String(lead.authorityPlannedCount90d) : "Za sada nema"}
+              hint={
+                lead.authorityPlannedCount90d > 0
+                  ? `${lead.mainAuthorityName ?? "Dominantni naručilac"} ima novi planirani pipeline u narednih 90 dana.`
+                  : "Kod dominantnog naručioca trenutno ne vidimo novi planirani pipeline."
+              }
+              tone="blue"
+            />
             <Button type="button" variant="outline" className="h-full min-h-[76px] rounded-2xl border-slate-200 bg-white px-3 py-3 text-sm font-medium sm:col-span-2 xl:col-span-1" onClick={() => setExpanded((current) => !current)}>
               {expanded ? "Sakrij profil" : "Otvori profil firme"}
             </Button>
@@ -239,12 +315,12 @@ function LeadRow({ lead, onSaved }: { lead: AdminPortalLead; onSaved: (lead: Adm
                     <p className="mt-1 text-xs text-slate-500">{lead.lastContractType ?? "Tip ugovora nije dostupan"}</p>
                   </div>
                   <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
-                    <p className="text-[11px] uppercase tracking-[0.14em] text-slate-500">Signal učešća bez pobjede</p>
-                    <p className="mt-1 text-sm font-semibold text-slate-950">{lead.lostTendersCount !== null ? lead.lostTendersCount : "Nije pouzdano dostupno"}</p>
+                    <p className="text-[11px] uppercase tracking-[0.14em] text-slate-500">Zadnja potvrđena pobjeda</p>
+                    <p className="mt-1 text-sm font-semibold text-slate-950">{formatDate(lead.lastAwardDate)}</p>
                     <p className="mt-1 text-xs text-slate-500">
-                      {lead.totalBidsCount !== null
-                        ? `Portal učešća: ${lead.totalBidsCount} · Stopa bez pobjede: ${lead.lossRate !== null ? `${lead.lossRate}%` : "—"}`
-                        : "Za ovu firmu portal trenutno ne daje pouzdanu metriku ukupnih učešća."}
+                      {lead.lastWinningPrice !== null
+                        ? `Vrijednost zadnje potvrđene pobjede: ${formatCurrency(lead.lastWinningPrice)}`
+                        : "Vrijednost zadnje potvrđene pobjede nije dostupna."}
                     </p>
                   </div>
                 </div>
@@ -400,7 +476,7 @@ export function AdminLeadsMinimalShell({ data, adminEmail }: AdminLeadsMinimalSh
                 Projekcija najboljih potencijalnih klijenata za outreach
               </h1>
               <p className="max-w-2xl text-sm leading-7 text-slate-300 sm:text-base">
-                Lista je rangirana samo po signalima koje možemo kvalitetno potvrditi iz portala javnih nabavki: stvarne dodjele, vidljivo učešće bez pobjede kada je dostupno i naredni pipeline kod poznatih naručilaca.
+                Lista je rangirana samo po signalima koje možemo kvalitetno potvrditi iz portala javnih nabavki: stvarne dodjele, potvrđena vrijednost, svježina aktivnosti i naredni pipeline kod poznatih naručilaca.
               </p>
             </div>
           </div>
@@ -413,10 +489,10 @@ export function AdminLeadsMinimalShell({ data, adminEmail }: AdminLeadsMinimalSh
       </section>
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <SummaryCard title="Procijenjeni potencijalni klijenti" value={String(data.totalCandidates)} hint="Ukupan broj firmi koje su prošle filter zasnovan na potvrđenim portal signalima." />
-        <SummaryCard title="Vrući leadovi" value={String(leads.filter((lead) => lead.temperature === "Vruć lead").length)} hint="Najjači prioritet za prodajni kontakt." />
-        <SummaryCard title="Sa signalom potrebe" value={String(leads.filter((lead) => (lead.lostTendersCount ?? 0) > 0).length)} hint="Firme kod kojih portal daje smislen signal nastupa bez pobjede." />
-        <SummaryCard title="Sa pipeline signalom" value={String(leads.filter((lead) => lead.authorityPlannedCount90d > 0).length)} hint="Firme čiji dominantni naručilac već ima nove planirane nabavke." />
+        <SummaryCard title="Procijenjeni potencijalni klijenti" value={String(data.totalCandidates)} hint="Ukupan broj firmi koje su prošle filter zasnovan na potvrđenim portal signalima." tone="default" />
+        <SummaryCard title="Vrući leadovi" value={String(leads.filter((lead) => lead.temperature === "Vruć lead").length)} hint="Najjači prioritet za prodajni kontakt." tone="emerald" />
+        <SummaryCard title="Sa svježom aktivnošću" value={String(leads.filter((lead) => lead.recentAwards180d > 0).length)} hint="Firme sa bar jednom potvrđenom dodjelom u zadnjih 180 dana." tone="amber" />
+        <SummaryCard title="Sa pipeline signalom" value={String(leads.filter((lead) => lead.authorityPlannedCount90d > 0).length)} hint="Firme čiji dominantni naručilac već ima nove planirane nabavke." tone="blue" />
       </section>
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">

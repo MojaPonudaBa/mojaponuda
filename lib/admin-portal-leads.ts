@@ -35,12 +35,8 @@ export interface AdminPortalLead {
   portalCompanyId: string | null;
   city: string | null;
   municipality: string | null;
-  totalBidsCount: number | null;
   totalWinsCount: number;
-  lostTendersCount: number | null;
   totalWonValue: number;
-  winRate: number | null;
-  lossRate: number | null;
   recentAwards180d: number;
   recentWonValue180d: number;
   lastAwardDate: string | null;
@@ -212,38 +208,6 @@ function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
 }
 
-function getUsableBidCount(totalBidsCount: number | null | undefined, totalWinsCount: number): number | null {
-  const normalized = totalBidsCount ?? 0;
-
-  if (normalized <= 0 || normalized < totalWinsCount) {
-    return null;
-  }
-
-  return normalized;
-}
-
-function getLostTendersCount(totalBidsCount: number | null, totalWinsCount: number): number | null {
-  if (totalBidsCount === null) {
-    return null;
-  }
-
-  return Math.max(totalBidsCount - totalWinsCount, 0);
-}
-
-function getLossRate(totalBidsCount: number | null, totalWinsCount: number): number | null {
-  if (totalBidsCount === null || totalBidsCount <= 0) {
-    return null;
-  }
-
-  const lostTendersCount = getLostTendersCount(totalBidsCount, totalWinsCount);
-
-  if (lostTendersCount === null) {
-    return null;
-  }
-
-  return Number(((lostTendersCount / totalBidsCount) * 100).toFixed(1));
-}
-
 function normalizeLeadStatus(value: string | null | undefined): AdminLeadOutreachStatus {
   switch ((value ?? "").trim().toLowerCase()) {
     case "contacted":
@@ -278,61 +242,53 @@ function getRecommendedAction(input: {
   temperature: AdminPortalLeadTemperature;
   hasPipeline: boolean;
   recentAwards: number;
-  lostTendersCount: number | null;
-  lossRate: number | null;
+  totalWinsCount: number;
 }): string {
-  const { temperature, hasPipeline, recentAwards, lostTendersCount, lossRate } = input;
+  const { temperature, hasPipeline, recentAwards, totalWinsCount } = input;
 
   if (temperature === "Vruć lead") {
-    if ((lostTendersCount ?? 0) >= 4) {
-      return hasPipeline
-        ? "Kontaktirati prioritetno: imaju dokazanu aktivnost, signal učešća bez pobjede u dostupnom portalu i novi pipeline kod poznatih naručilaca."
-        : "Kontaktirati prioritetno uz poruku da alat smanjuje propuste i podiže disciplinu pripreme na narednim postupcima.";
-    }
-
     return hasPipeline
-      ? "Kontaktirati prioritetno uz referencu na njihove svježe dodjele i planirane nabavke kod istih naručilaca."
-      : "Kontaktirati prioritetno uz referencu na svježe dodjele i potrebu za boljom pripremom narednih ponuda.";
+      ? "Kontaktirati prioritetno uz referencu na njihove potvrđene pobjede i planirane nabavke kod istog naručioca."
+      : recentAwards > 0
+        ? "Kontaktirati prioritetno dok je firma aktivna na portalu i vezati poruku za njihove svježe potvrđene pobjede."
+        : "Kontaktirati prioritetno uz referencu na potvrđene pobjede i potrebu za sigurnijom pripremom narednih ponuda.";
   }
 
   if (temperature === "Dobar lead") {
-    if (lossRate !== null && lossRate >= 40) {
-      return "Poslati personalizovan outreach sa fokusom na kontrolu rizika, kvalitetniju pripremu i manje postupaka bez pobjede.";
-    }
-
-    return recentAwards > 0
-      ? "Poslati personalizovan outreach sa fokusom na konkurentsku pripremu i kontrolu rizika prijave."
-      : "Ubaciti u follow-up listu i javiti se kada dobiju novu svježu aktivnost na portalu.";
+    return hasPipeline
+      ? "Ubaciti u uži follow-up i javiti se prije narednog talasa planiranih nabavki kod poznatog naručioca."
+      : recentAwards > 0
+        ? "Poslati personalizovan outreach sa fokusom na njihove svježe dodjele i bolju kontrolu narednih prijava."
+        : "Držati u aktivnoj shortlisti i javiti se na sljedeći potvrđeni signal sa portala.";
   }
 
   return hasPipeline
     ? "Držati na radaru i aktivirati outreach prije narednog talasa planiranih nabavki kod poznatog naručioca."
-    : "Držati na radaru i aktivirati outreach kada se pojavi nova dodjela ili jači signal učešća bez pobjede.";
+    : totalWinsCount >= 3
+      ? "Držati na radaru kao dokazano aktivnu tender firmu i javiti se kada se pojavi nova pobjeda ili veća nabavka."
+      : "Pratiti i aktivirati outreach na prvu narednu potvrđenu dodjelu ili novi pipeline signal.";
 }
 
 function buildLeadRationale(input: {
-  totalBidsCount: number | null;
   totalWinsCount: number;
-  lostTendersCount: number | null;
-  lossRate: number | null;
   recentAwards180d: number;
   authorityPlannedCount90d: number;
   totalWonValue: number;
 }): string {
-  if ((input.lostTendersCount ?? 0) >= 6 && input.totalWinsCount >= 2) {
-    return `Aktivan ponuđač sa ${input.totalWinsCount} pobjeda i snažnim signalom učešća bez pobjede u dostupnim portal agregatima — dobar spoj budžeta i potrebe za boljom pripremom.`;
-  }
-
-  if ((input.lostTendersCount ?? 0) >= 4 && input.authorityPlannedCount90d > 0) {
-    return `Redovno učestvuje na tenderima, ne zatvara sve postupke i već ima novi pipeline kod naručilaca gdje je aktivan.`;
-  }
-
   if (input.recentAwards180d >= 2 && input.totalWonValue >= 100_000) {
     return `Ozbiljan komercijalni igrač sa svježim pobjedama i dovoljno velikim portfeljem da alat za kontrolu rizika ima jasan ROI.`;
   }
 
-  if (input.lossRate !== null && input.lossRate >= 50 && (input.totalBidsCount ?? 0) >= 6) {
-    return `Ima vidljiv intenzitet učešća, ali i visok udio nastupa bez pobjede prema dostupnim portal podacima, što ga čini dobrim kandidatom za pristup zasnovan na smanjenju rizika.`;
+  if (input.authorityPlannedCount90d > 0 && input.totalWinsCount >= 2) {
+    return `Već dobija poslove kod poznatih naručilaca, a ispred sebe ima i novi pipeline gdje vrijedi ući sa ciljanim outreachom.`;
+  }
+
+  if (input.totalWinsCount >= 5) {
+    return `Firma ima dokazanu istoriju pobjeda na javnim nabavkama i dovoljno jak komercijalni trag da vrijedi ući u uži outreach fokus.`;
+  }
+
+  if (input.recentAwards180d > 0) {
+    return `Firma je svježe aktivna na portalu i ima potvrđene pobjede koje daju dobar povod za pravovremen prodajni kontakt.`;
   }
 
   if (input.totalWinsCount >= 2) {
@@ -343,34 +299,25 @@ function buildLeadRationale(input: {
 }
 
 function buildLeadReasons(input: {
-  lostTendersCount: number | null;
-  lossRate: number | null;
   recentAwards180d: number;
   totalWinsCount: number;
   totalWonValue: number;
   averageBidders: number | null;
   authorityPlannedCount90d: number;
   authorityPlannedValue90d: number;
-  totalBidsCount: number | null;
   hasLocation: boolean;
   lastAwardDate: string | null;
 }): string[] {
   const reasons: string[] = [];
 
-  if ((input.lostTendersCount ?? 0) >= 8) {
-    reasons.push(`Dostupni portal agregati pokazuju najmanje ${input.lostTendersCount} postupaka bez pobjede, što je snažan signal za alat koji smanjuje greške i podiže kvalitet prijave.`);
-  } else if ((input.lostTendersCount ?? 0) >= 3) {
-    reasons.push(`Dostupni portal agregati pokazuju signal učešća bez pobjede (${input.lostTendersCount}), pa postoji realan prostor za bolju pripremu narednih ponuda.`);
-  }
-
-  if (input.lossRate !== null && input.lossRate >= 45 && (input.totalBidsCount ?? 0) >= 6 && input.lostTendersCount !== null) {
-    reasons.push(`Oko ${input.lossRate}% dostupnog portal volumena završava bez pobjede (${input.lostTendersCount} od ${input.totalBidsCount}), što je jasan pain signal.`);
-  }
-
   if (input.recentAwards180d >= 3) {
     reasons.push(`Ima ${input.recentAwards180d} dodjele u zadnjih 180 dana, što pokazuje aktivno prisustvo na portalu.`);
   } else if (input.recentAwards180d > 0) {
     reasons.push(`Ima ${input.recentAwards180d} svježe dodjele u zadnjih 180 dana.`);
+  }
+
+  if (input.totalWonValue >= 100_000) {
+    reasons.push(`Ukupno dobijena vrijednost od oko ${formatCompactCurrency(input.totalWonValue)} sugeriše ozbiljan komercijalni potencijal.`);
   }
 
   if (input.totalWinsCount >= 10) {
@@ -379,10 +326,6 @@ function buildLeadReasons(input: {
     reasons.push(`Već ima dokazanu istoriju pobjeda na javnim nabavkama (${input.totalWinsCount}).`);
   } else if (input.totalWinsCount > 0) {
     reasons.push(`Ima bar ${input.totalWinsCount} potvrđenu pobjedu, što znači da nije slučajan ponuđač nego realna tender firma.`);
-  }
-
-  if (input.totalWonValue >= 100_000) {
-    reasons.push(`Ukupno dobijena vrijednost od oko ${formatCompactCurrency(input.totalWonValue)} sugeriše ozbiljan komercijalni potencijal.`);
   }
 
   if (input.averageBidders !== null && input.averageBidders >= 3) {
@@ -397,10 +340,6 @@ function buildLeadReasons(input: {
     );
   }
 
-  if ((input.totalBidsCount ?? 0) >= 8) {
-    reasons.push(`Ima široku aktivnost na portalu (${input.totalBidsCount} evidentiranih postupaka).`);
-  }
-
   if (input.hasLocation) {
     reasons.push("Portal već daje osnovne identifikacione podatke firme za početni outreach research.");
   }
@@ -413,54 +352,26 @@ function buildLeadReasons(input: {
 }
 
 function scoreLead(input: {
-  lostTendersCount: number | null;
-  lossRate: number | null;
   recentAwards180d: number;
   totalWinsCount: number;
   totalWonValue: number;
   averageBidders: number | null;
   authorityPlannedCount90d: number;
-  totalBidsCount: number | null;
   hasLocation: boolean;
   lastAwardDate: string | null;
 }): number {
   let score = 0;
 
-  score += input.totalBidsCount !== null
-    ? input.totalBidsCount >= 18
-      ? 18
-      : input.totalBidsCount >= 10
-        ? 12
-        : input.totalBidsCount >= 6
-          ? 8
-          : input.totalBidsCount >= 4
-            ? 4
-            : 0
-    : 0;
-  score += (input.lostTendersCount ?? 0) >= 12 ? 22 : (input.lostTendersCount ?? 0) >= 6 ? 16 : (input.lostTendersCount ?? 0) >= 3 ? 10 : (input.lostTendersCount ?? 0) > 0 ? 4 : 0;
-  score += input.lossRate !== null && (input.totalBidsCount ?? 0) >= 5
-    ? input.lossRate >= 75
-      ? 10
-      : input.lossRate >= 50
-        ? 8
-        : input.lossRate >= 30
-          ? 5
-          : 0
-    : 0;
-  score += input.totalWinsCount >= 10 ? 12 : input.totalWinsCount >= 5 ? 9 : input.totalWinsCount > 0 ? 4 : 0;
-  score += input.totalWonValue >= 500_000 ? 14 : input.totalWonValue >= 100_000 ? 10 : input.totalWonValue >= 25_000 ? 6 : 0;
-  score += input.recentAwards180d >= 3 ? 10 : input.recentAwards180d > 0 ? 5 : 0;
+  score += input.totalWinsCount >= 10 ? 28 : input.totalWinsCount >= 5 ? 20 : input.totalWinsCount >= 3 ? 14 : input.totalWinsCount > 0 ? 8 : 0;
+  score += input.totalWonValue >= 500_000 ? 22 : input.totalWonValue >= 100_000 ? 16 : input.totalWonValue >= 25_000 ? 10 : 0;
+  score += input.recentAwards180d >= 3 ? 18 : input.recentAwards180d > 0 ? 10 : 0;
   score += input.averageBidders !== null && input.averageBidders >= 4 ? 8 : input.averageBidders !== null && input.averageBidders >= 2 ? 4 : 0;
-  score += Math.min(10, input.authorityPlannedCount90d * 2.5);
+  score += Math.min(12, input.authorityPlannedCount90d * 3);
   score += input.hasLocation ? 4 : 0;
-  score += input.lastAwardDate && isWithinDays(input.lastAwardDate, 60) ? 6 : input.lastAwardDate && isWithinDays(input.lastAwardDate, 180) ? 3 : 0;
+  score += input.lastAwardDate && isWithinDays(input.lastAwardDate, 60) ? 8 : input.lastAwardDate && isWithinDays(input.lastAwardDate, 180) ? 4 : 0;
 
-  if (input.lossRate !== null && input.lossRate < 20 && input.totalWinsCount >= 5) {
+  if (input.totalWinsCount === 1 && input.totalWonValue < 25_000 && input.recentAwards180d === 0) {
     score -= 6;
-  }
-
-  if (input.totalBidsCount !== null && input.totalBidsCount < 5 && input.totalWinsCount === 0) {
-    score -= 10;
   }
 
   return clamp(score, 0, 100);
@@ -477,7 +388,7 @@ export async function loadAdminPortalLeadsData(): Promise<AdminPortalLeadsData> 
     admin.from("companies").select("jib, name"),
     admin
       .from("market_companies")
-      .select("portal_id, name, jib, city, municipality, total_bids_count, total_wins_count, total_won_value, win_rate, created_at")
+      .select("portal_id, name, jib, city, municipality, total_wins_count, total_won_value")
       .order("total_won_value", { ascending: false })
       .limit(400),
     admin
@@ -520,7 +431,7 @@ export async function loadAdminPortalLeadsData(): Promise<AdminPortalLeadsData> 
   const customerCompanies = (companiesResult.data ?? []) as Pick<Company, "jib" | "name">[];
   const marketCompanies = (marketCompaniesResult.data ?? []) as Pick<
     MarketCompany,
-    "portal_id" | "name" | "jib" | "city" | "municipality" | "total_bids_count" | "total_wins_count" | "total_won_value" | "win_rate" | "created_at"
+    "portal_id" | "name" | "jib" | "city" | "municipality" | "total_wins_count" | "total_won_value"
   >[];
   const awards = (awardsResult.data ?? []) as Pick<
     AwardDecision,
@@ -603,9 +514,6 @@ export async function loadAdminPortalLeadsData(): Promise<AdminPortalLeadsData> 
       const jib = normalizeJib(company.jib);
       const normalizedName = normalizeEntityName(company.name);
       const aggregateWinsCount = company.total_wins_count ?? 0;
-      const totalBidsCount = getUsableBidCount(company.total_bids_count ?? 0, aggregateWinsCount);
-      const totalWinsCount = company.total_wins_count ?? 0;
-      const lostTendersCount = getLostTendersCount(totalBidsCount, totalWinsCount) ?? 0;
       const totalWonValue = Number(company.total_won_value) || 0;
 
       if (
@@ -619,10 +527,8 @@ export async function loadAdminPortalLeadsData(): Promise<AdminPortalLeadsData> 
       }
 
       return (
-        ((totalBidsCount ?? 0) >= 5 && (lostTendersCount >= 2 || totalWinsCount >= 2)) ||
-        totalWinsCount >= 2 ||
-        lostTendersCount >= 4 ||
-        (totalWonValue >= 100_000 && totalWinsCount >= 1)
+        aggregateWinsCount >= 1 ||
+        totalWonValue >= 25_000
       );
     });
 
@@ -680,9 +586,6 @@ export async function loadAdminPortalLeadsData(): Promise<AdminPortalLeadsData> 
           };
         });
       const totalWinsCount = confirmedWins.length;
-      const totalBidsCount = getUsableBidCount(company.total_bids_count ?? 0, totalWinsCount);
-      const lostTendersCount = getLostTendersCount(totalBidsCount, totalWinsCount);
-      const lossRate = getLossRate(totalBidsCount, totalWinsCount);
       const recentAwards180d = confirmedWins.filter(({ award }) => isWithinDays(getAwardBaseDate(award), 180));
       const biddersWithValue = confirmedWins.filter(({ award }) => award.total_bidders_count !== null);
       const averageBidders = biddersWithValue.length
@@ -726,37 +629,28 @@ export async function loadAdminPortalLeadsData(): Promise<AdminPortalLeadsData> 
       );
       const totalWonValue = confirmedWins.reduce((sum, item) => sum + (item.win.winningPrice ?? 0), 0);
       const rationale = buildLeadRationale({
-        totalBidsCount,
         totalWinsCount,
-        lostTendersCount,
-        lossRate,
         recentAwards180d: recentAwards180d.length,
         authorityPlannedCount90d,
         totalWonValue,
       });
       const score = scoreLead({
-        lostTendersCount,
-        lossRate,
         recentAwards180d: recentAwards180d.length,
         totalWinsCount,
         totalWonValue,
         averageBidders,
         authorityPlannedCount90d,
-        totalBidsCount,
         hasLocation: Boolean(company.city || company.municipality),
         lastAwardDate: lastAward?.win.awardDate ?? null,
       });
       const temperature = getTemperature(score);
       const reasons = buildLeadReasons({
-        lostTendersCount,
-        lossRate,
         recentAwards180d: recentAwards180d.length,
         totalWinsCount,
         totalWonValue,
         averageBidders,
         authorityPlannedCount90d,
         authorityPlannedValue90d,
-        totalBidsCount,
         hasLocation: Boolean(company.city || company.municipality),
         lastAwardDate: lastAward?.win.awardDate ?? null,
       });
@@ -769,15 +663,8 @@ export async function loadAdminPortalLeadsData(): Promise<AdminPortalLeadsData> 
         portalCompanyId: company.portal_id ?? null,
         city: company.city ?? null,
         municipality: company.municipality ?? null,
-        totalBidsCount,
         totalWinsCount,
-        lostTendersCount,
         totalWonValue,
-        winRate:
-          totalBidsCount !== null && totalBidsCount > 0
-            ? Number(((totalWinsCount / totalBidsCount) * 100).toFixed(1))
-            : null,
-        lossRate,
         recentAwards180d: recentAwards180d.length,
         recentWonValue180d: recentAwards180d.reduce((sum, item) => sum + (item.win.winningPrice ?? 0), 0),
         lastAwardDate: lastAward?.win.awardDate ?? null,
@@ -798,8 +685,7 @@ export async function loadAdminPortalLeadsData(): Promise<AdminPortalLeadsData> 
           temperature,
           hasPipeline: authorityPlannedCount90d > 0,
           recentAwards: recentAwards180d.length,
-          lostTendersCount,
-          lossRate,
+          totalWinsCount,
         }),
         note: noteRow?.note ?? "",
         outreachStatus,
@@ -815,16 +701,11 @@ export async function loadAdminPortalLeadsData(): Promise<AdminPortalLeadsData> 
         recentWins,
       };
     })
-    .filter((lead) => lead.totalWinsCount > 0 || lead.authorityPlannedCount90d > 0 || (lead.lostTendersCount ?? 0) > 0)
+    .filter((lead) => lead.totalWinsCount > 0)
     .sort((a, b) => {
       const scoreDiff = b.score - a.score;
       if (scoreDiff !== 0) {
         return scoreDiff;
-      }
-
-      const lossDiff = (b.lostTendersCount ?? 0) - (a.lostTendersCount ?? 0);
-      if (lossDiff !== 0) {
-        return lossDiff;
       }
 
       const pipelineDiff = b.authorityPlannedCount90d - a.authorityPlannedCount90d;
@@ -835,6 +716,11 @@ export async function loadAdminPortalLeadsData(): Promise<AdminPortalLeadsData> 
       const recentDiff = b.recentAwards180d - a.recentAwards180d;
       if (recentDiff !== 0) {
         return recentDiff;
+      }
+
+      const winsDiff = b.totalWinsCount - a.totalWinsCount;
+      if (winsDiff !== 0) {
+        return winsDiff;
       }
 
       return b.totalWonValue - a.totalWonValue;
