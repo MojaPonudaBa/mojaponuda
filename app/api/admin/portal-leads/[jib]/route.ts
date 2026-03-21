@@ -15,7 +15,25 @@ function normalizeJib(value: string): string {
 }
 
 function isOutreachStatus(value: string): value is AdminLeadOutreachStatus {
-  return ["nije_kontaktiran", "u_toku", "kontaktiran", "pauza"].includes(value);
+  return ["new", "contacted", "converted", "dead", "nije_kontaktiran", "u_toku", "kontaktiran", "pauza"].includes(value);
+}
+
+function normalizeStatus(value: string | undefined): AdminLeadOutreachStatus {
+  switch ((value ?? "").trim().toLowerCase()) {
+    case "contacted":
+    case "kontaktiran":
+    case "u_toku":
+      return "contacted";
+    case "converted":
+    case "konvertovan":
+      return "converted";
+    case "dead":
+    case "mrtav":
+    case "pauza":
+      return "dead";
+    default:
+      return "new";
+  }
 }
 
 export async function PATCH(request: NextRequest, context: RouteContext) {
@@ -43,6 +61,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     const body = (await request.json()) as {
       leadName?: string;
       note?: string;
+      status?: string;
       outreachStatus?: string;
       lastContactedAt?: string | null;
       nextFollowUpAt?: string | null;
@@ -52,9 +71,10 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: "Nedostaje naziv firme za lead." }, { status: 400 });
     }
 
-    const outreachStatus = isOutreachStatus(body.outreachStatus ?? "")
-      ? body.outreachStatus
-      : "nije_kontaktiran";
+    const rawStatus = body.status ?? body.outreachStatus ?? "";
+    const outreachStatus = isOutreachStatus(rawStatus)
+      ? normalizeStatus(rawStatus)
+      : "new";
 
     const admin = createAdminClient();
     const { error } = await admin.from("admin_portal_lead_notes").upsert(

@@ -1,11 +1,11 @@
-import { AdminDashboardShellRefined } from "@/components/admin/admin-dashboard-shell-refined";
-import type { AdminDashboardData } from "@/lib/admin-dashboard";
+import { AdminOverviewShell } from "@/components/admin/admin-overview-shell";
+import type { AdminOverviewData } from "@/lib/admin-operator";
 
 interface AdminDashboardOverviewProps {
-  data: AdminDashboardData;
+  data: AdminOverviewData;
   adminEmail: string;
 }
 
 export function AdminDashboardOverview({ data, adminEmail }: AdminDashboardOverviewProps) {
-  return <AdminDashboardShellRefined data={data} adminEmail={adminEmail} />;
+  return <AdminOverviewShell data={data} adminEmail={adminEmail} />;
 }

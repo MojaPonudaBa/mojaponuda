@@ -6,14 +6,27 @@ import type {
   Database,
   MarketCompany,
   PlannedProcurement,
+  Tender,
 } from "@/types/database";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-export type AdminLeadOutreachStatus = "nije_kontaktiran" | "u_toku" | "kontaktiran" | "pauza";
+export type AdminLeadOutreachStatus = "new" | "contacted" | "converted" | "dead";
 export type AdminPortalLeadTemperature = "Vruć lead" | "Dobar lead" | "Pratiti";
 
 type AdminPortalLeadNoteRow = Database["public"]["Tables"]["admin_portal_lead_notes"]["Row"];
+
+export interface AdminPortalLeadWin {
+  id: string;
+  tenderId: string | null;
+  tenderTitle: string;
+  contractingAuthority: string | null;
+  awardDate: string | null;
+  winningPrice: number | null;
+  procedureType: string | null;
+  contractType: string | null;
+  portalUrl: string | null;
+}
 
 export interface AdminPortalLead {
   jib: string;
@@ -47,6 +60,7 @@ export interface AdminPortalLead {
   nextFollowUpAt: string | null;
   noteUpdatedAt: string | null;
   isTracked: boolean;
+  recentWins: AdminPortalLeadWin[];
 }
 
 export interface AdminPortalLeadsData {
@@ -61,6 +75,47 @@ export interface AdminPortalLeadsData {
 
 function normalizeJib(value: string | null | undefined): string {
   return (value ?? "").replace(/\D/g, "").trim();
+}
+
+function normalizeEntityName(value: string | null | undefined): string {
+  return (value ?? "")
+    .toLowerCase()
+    .replace(/[^a-z0-9čćžšđ]+/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function looksLikePublicEntity(name: string | null | undefined): boolean {
+  const normalized = normalizeEntityName(name);
+
+  if (!normalized) {
+    return false;
+  }
+
+  return [
+    "javno preduzece",
+    "javno poduzece",
+    "ministarstvo",
+    "opcina",
+    "opstina",
+    "grad ",
+    "vlada",
+    "zavod",
+    "dom zdravlja",
+    "bolnica",
+    "univerzitet",
+    "skola",
+  ].some((keyword) => normalized.includes(keyword));
+}
+
+function chunkArray<T>(items: T[], size: number): T[][] {
+  const chunks: T[][] = [];
+
+  for (let index = 0; index < items.length; index += size) {
+    chunks.push(items.slice(index, index + size));
+  }
+
+  return chunks;
 }
 
 function formatCompactCurrency(value: number): string {
@@ -97,6 +152,24 @@ function isWithinDays(value: string | null | undefined, days: number): boolean {
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
+}
+
+function normalizeLeadStatus(value: string | null | undefined): AdminLeadOutreachStatus {
+  switch ((value ?? "").trim().toLowerCase()) {
+    case "contacted":
+    case "kontaktiran":
+    case "u_toku":
+      return "contacted";
+    case "converted":
+    case "konvertovan":
+      return "converted";
+    case "dead":
+    case "mrtav":
+    case "pauza":
+      return "dead";
+    default:
+      return "new";
+  }
 }
 
 function getTemperature(score: number): AdminPortalLeadTemperature {
@@ -224,7 +297,7 @@ export async function loadAdminPortalLeadsData(): Promise<AdminPortalLeadsData> 
     admin
       .from("award_decisions")
       .select(
-        "winner_name, winner_jib, winning_price, estimated_value, total_bidders_count, procedure_type, contract_type, award_date, created_at, contracting_authority_jib"
+        "portal_award_id, tender_id, winner_name, winner_jib, winning_price, estimated_value, total_bidders_count, procedure_type, contract_type, award_date, created_at, contracting_authority_jib"
       )
       .gte("award_date", awardCutoff)
       .order("award_date", { ascending: false })
@@ -265,6 +338,8 @@ export async function loadAdminPortalLeadsData(): Promise<AdminPortalLeadsData> 
   >[];
   const awards = (awardsResult.data ?? []) as Pick<
     AwardDecision,
+    | "portal_award_id"
+    | "tender_id"
     | "winner_name"
     | "winner_jib"
     | "winning_price"
@@ -285,13 +360,33 @@ export async function loadAdminPortalLeadsData(): Promise<AdminPortalLeadsData> 
     "contracting_authority_id" | "estimated_value" | "planned_date" | "contract_type"
   >[];
   const notes = notesResult.error ? [] : ((notesResult.data ?? []) as AdminPortalLeadNoteRow[]);
+  const tenderIds = [...new Set(awards.map((award) => award.tender_id).filter((value): value is string => Boolean(value)))];
+  const tenders: Array<
+    Pick<Tender, "id" | "title" | "contracting_authority" | "portal_url"> 
+  > = [];
+
+  for (const batch of chunkArray(tenderIds, 250)) {
+    const { data, error } = await admin
+      .from("tenders")
+      .select("id, title, contracting_authority, portal_url")
+      .in("id", batch);
+
+    if (error) {
+      throw new Error(`Ne mogu učitati tendere za lead pregled: ${error.message}`);
+    }
+
+    tenders.push(...((data ?? []) as Pick<Tender, "id" | "title" | "contracting_authority" | "portal_url">[]));
+  }
 
   const existingCustomerJibs = new Set(customerCompanies.map((company) => normalizeJib(company.jib)).filter(Boolean));
   const notesByJib = new Map(notes.map((note) => [normalizeJib(note.lead_jib), note]));
   const authorityByJib = new Map(authorities.map((authority) => [normalizeJib(authority.jib), authority]));
   const authorityById = new Map(authorities.map((authority) => [authority.id, authority]));
+  const authorityJibs = new Set(authorities.map((authority) => normalizeJib(authority.jib)).filter(Boolean));
+  const authorityNames = new Set(authorities.map((authority) => normalizeEntityName(authority.name)).filter(Boolean));
   const plannedByAuthorityJib = new Map<string, Array<Pick<PlannedProcurement, "contracting_authority_id" | "estimated_value" | "planned_date" | "contract_type">>>();
   const awardsByWinnerJib = new Map<string, typeof awards>();
+  const tendersById = new Map(tenders.map((tender) => [tender.id, tender]));
 
   for (const item of planned) {
     const authority = item.contracting_authority_id ? authorityById.get(item.contracting_authority_id) : null;
@@ -321,7 +416,15 @@ export async function loadAdminPortalLeadsData(): Promise<AdminPortalLeadsData> 
   const leads = marketCompanies
     .filter((company) => {
       const jib = normalizeJib(company.jib);
-      if (!jib || existingCustomerJibs.has(jib)) {
+      const normalizedName = normalizeEntityName(company.name);
+
+      if (
+        !jib ||
+        existingCustomerJibs.has(jib) ||
+        authorityJibs.has(jib) ||
+        (normalizedName && authorityNames.has(normalizedName)) ||
+        looksLikePublicEntity(company.name)
+      ) {
         return false;
       }
 
@@ -342,6 +445,21 @@ export async function loadAdminPortalLeadsData(): Promise<AdminPortalLeadsData> 
           )
         : null;
       const lastAward = companyAwards[0] ?? null;
+      const recentWins: AdminPortalLeadWin[] = companyAwards.slice(0, 6).map((award) => {
+        const tender = award.tender_id ? tendersById.get(award.tender_id) ?? null : null;
+
+        return {
+          id: award.portal_award_id,
+          tenderId: award.tender_id,
+          tenderTitle: tender?.title ?? award.winner_name ?? "Tender nije povezan",
+          contractingAuthority: tender?.contracting_authority ?? (normalizeJib(award.contracting_authority_jib) ? authorityByJib.get(normalizeJib(award.contracting_authority_jib))?.name ?? null : null),
+          awardDate: getAwardBaseDate(award),
+          winningPrice: Number(award.winning_price) || null,
+          procedureType: award.procedure_type ?? null,
+          contractType: award.contract_type ?? null,
+          portalUrl: tender?.portal_url ?? null,
+        };
+      });
       const authorityCounts = new Map<string, number>();
 
       for (const award of recentAwards180d) {
@@ -385,7 +503,7 @@ export async function loadAdminPortalLeadsData(): Promise<AdminPortalLeadsData> 
         lastAwardDate: lastAward ? getAwardBaseDate(lastAward) : null,
       });
       const noteRow = notesByJib.get(jib) ?? null;
-      const outreachStatus = (noteRow?.outreach_status as AdminLeadOutreachStatus | null) ?? "nije_kontaktiran";
+      const outreachStatus = normalizeLeadStatus(noteRow?.outreach_status ?? null);
 
       return {
         jib,
@@ -420,10 +538,11 @@ export async function loadAdminPortalLeadsData(): Promise<AdminPortalLeadsData> 
         noteUpdatedAt: noteRow?.updated_at ?? null,
         isTracked: Boolean(
           (noteRow?.note && noteRow.note.trim().length > 0) ||
-            outreachStatus !== "nije_kontaktiran" ||
+            outreachStatus !== "new" ||
             noteRow?.last_contacted_at ||
             noteRow?.next_follow_up_at
         ),
+        recentWins,
       };
     })
     .sort((a, b) => {
@@ -446,7 +565,7 @@ export async function loadAdminPortalLeadsData(): Promise<AdminPortalLeadsData> 
     totalCandidates: leads.length,
     hotLeads: leads.filter((lead) => lead.temperature === "Vruć lead").length,
     pipelineLeads: leads.filter((lead) => lead.authorityPlannedCount90d > 0).length,
-    notContactedCount: leads.filter((lead) => lead.outreachStatus === "nije_kontaktiran").length,
+    notContactedCount: leads.filter((lead) => lead.outreachStatus === "new").length,
     leadsWithNotes: leads.filter((lead) => lead.note.trim().length > 0).length,
     leads,
   };

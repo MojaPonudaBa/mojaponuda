@@ -18,8 +18,9 @@ import {
   Settings,
   ChevronDown,
   Shield,
+  CircleDollarSign,
+  Wrench,
   Target,
-  Users,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -49,9 +50,10 @@ const accountItems: NavItem[] = [
 ];
 
 const adminItems: NavItem[] = [
-  { href: "/dashboard/admin", label: "Admin pregled", icon: Shield, exact: true },
-  { href: "/dashboard/admin/leads", label: "Portal leadovi", icon: Target },
-  { href: "/dashboard/admin/crm", label: "CRM računi", icon: Users },
+  { href: "/dashboard/admin", label: "Overview", icon: Shield, exact: true },
+  { href: "/dashboard/admin/leads", label: "Leads", icon: Target },
+  { href: "/dashboard/admin/financials", label: "Financials", icon: CircleDollarSign },
+  { href: "/dashboard/admin/system", label: "System", icon: Wrench },
 ];
 
 interface DashboardSidebarProps {
