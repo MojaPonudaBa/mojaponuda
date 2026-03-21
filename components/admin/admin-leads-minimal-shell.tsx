@@ -28,8 +28,11 @@ function formatDateTime(value: string | null): string {
   }
 
   return new Intl.DateTimeFormat("bs-BA", {
-    dateStyle: "medium",
-    timeStyle: "short",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
   }).format(new Date(value));
 }
 
@@ -87,7 +90,9 @@ function formatDate(value: string | null): string {
   }
 
   return new Intl.DateTimeFormat("bs-BA", {
-    dateStyle: "medium",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
   }).format(new Date(value));
 }
 
@@ -133,9 +138,9 @@ function LeadRow({ lead, onSaved }: { lead: AdminPortalLead; onSaved: (lead: Adm
   }
 
   return (
-    <Card className="border-slate-200/80 bg-white shadow-[0_20px_45px_-34px_rgba(15,23,42,0.22)]">
+    <Card className="overflow-hidden border-slate-200/80 bg-white shadow-[0_20px_45px_-34px_rgba(15,23,42,0.22)]">
       <CardContent className="space-y-4 p-5">
-        <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
+        <div className="grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(360px,0.85fr)] xl:items-start">
           <div className="min-w-0 space-y-2">
             <div className="flex flex-wrap items-center gap-2">
               <button
@@ -159,22 +164,26 @@ function LeadRow({ lead, onSaved }: { lead: AdminPortalLead; onSaved: (lead: Adm
               <span className="inline-flex items-center gap-1"><Building2 className="size-3.5" />{lead.mainAuthorityName ?? "Nema dominantnog naručioca"}</span>
             </div>
             <p className="text-sm leading-6 text-slate-600">{lead.reasons[0] ?? lead.recommendedAction}</p>
+            <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs text-slate-500">
+              <span>Zadnji kontakt: {formatDateTime(lead.lastContactedAt)}</span>
+              <span>Bilješka ažurirana: {formatDateTime(lead.noteUpdatedAt)}</span>
+            </div>
           </div>
 
-          <div className="grid gap-2 sm:grid-cols-3 xl:min-w-[520px]">
+          <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
             <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-700">
               <p className="text-[11px] uppercase tracking-[0.14em] text-slate-500">Pobjede</p>
-              <p className="mt-1 font-semibold text-slate-950">{lead.totalWinsCount}</p>
+              <p className="mt-1 text-lg font-semibold text-slate-950">{lead.totalWinsCount}</p>
             </div>
             <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-700">
               <p className="text-[11px] uppercase tracking-[0.14em] text-slate-500">Vrijednost</p>
-              <p className="mt-1 font-semibold text-slate-950">{formatCurrency(lead.totalWonValue)}</p>
+              <p className="mt-1 text-lg font-semibold text-slate-950">{formatCurrency(lead.totalWonValue)}</p>
             </div>
             <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-700">
-              <p className="text-[11px] uppercase tracking-[0.14em] text-slate-500">Zadnji trag</p>
-              <p className="mt-1 font-semibold text-slate-950">{formatDateTime(lead.lastAwardDate)}</p>
+              <p className="text-[11px] uppercase tracking-[0.14em] text-slate-500">Zadnja aktivnost</p>
+              <p className="mt-1 text-sm font-semibold text-slate-950">{formatDateTime(lead.lastAwardDate)}</p>
             </div>
-            <Button type="button" variant="outline" className="h-auto rounded-2xl border-slate-200 px-4 py-3" onClick={() => setExpanded((current) => !current)}>
+            <Button type="button" variant="outline" className="h-full min-h-[76px] rounded-2xl border-slate-200 bg-white px-4 py-3 text-sm font-medium" onClick={() => setExpanded((current) => !current)}>
               {expanded ? "Sakrij profil" : "Otvori profil firme"}
             </Button>
           </div>
@@ -224,7 +233,7 @@ function LeadRow({ lead, onSaved }: { lead: AdminPortalLead; onSaved: (lead: Adm
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Dobijeni tenderi</p>
-                  <p className="mt-1 text-sm text-slate-600">Prikaz zadnjih dostupnih pobjeda iz javnih podataka.</p>
+                  <p className="mt-1 text-sm text-slate-600">Prikaz samo kvalitetno povezanih pobjeda iz javnih podataka.</p>
                 </div>
                 <Badge variant="outline" className="rounded-full border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700">
                   {lead.recentWins.length} prikazano
@@ -233,7 +242,7 @@ function LeadRow({ lead, onSaved }: { lead: AdminPortalLead; onSaved: (lead: Adm
 
               {lead.recentWins.length === 0 ? (
                 <div className="rounded-2xl border border-dashed border-slate-200 bg-white px-4 py-4 text-sm text-slate-500">
-                  Nema povezanih tender pobjeda u trenutno dostupnom periodu.
+                  Nema dovoljno kvalitetnih i povezanih tender pobjeda u trenutno dostupnom periodu.
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -272,7 +281,7 @@ function LeadRow({ lead, onSaved }: { lead: AdminPortalLead; onSaved: (lead: Adm
           </div>
         ) : null}
 
-        <div className="grid gap-4 xl:grid-cols-[220px_1fr_auto] xl:items-start">
+        <div className="grid gap-4 rounded-3xl border border-slate-200 bg-slate-50/70 p-4 xl:grid-cols-[220px_1fr_132px] xl:items-start">
           <label className="space-y-2">
             <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Status</span>
             <select
@@ -297,8 +306,8 @@ function LeadRow({ lead, onSaved }: { lead: AdminPortalLead; onSaved: (lead: Adm
             />
           </label>
 
-          <div className="flex flex-col items-stretch gap-2 xl:w-[120px]">
-            <Button type="button" onClick={handleSave} disabled={saving}>
+          <div className="flex flex-col items-stretch gap-2 xl:self-end">
+            <Button type="button" onClick={handleSave} disabled={saving} className="w-full">
               <Save className="size-4" />
               {saving ? "Snima..." : "Sačuvaj"}
             </Button>

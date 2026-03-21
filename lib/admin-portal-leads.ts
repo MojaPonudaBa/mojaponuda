@@ -79,8 +79,10 @@ function normalizeJib(value: string | null | undefined): string {
 
 function normalizeEntityName(value: string | null | undefined): string {
   return (value ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
-    .replace(/[^a-z0-9čćžšđ]+/gi, " ")
+    .replace(/[^a-z0-9]+/gi, " ")
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -106,6 +108,31 @@ function looksLikePublicEntity(name: string | null | undefined): boolean {
     "univerzitet",
     "skola",
   ].some((keyword) => normalized.includes(keyword));
+}
+
+function getAuthorityName(
+  authorityByJib: Map<string, Pick<ContractingAuthority, "id" | "name" | "jib" | "city" | "municipality" | "canton" | "entity" | "authority_type" | "activity_type">>,
+  authorityJib: string | null | undefined
+): string | null {
+  const normalizedAuthorityJib = normalizeJib(authorityJib);
+
+  if (!normalizedAuthorityJib) {
+    return null;
+  }
+
+  return authorityByJib.get(normalizedAuthorityJib)?.name ?? null;
+}
+
+function hasReliableAwardContext(
+  award: Pick<AwardDecision, "winner_jib" | "winner_name">,
+  tender: Pick<Tender, "id" | "title" | "contracting_authority" | "portal_url"> | null,
+  authorityName: string | null
+): boolean {
+  if (!normalizeJib(award.winner_jib) || looksLikePublicEntity(award.winner_name)) {
+    return false;
+  }
+
+  return Boolean(tender || authorityName);
 }
 
 function chunkArray<T>(items: T[], size: number): T[][] {
@@ -435,8 +462,14 @@ export async function loadAdminPortalLeadsData(): Promise<AdminPortalLeadsData> 
       const companyAwards = (awardsByWinnerJib.get(jib) ?? []).sort(
         (a, b) => new Date(getAwardBaseDate(b)).getTime() - new Date(getAwardBaseDate(a)).getTime()
       );
-      const recentAwards180d = companyAwards.filter((award) => isWithinDays(getAwardBaseDate(award), 180));
-      const biddersWithValue = companyAwards.filter((award) => award.total_bidders_count !== null);
+      const reliableAwards = companyAwards.filter((award) => {
+        const tender = award.tender_id ? tendersById.get(award.tender_id) ?? null : null;
+        const authorityName = getAuthorityName(authorityByJib, award.contracting_authority_jib);
+
+        return hasReliableAwardContext(award, tender, authorityName);
+      });
+      const recentAwards180d = reliableAwards.filter((award) => isWithinDays(getAwardBaseDate(award), 180));
+      const biddersWithValue = reliableAwards.filter((award) => award.total_bidders_count !== null);
       const averageBidders = biddersWithValue.length
         ? Number(
             (
@@ -444,15 +477,16 @@ export async function loadAdminPortalLeadsData(): Promise<AdminPortalLeadsData> 
             ).toFixed(1)
           )
         : null;
-      const lastAward = companyAwards[0] ?? null;
-      const recentWins: AdminPortalLeadWin[] = companyAwards.slice(0, 6).map((award) => {
+      const lastAward = reliableAwards[0] ?? null;
+      const recentWins: AdminPortalLeadWin[] = reliableAwards.slice(0, 6).map((award) => {
         const tender = award.tender_id ? tendersById.get(award.tender_id) ?? null : null;
+        const authorityName = getAuthorityName(authorityByJib, award.contracting_authority_jib);
 
         return {
           id: award.portal_award_id,
           tenderId: award.tender_id,
-          tenderTitle: tender?.title ?? award.winner_name ?? "Tender nije povezan",
-          contractingAuthority: tender?.contracting_authority ?? (normalizeJib(award.contracting_authority_jib) ? authorityByJib.get(normalizeJib(award.contracting_authority_jib))?.name ?? null : null),
+          tenderTitle: tender?.title ?? "Naziv tendera nije dostupan",
+          contractingAuthority: tender?.contracting_authority ?? authorityName,
           awardDate: getAwardBaseDate(award),
           winningPrice: Number(award.winning_price) || null,
           procedureType: award.procedure_type ?? null,

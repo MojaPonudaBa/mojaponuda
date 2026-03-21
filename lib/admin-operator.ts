@@ -385,13 +385,15 @@ export async function loadAdminOverviewData(): Promise<AdminOverviewData> {
   }));
 
   const syncEvents: AdminActivityEvent[] = jobs
-    .filter((job) => job.status !== "U redu")
+    .filter((job) => job.status === "Treba pažnju" && Boolean(job.lastRun))
+    .sort((a, b) => new Date(b.lastRun ?? 0).getTime() - new Date(a.lastRun ?? 0).getTime())
+    .slice(0, 4)
     .map((job) => ({
       id: `sync-${job.endpoint}`,
-      title: `${job.label} traži pažnju`,
+      title: `${job.label} kasni`,
       description: job.plainMessage,
       occurredAt: job.lastRun ?? new Date().toISOString(),
-      tone: job.status === "Nema podataka" ? "danger" : "warning",
+      tone: "warning",
     }));
 
   const activity = [...signupEvents, ...subscriptionEvents, ...syncEvents]

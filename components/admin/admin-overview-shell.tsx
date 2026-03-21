@@ -11,8 +11,11 @@ interface AdminOverviewShellProps {
 
 function formatDateTime(value: string): string {
   return new Intl.DateTimeFormat("bs-BA", {
-    dateStyle: "medium",
-    timeStyle: "short",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
   }).format(new Date(value));
 }
 
@@ -63,6 +66,32 @@ function toneClass(tone: AdminActivityEvent["tone"]): string {
       return "border-rose-200 bg-rose-50 text-rose-700";
     default:
       return "border-slate-200 bg-slate-50 text-slate-700";
+  }
+}
+
+function toneLabel(tone: AdminActivityEvent["tone"]): string {
+  switch (tone) {
+    case "success":
+      return "ok";
+    case "warning":
+      return "pažnja";
+    case "danger":
+      return "hitno";
+    default:
+      return "info";
+  }
+}
+
+function tonePanelClass(tone: AdminActivityEvent["tone"]): string {
+  switch (tone) {
+    case "success":
+      return "border-emerald-200 bg-emerald-50/60";
+    case "warning":
+      return "border-amber-200 bg-amber-50/60";
+    case "danger":
+      return "border-rose-200 bg-rose-50/60";
+    default:
+      return "border-slate-200 bg-slate-50/80";
   }
 }
 
@@ -179,23 +208,21 @@ export function AdminOverviewShell({ data, adminEmail }: AdminOverviewShellProps
           <CardContent>
             <div className="space-y-3">
               {data.activity.map((event) => (
-                <div key={event.id} className="flex items-start justify-between gap-4 rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3">
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="text-sm font-semibold text-slate-950">{event.title}</p>
-                      <span className={cn("rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em]", toneClass(event.tone))}>
-                        {event.tone === "success"
-                          ? "ok"
-                          : event.tone === "warning"
-                            ? "pažnja"
-                            : event.tone === "danger"
-                              ? "hitno"
-                              : "info"}
-                      </span>
+                <div key={event.id} className={cn("rounded-2xl border px-4 py-3", tonePanelClass(event.tone))}>
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className={cn("rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em]", toneClass(event.tone))}>
+                          {toneLabel(event.tone)}
+                        </span>
+                        <p className="text-sm font-semibold text-slate-950">{event.title}</p>
+                      </div>
+                      <p className="mt-1 text-sm leading-6 text-slate-700">{event.description}</p>
                     </div>
-                    <p className="mt-1 text-sm text-slate-600">{event.description}</p>
+                    <div className="shrink-0 rounded-xl border border-white/70 bg-white/80 px-3 py-2 text-xs font-medium text-slate-500">
+                      {formatDateTime(event.occurredAt)}
+                    </div>
                   </div>
-                  <p className="shrink-0 text-xs text-slate-500">{formatDateTime(event.occurredAt)}</p>
                 </div>
               ))}
             </div>
