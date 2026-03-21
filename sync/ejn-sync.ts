@@ -34,6 +34,19 @@ interface SyncResult {
   error?: string;
 }
 
+export const ADMIN_MANUAL_SYNC_ENDPOINTS = [
+  "MorningSync4AM",
+  "ProcurementNotices",
+  "ContractingAuthorities",
+  "ContractingAuthorityMaintenance4AM",
+  "TenderAreaMaintenance4AM",
+  "Awards",
+  "PlannedProcurements",
+  "Suppliers",
+] as const;
+
+export type AdminManualSyncEndpoint = (typeof ADMIN_MANUAL_SYNC_ENDPOINTS)[number];
+
 export interface TenderAreaMaintenanceResult extends SyncResult {
   scanned: number;
   unresolved: number;
@@ -1608,6 +1621,133 @@ export async function runFullSync(): Promise<{
   duration_ms: number;
 }> {
   return runFullSyncWithOptions();
+}
+
+export async function runAdminPortalSync(): Promise<{
+  results: SyncResult[];
+  duration_ms: number;
+  total_added: number;
+  total_updated: number;
+  status: "ok" | "partial";
+}> {
+  const start = Date.now();
+  const { results } = await runFullSyncWithOptions({
+    runAuthorityMaintenanceAfterSync: false,
+    runTenderAreaMaintenanceAfterSync: false,
+  });
+
+  const supabase = createServiceClient();
+  const maintenanceResults: SyncResult[] = [];
+
+  maintenanceResults.push(
+    await runContractingAuthorityMaintenance({
+      supabase,
+      endpoint: "ContractingAuthorityMaintenance4AM",
+      targetUpdates: 25,
+      scanBatchSize: 100,
+      maxScanRows: 250,
+      writeLog: true,
+      allowAi: false,
+    })
+  );
+
+  maintenanceResults.push(
+    await runTenderAreaMaintenance({
+      supabase,
+      endpoint: "TenderAreaMaintenance4AM",
+      targetUpdates: 25,
+      scanBatchSize: 100,
+      maxScanRows: 250,
+      writeLog: true,
+    })
+  );
+
+  const combinedResults = [...results, ...maintenanceResults];
+  const totalAdded = combinedResults.reduce((sum, result) => sum + result.added, 0);
+  const totalUpdated = combinedResults.reduce((sum, result) => sum + result.updated, 0);
+
+  await writeSyncLog(supabase, MORNING_SYNC_ENDPOINT, new Date().toISOString(), totalAdded, totalUpdated);
+
+  return {
+    results: combinedResults,
+    duration_ms: Date.now() - start,
+    total_added: totalAdded,
+    total_updated: totalUpdated,
+    status: combinedResults.some((result) => result.error) ? "partial" : "ok",
+  };
+}
+
+export async function runManualSyncJob(endpoint: AdminManualSyncEndpoint): Promise<{
+  endpoint: AdminManualSyncEndpoint;
+  status: "ok" | "partial";
+  duration_ms: number;
+  added: number;
+  updated: number;
+  error?: string;
+}> {
+  const start = Date.now();
+
+  if (endpoint === "MorningSync4AM") {
+    const result = await runAdminPortalSync();
+
+    return {
+      endpoint,
+      status: result.status,
+      duration_ms: result.duration_ms,
+      added: result.total_added,
+      updated: result.total_updated,
+      ...(result.status === "partial" ? { error: "Jedan ili više koraka unutar glavnog portal synca vratili su upozorenje." } : {}),
+    };
+  }
+
+  const supabase = createServiceClient();
+  let result: SyncResult;
+
+  switch (endpoint) {
+    case "ProcurementNotices":
+      result = await syncTenders(supabase, { runTenderAreaMaintenanceAfterSync: false });
+      break;
+    case "ContractingAuthorities":
+      result = await syncContractingAuthorities(supabase);
+      break;
+    case "ContractingAuthorityMaintenance4AM":
+      result = await runContractingAuthorityMaintenance({
+        supabase,
+        endpoint: "ContractingAuthorityMaintenance4AM",
+        writeLog: true,
+        allowAi: false,
+      });
+      break;
+    case "TenderAreaMaintenance4AM":
+      result = await runTenderAreaMaintenance({
+        supabase,
+        endpoint: "TenderAreaMaintenance4AM",
+        writeLog: true,
+      });
+      break;
+    case "Awards":
+      result = await syncAwardDecisions(supabase);
+      break;
+    case "PlannedProcurements":
+      result = await syncPlannedProcurements(supabase);
+      break;
+    case "Suppliers":
+      result = await syncSuppliers(supabase);
+      break;
+    default: {
+      const exhaustiveCheck: never = endpoint;
+      throw new Error(`Nepodržan sync job: ${String(exhaustiveCheck)}`);
+    }
+  }
+
+  return {
+    endpoint,
+    status: result.error ? "partial" : "ok",
+    duration_ms: Date.now() - start,
+    added: result.added,
+    updated: result.updated,
+    ...(result.error ? { error: result.error } : {}),
+  };
 }
 
 async function runFullSyncWithOptions(options: FullSyncOptions = {}): Promise<{

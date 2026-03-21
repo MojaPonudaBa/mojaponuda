@@ -44,6 +44,14 @@ function formatCurrency(value: number): string {
   }).format(value);
 }
 
+function formatMetricValue(value: number | null): string {
+  if (value === null) {
+    return "—";
+  }
+
+  return String(value);
+}
+
 function getStatusTone(status: AdminLeadOutreachStatus): string {
   switch (status) {
     case "contacted":
@@ -171,23 +179,34 @@ function LeadRow({ lead, onSaved }: { lead: AdminPortalLead; onSaved: (lead: Adm
             </div>
           </div>
 
-          <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)_minmax(0,1.15fr)_132px]">
+          <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.15fr)_132px]">
             <div className="min-w-0 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-700">
-              <p className="text-[11px] uppercase tracking-[0.14em] text-slate-500">Pobjede</p>
-              <p className="mt-1 break-words text-lg font-semibold leading-tight text-slate-950">{lead.totalWinsCount} / {lead.totalBidsCount}</p>
+              <p className="text-[11px] uppercase tracking-[0.14em] text-slate-500">Potvrđene pobjede</p>
+              <p className="mt-1 break-words text-lg font-semibold leading-tight text-slate-950">{lead.totalWinsCount}</p>
+              <p className="mt-1 text-xs text-slate-500">Povezano sa konkretnim dodjelama iz portala.</p>
+            </div>
+            <div className="min-w-0 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-700">
+              <p className="text-[11px] uppercase tracking-[0.14em] text-slate-500">Portal učešća</p>
+              <p className="mt-1 break-words text-base font-semibold leading-tight text-slate-950 xl:text-lg">
+                {formatMetricValue(lead.totalBidsCount)}
+              </p>
+              <p className="mt-1 text-xs text-slate-500">
+                {lead.totalBidsCount !== null ? "Ukupan broj učešća dostupan iz portal agregata." : "Portal ne daje pouzdano ukupan broj učešća za ovu firmu."}
+              </p>
             </div>
             <div className="min-w-0 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-700">
               <p className="text-[11px] uppercase tracking-[0.14em] text-slate-500">Signal bez pobjede</p>
-              <p className="mt-1 break-words text-base font-semibold leading-tight text-slate-950 xl:text-lg">
-                {lead.lostTendersCount}
-                {lead.lossRate !== null ? ` · ${lead.lossRate}%` : ""}
+              <p className="mt-1 break-words text-sm font-semibold leading-tight text-slate-950">
+                {lead.lostTendersCount !== null ? `${lead.lostTendersCount}${lead.lossRate !== null ? ` · ${lead.lossRate}%` : ""}` : "Nije pouzdano dostupno"}
               </p>
+              <p className="mt-1 text-xs text-slate-500">Prikazujemo samo kad portal agregati daju smislen odnos učešća i pobjeda.</p>
             </div>
             <div className="min-w-0 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-700">
               <p className="text-[11px] uppercase tracking-[0.14em] text-slate-500">Vrijednost pobjeda</p>
               <p className="mt-1 break-words text-sm font-semibold leading-tight text-slate-950">{formatCurrency(lead.totalWonValue)}</p>
+              <p className="mt-1 text-xs text-slate-500">Zbir potvrđenih dodjela koje prikazujemo ispod.</p>
             </div>
-            <Button type="button" variant="outline" className="h-full min-h-[76px] rounded-2xl border-slate-200 bg-white px-3 py-3 text-sm font-medium" onClick={() => setExpanded((current) => !current)}>
+            <Button type="button" variant="outline" className="h-full min-h-[76px] rounded-2xl border-slate-200 bg-white px-3 py-3 text-sm font-medium sm:col-span-2 xl:col-span-1" onClick={() => setExpanded((current) => !current)}>
               {expanded ? "Sakrij profil" : "Otvori profil firme"}
             </Button>
           </div>
@@ -221,8 +240,12 @@ function LeadRow({ lead, onSaved }: { lead: AdminPortalLead; onSaved: (lead: Adm
                   </div>
                   <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
                     <p className="text-[11px] uppercase tracking-[0.14em] text-slate-500">Signal učešća bez pobjede</p>
-                    <p className="mt-1 text-sm font-semibold text-slate-950">{lead.lostTendersCount}</p>
-                    <p className="mt-1 text-xs text-slate-500">Stopa bez pobjede: {lead.lossRate !== null ? `${lead.lossRate}%` : "—"}</p>
+                    <p className="mt-1 text-sm font-semibold text-slate-950">{lead.lostTendersCount !== null ? lead.lostTendersCount : "Nije pouzdano dostupno"}</p>
+                    <p className="mt-1 text-xs text-slate-500">
+                      {lead.totalBidsCount !== null
+                        ? `Portal učešća: ${lead.totalBidsCount} · Stopa bez pobjede: ${lead.lossRate !== null ? `${lead.lossRate}%` : "—"}`
+                        : "Za ovu firmu portal trenutno ne daje pouzdanu metriku ukupnih učešća."}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -243,16 +266,16 @@ function LeadRow({ lead, onSaved }: { lead: AdminPortalLead; onSaved: (lead: Adm
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Dobijeni tenderi</p>
-                  <p className="mt-1 text-sm text-slate-600">Prikaz samo kvalitetno povezanih pobjeda iz javnih podataka.</p>
+                  <p className="mt-1 text-sm text-slate-600">Prikaz svih potvrđenih pobjeda koje možemo povezati sa firmom i otvoriti iz dostupnih javnih podataka.</p>
                 </div>
                 <Badge variant="outline" className="rounded-full border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700">
-                  {lead.recentWins.length} prikazano
+                  {lead.recentWins.length} / {lead.totalWinsCount} prikazano
                 </Badge>
               </div>
 
               {lead.recentWins.length === 0 ? (
                 <div className="rounded-2xl border border-dashed border-slate-200 bg-white px-4 py-4 text-sm text-slate-500">
-                  Nema dovoljno kvalitetnih i povezanih tender pobjeda u trenutno dostupnom periodu.
+                  Za ovu firmu trenutno nemamo nijednu potvrđenu pobjedu koju možemo prikazati iz dostupnih portal podataka.
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -374,15 +397,15 @@ export function AdminLeadsMinimalShell({ data, adminEmail }: AdminLeadsMinimalSh
             </Badge>
             <div className="space-y-3">
               <h1 className="font-heading text-3xl font-bold tracking-tight text-white sm:text-4xl">
-                Najbolji potencijalni klijenti za outreach
+                Projekcija najboljih potencijalnih klijenata za outreach
               </h1>
               <p className="max-w-2xl text-sm leading-7 text-slate-300 sm:text-base">
-                Lista je rangirana po realnom komercijalnom potencijalu: aktivnost na tenderima, dokazani budžet, postupci bez pobjede i naredni pipeline kod poznatih naručilaca.
+                Lista je rangirana samo po signalima koje možemo kvalitetno potvrditi iz portala javnih nabavki: stvarne dodjele, vidljivo učešće bez pobjede kada je dostupno i naredni pipeline kod poznatih naručilaca.
               </p>
             </div>
           </div>
           <div className="rounded-2xl border border-white/10 bg-white/8 px-4 py-3 text-sm text-slate-200">
-            <p className="text-[11px] uppercase tracking-[0.16em] text-slate-400">Potencijalni klijenti</p>
+            <p className="text-[11px] uppercase tracking-[0.16em] text-slate-400">Procijenjeni potencijalni klijenti</p>
             <p className="mt-2 text-3xl font-semibold text-white">{data.totalCandidates}</p>
             <p className="mt-1 text-xs text-slate-400">Admin: {adminEmail}</p>
           </div>
@@ -390,9 +413,9 @@ export function AdminLeadsMinimalShell({ data, adminEmail }: AdminLeadsMinimalSh
       </section>
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <SummaryCard title="Potencijalni klijenti" value={String(data.totalCandidates)} hint="Ukupan broj firmi koje su prošle strožiji komercijalni filter." />
+        <SummaryCard title="Procijenjeni potencijalni klijenti" value={String(data.totalCandidates)} hint="Ukupan broj firmi koje su prošle filter zasnovan na potvrđenim portal signalima." />
         <SummaryCard title="Vrući leadovi" value={String(leads.filter((lead) => lead.temperature === "Vruć lead").length)} hint="Najjači prioritet za prodajni kontakt." />
-        <SummaryCard title="Sa signalom potrebe" value={String(leads.filter((lead) => lead.lostTendersCount > 0).length)} hint="Firme koje aktivno učestvuju i imaju signal nastupa bez pobjede u dostupnim portal podacima." />
+        <SummaryCard title="Sa signalom potrebe" value={String(leads.filter((lead) => (lead.lostTendersCount ?? 0) > 0).length)} hint="Firme kod kojih portal daje smislen signal nastupa bez pobjede." />
         <SummaryCard title="Sa pipeline signalom" value={String(leads.filter((lead) => lead.authorityPlannedCount90d > 0).length)} hint="Firme čiji dominantni naručilac već ima nove planirane nabavke." />
       </section>
 

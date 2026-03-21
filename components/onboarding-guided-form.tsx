@@ -83,10 +83,6 @@ const STEPS = [
   },
 ] as const;
 
-function unique<T>(items: T[]): T[] {
-  return [...new Set(items)];
-}
-
 export function OnboardingGuidedForm({
   companyId,
   companyName,
@@ -527,7 +523,7 @@ export function OnboardingGuidedForm({
           <div className="rounded-2xl border border-blue-100 bg-blue-50/70 p-5">
             <p className="text-sm font-semibold text-slate-900">Odaberite sve što vaša firma stvarno radi</p>
             <p className="mt-2 text-sm leading-6 text-slate-600">
-              Ne tražimo od vas jednu "primarnu djelatnost" jer mnoge firme nude više različitih usluga, roba i radova. Označite sve što realno nudite, a sistem će sam složiti fokus vašeg profila.
+              Ne tražimo od vas jednu &quot;primarnu djelatnost&quot; jer mnoge firme nude više različitih usluga, roba i radova. Označite sve što realno nudite, a sistem će sam složiti fokus vašeg profila.
             </p>
           </div>
           <div className="space-y-5">

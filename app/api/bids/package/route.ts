@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import type { Bid, Tender, Company, Document, BidChecklistItem } from "@/types/database";
+import type { Bid, Tender, Company, Document } from "@/types/database";
 import AdmZip from "adm-zip";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -48,26 +48,29 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Nemate pravo pristupa ovoj ponudi." }, { status: 403 });
   }
 
-  // Fetch checklist items (to organize files)
-  const { data: checklistData } = await supabase
-    .from("bid_checklist_items")
-    .select("*")
-    .eq("bid_id", bidId)
-    .order("sort_order", { ascending: true });
-
-  const checklistItems = (checklistData ?? []) as BidChecklistItem[];
-
   // Fetch attached documents
   const { data: bidDocsData } = await supabase
     .from("bid_documents")
     .select("*, documents(*)")
     .eq("bid_id", bidId);
 
-  const attachedDocs = ((bidDocsData ?? []) as any[]).map((bd) => ({
-    ...bd.documents,
-    bid_doc_id: bd.id,
-    checklist_item_name: bd.checklist_item_name,
-  })) as (Document & { bid_doc_id: string; checklist_item_name: string | null })[];
+  const attachedDocs = ((bidDocsData ?? []) as {
+    id: string;
+    checklist_item_name: string | null;
+    documents: Document | null;
+  }[]).flatMap((bidDocument) => {
+    if (!bidDocument.documents) {
+      return [];
+    }
+
+    return [
+      {
+        ...bidDocument.documents,
+        bid_doc_id: bidDocument.id,
+        checklist_item_name: bidDocument.checklist_item_name,
+      },
+    ];
+  });
 
   // 2. Prepare ZIP
   const zip = new AdmZip();

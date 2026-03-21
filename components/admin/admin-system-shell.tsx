@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { AlertTriangle, CheckCircle2, Play, RefreshCw, ServerCog, ShieldAlert } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -18,6 +19,40 @@ interface SyncRunResult {
   total_added?: number;
   total_updated?: number;
   error?: string;
+}
+
+interface ManualJobRunResult {
+  endpoint: string;
+  status: string;
+  duration_ms?: number;
+  added?: number;
+  updated?: number;
+  error?: string;
+}
+
+function isManualJobRunResult(value: unknown): value is ManualJobRunResult {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  const candidate = value as Record<string, unknown>;
+
+  return (
+    typeof candidate.endpoint === "string" &&
+    typeof candidate.status === "string"
+  );
+}
+
+function normalizeSyncErrorMessage(message: string): string {
+  if (/timeout|FUNCTION_INVOCATION_TIMEOUT/i.test(message)) {
+    return "Portal sync je trajao predugo i server ga je prekinuo. Pokušaj ponovo za nekoliko minuta. Ako se problem ponavlja, otvori server log i provjeri koji korak usporava prolaz.";
+  }
+
+  if (/deployment/i.test(message)) {
+    return "Portal sync trenutno nije vraćen iz server okruženja kako treba. Pokušaj ponovo, a ako se isto ponovi provjeri deployment log.";
+  }
+
+  return message;
 }
 
 function formatDateTime(value: string | null): string {
@@ -75,9 +110,17 @@ function SummaryCard({
 }
 
 export function AdminSystemShell({ data }: AdminSystemShellProps) {
+  const router = useRouter();
   const [running, setRunning] = useState(false);
   const [result, setResult] = useState<SyncRunResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [jobRuns, setJobRuns] = useState<Record<string, {
+    running: boolean;
+    result: ManualJobRunResult | null;
+    error: string | null;
+  }>>({});
+
+  const isAnyJobRunning = Object.values(jobRuns).some((state) => state.running);
 
   async function handleRunSync() {
     setRunning(true);
@@ -90,7 +133,7 @@ export function AdminSystemShell({ data }: AdminSystemShellProps) {
       const payload = raw.trim().startsWith("{") ? (JSON.parse(raw) as SyncRunResult) : null;
 
       if (!response.ok) {
-        throw new Error(payload?.error ?? (raw.trim() || "Ne mogu pokrenuti sync."));
+        throw new Error(normalizeSyncErrorMessage(payload?.error ?? (raw.trim() || "Ne mogu pokrenuti sync.")));
       }
 
       if (!payload) {
@@ -98,10 +141,65 @@ export function AdminSystemShell({ data }: AdminSystemShellProps) {
       }
 
       setResult(payload);
+      router.refresh();
     } catch (syncError) {
-      setError(syncError instanceof Error ? syncError.message : "Greška pri pokretanju synca.");
+      setError(syncError instanceof Error ? normalizeSyncErrorMessage(syncError.message) : "Greška pri pokretanju synca.");
     } finally {
       setRunning(false);
+    }
+  }
+
+  async function handleRunJob(endpoint: string) {
+    setJobRuns((current) => ({
+      ...current,
+      [endpoint]: {
+        running: true,
+        result: null,
+        error: null,
+      },
+    }));
+
+    try {
+      const response = await fetch("/api/admin/system/run-job", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ endpoint }),
+      });
+      const raw = await response.text();
+      const payload = raw.trim().startsWith("{") ? (JSON.parse(raw) as unknown) : null;
+
+      if (!response.ok) {
+        const payloadError =
+          payload && typeof payload === "object" && "error" in payload && typeof (payload as { error?: unknown }).error === "string"
+            ? (payload as { error: string }).error
+            : null;
+        const fallbackError = raw.trim() || "Ne mogu pokrenuti sync job.";
+
+        throw new Error(normalizeSyncErrorMessage(payloadError ?? fallbackError));
+      }
+
+      if (!isManualJobRunResult(payload)) {
+        throw new Error("Sync job je vratio neispravan odgovor. Otvori server log i provjeri backend grešku.");
+      }
+
+      setJobRuns((current) => ({
+        ...current,
+        [endpoint]: {
+          running: false,
+          result: payload,
+          error: null,
+        },
+      }));
+      router.refresh();
+    } catch (jobError) {
+      setJobRuns((current) => ({
+        ...current,
+        [endpoint]: {
+          running: false,
+          result: null,
+          error: jobError instanceof Error ? normalizeSyncErrorMessage(jobError.message) : "Greška pri pokretanju sync joba.",
+        },
+      }));
     }
   }
 
@@ -160,12 +258,12 @@ export function AdminSystemShell({ data }: AdminSystemShellProps) {
               <Play className="size-4 text-blue-700" />
               <CardTitle className="text-slate-950">Akcije</CardTitle>
             </div>
-            <CardDescription>Ručno pokretanje kompletnog portal sync prolaza.</CardDescription>
+            <CardDescription>Ručno pokretanje operativnog portal sync prolaza.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <Button type="button" onClick={handleRunSync} disabled={running}>
+            <Button type="button" onClick={handleRunSync} disabled={running || isAnyJobRunning}>
               {running ? <RefreshCw className="size-4 animate-spin" /> : <Play className="size-4" />}
-              {running ? "Pokreće se sync..." : "Pokreni puni sync"}
+              {running ? "Pokreće se sync..." : "Pokreni portal sync"}
             </Button>
 
             {result ? (
@@ -183,7 +281,7 @@ export function AdminSystemShell({ data }: AdminSystemShellProps) {
             ) : null}
 
             <div className="rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3 text-sm text-slate-700">
-              Ova akcija pokreće isti puni prolaz koji inače puni tendere, ugovorne organe, dobavljače, dodjele i planirane nabavke. Koristi je kada nešto kasni ili kada želiš odmah osvježiti stanje portala.
+              Ova akcija pokreće operativni prolaz koji osvježava tendere, ugovorne organe, dobavljače, dodjele i planirane nabavke, a zatim radi manji maintenance sweep za ključne praznine. Koristi je kada nešto kasni ili kada želiš odmah osvježiti stanje portala bez čekanja noćnog ciklusa.
             </div>
           </CardContent>
         </Card>
@@ -224,40 +322,78 @@ export function AdminSystemShell({ data }: AdminSystemShellProps) {
           <p className="mt-1 text-sm text-slate-600">Svaka kartica objašnjava šta taj job radi, kada je zadnji put prošao i koliko je podataka obradio.</p>
         </div>
         <div className="grid gap-4 xl:grid-cols-2 2xl:grid-cols-4">
-          {data.jobs.map((job) => (
-            <Card key={job.endpoint} className="border-slate-200/80 bg-white shadow-[0_20px_40px_-34px_rgba(15,23,42,0.26)]">
-              <CardHeader className="space-y-4 pb-3">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <CardTitle className="text-base text-slate-950">{job.label}</CardTitle>
-                    <CardDescription className="mt-1">Zadnji prolaz: {formatDateTime(job.lastRun)}</CardDescription>
+          {data.jobs.map((job) => {
+            const jobState = jobRuns[job.endpoint];
+
+            return (
+              <Card key={job.endpoint} className="border-slate-200/80 bg-white shadow-[0_20px_40px_-34px_rgba(15,23,42,0.26)]">
+                <CardHeader className="space-y-4 pb-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <CardTitle className="text-base text-slate-950">{job.label}</CardTitle>
+                      <CardDescription className="mt-1">Zadnji prolaz: {formatDateTime(job.lastRun)}</CardDescription>
+                    </div>
+                    <span className={cn("rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em]", getJobTone(job.status))}>
+                      {job.status}
+                    </span>
                   </div>
-                  <span className={cn("rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em]", getJobTone(job.status))}>
-                    {job.status}
-                  </span>
-                </div>
-                <div className="space-y-2 text-sm leading-6 text-slate-600">
-                  <p>{job.purpose}</p>
-                  <p>{job.plainMessage}</p>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3">
-                    <p className="text-[11px] uppercase tracking-[0.14em] text-slate-500">Dodano</p>
-                    <p className="mt-1 text-lg font-semibold text-slate-950">{job.recordsAdded}</p>
+                  <div className="space-y-2 text-sm leading-6 text-slate-600">
+                    <p>{job.purpose}</p>
+                    <p>{job.plainMessage}</p>
                   </div>
-                  <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3">
-                    <p className="text-[11px] uppercase tracking-[0.14em] text-slate-500">Ažurirano</p>
-                    <p className="mt-1 text-lg font-semibold text-slate-950">{job.recordsUpdated}</p>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3">
+                      <p className="text-[11px] uppercase tracking-[0.14em] text-slate-500">Dodano</p>
+                      <p className="mt-1 text-lg font-semibold text-slate-950">{job.recordsAdded}</p>
+                    </div>
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3">
+                      <p className="text-[11px] uppercase tracking-[0.14em] text-slate-500">Ažurirano</p>
+                      <p className="mt-1 text-lg font-semibold text-slate-950">{job.recordsUpdated}</p>
+                    </div>
                   </div>
-                </div>
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-600">
-                  {job.durationLabel}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-600">
+                    {job.durationLabel}
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => handleRunJob(job.endpoint)}
+                    disabled={running || isAnyJobRunning}
+                    className="w-full rounded-2xl border-slate-200"
+                  >
+                    {jobState?.running ? <RefreshCw className="size-4 animate-spin" /> : <Play className="size-4" />}
+                    {jobState?.running ? "Pokreće se job..." : "Pokreni ovaj sync"}
+                  </Button>
+                  {jobState?.result ? (
+                    <div className={cn(
+                      "rounded-2xl border px-3 py-3 text-sm",
+                      jobState.result.status === "partial"
+                        ? "border-amber-200 bg-amber-50 text-amber-800"
+                        : "border-emerald-200 bg-emerald-50 text-emerald-800"
+                    )}>
+                      <p className="font-semibold">
+                        {jobState.result.status === "partial" ? "Job završen uz upozorenja" : "Job završen uspješno"}
+                      </p>
+                      <p className="mt-1">
+                        Dodano: {jobState.result.added ?? 0} · Ažurirano: {jobState.result.updated ?? 0}
+                      </p>
+                      <p className="mt-1">
+                        Trajanje: {jobState.result.duration_ms ? `${Math.round(jobState.result.duration_ms / 1000)}s` : "nije dostupno"}
+                      </p>
+                      {jobState.result.error ? <p className="mt-1">{jobState.result.error}</p> : null}
+                    </div>
+                  ) : null}
+                  {jobState?.error ? (
+                    <div className="rounded-2xl border border-rose-200 bg-rose-50 px-3 py-3 text-sm text-rose-700">
+                      {jobState.error}
+                    </div>
+                  ) : null}
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       </section>
     </div>
