@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
 import {
   CheckCircle,
   ArrowRight,
@@ -128,16 +127,41 @@ function HeroSection({ isLoggedIn }: { isLoggedIn?: boolean }) {
           </p>
         </div>
 
-        {/* Dashboard Image */}
-        <div className="mx-auto mt-14 max-w-5xl overflow-hidden rounded-[2.5rem] border border-slate-200/60 bg-white/50 p-2 shadow-2xl shadow-blue-500/10 backdrop-blur-xl sm:p-4">
-          <div className="relative aspect-[16/9] w-full overflow-hidden rounded-[2rem] bg-slate-100 ring-1 ring-slate-200">
-            <Image
-              src="/images/hero-mockup.png"
-              alt="MojaPonuda.ba Dashboard Interface"
-              fill
-              className="object-cover"
-              priority
-            />
+        {/* Subtle Micro-UI Teaser */}
+        <div className="mx-auto mt-16 max-w-2xl relative select-none">
+          <div className="absolute inset-0 bg-gradient-to-b from-blue-50 to-transparent -z-10 rounded-3xl blur-2xl opacity-50" />
+          
+          <div className="relative flex flex-col gap-4 rounded-[1.5rem] border border-slate-200/60 bg-white/60 p-5 shadow-2xl shadow-slate-200/50 backdrop-blur-xl sm:p-6 text-left hover:shadow-blue-500/10 transition-shadow">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+              <div className="flex items-center gap-3.5">
+                <div className="relative flex size-11 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-400 to-emerald-500 text-white shadow-lg shadow-emerald-500/20">
+                  <div className="absolute -right-1 -top-1 size-3.5 rounded-full border-2 border-white bg-red-500 shadow-sm animate-pulse" />
+                  <Zap className="size-5" />
+                </div>
+                <div>
+                  <p className="text-[15px] font-bold text-slate-900 leading-none">Pronađen tender za vas</p>
+                  <p className="text-[13px] font-medium text-slate-500 mt-1.5 flex items-center gap-1.5">
+                    <CheckCircle className="size-3.5 text-emerald-500" />
+                    Sistem detektovao poklapanje usluga: 98%
+                  </p>
+                </div>
+              </div>
+              <span className="text-[12px] font-bold text-slate-400 hidden sm:block">Upravo sad</span>
+            </div>
+
+            <div className="flex flex-col gap-2.5 px-1 py-1">
+              <div className="h-3 w-3/4 animate-pulse rounded-full bg-slate-100" />
+              <div className="h-3 w-1/2 animate-pulse rounded-full bg-slate-100" />
+            </div>
+
+            <div className="mt-2 flex flex-wrap gap-2">
+              <span className="rounded-lg bg-blue-50/80 px-3 py-1.5 text-[12px] font-extrabold text-blue-600 border border-blue-100/50"># IT Oprema i Usluge</span>
+              <span className="rounded-lg bg-amber-50/80 px-3 py-1.5 text-[12px] font-extrabold text-amber-600 border border-amber-100/50">Vrijednost: 120.000 KM</span>
+              <span className="rounded-lg bg-slate-50/80 px-3 py-1.5 text-[12px] font-extrabold text-slate-500 border border-slate-200/50 flex items-center gap-1">
+                <Clock className="size-3.5" />
+                Rok: 14 dana
+              </span>
+            </div>
           </div>
         </div>
 
@@ -311,10 +335,10 @@ function BeforeAfterSection({ isLoggedIn }: { isLoggedIn?: boolean }) {
 function MoneySection({ isLoggedIn }: { isLoggedIn?: boolean }) {
   return (
     <section className="bg-slate-900 px-4 sm:px-6 py-16 sm:py-24 text-white relative overflow-hidden">
-      <div className="absolute inset-0 opacity-[0.25] mix-blend-screen -z-20">
-        <Image src="/images/roi-abstract.png" alt="ROI Abstract Background" fill className="object-cover object-center" />
-      </div>
-      <div className="absolute inset-0 bg-blue-600/10 -z-10" />
+      <div className="absolute inset-0 opacity-20 -z-20 bg-[linear-gradient(to_right,#ffffff1a_1px,transparent_1px),linear-gradient(to_bottom,#ffffff1a_1px,transparent_1px)] bg-[size:3rem_3rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_80%,transparent_100%)]" />
+      <div className="absolute top-0 right-0 h-[600px] w-[600px] -translate-y-1/2 translate-x-1/3 rounded-full bg-blue-500/20 blur-[120px] -z-10 mix-blend-screen" />
+      <div className="absolute bottom-0 left-0 h-[500px] w-[500px] translate-y-1/3 -translate-x-1/3 rounded-full bg-emerald-500/10 blur-[100px] -z-10 mix-blend-screen" />
+      <div className="absolute inset-0 bg-slate-900/40 -z-10 backdrop-blur-[1px]" />
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 size-[600px] rounded-full bg-primary/20 blur-[120px] -z-10" />
 
       <div className="relative z-10 mx-auto max-w-5xl">
