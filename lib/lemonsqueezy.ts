@@ -137,5 +137,15 @@ export async function verifyWebhookSignature(
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
 
-  return computedHex === signature;
+  // SEC: Timing-safe comparison to prevent timing attacks
+  if (computedHex.length !== signature.length) {
+    return false;
+  }
+
+  const a = Buffer.from(computedHex, "utf-8");
+  const b = Buffer.from(signature, "utf-8");
+
+  // Use Node.js crypto.timingSafeEqual for constant-time comparison
+  const { timingSafeEqual } = await import("crypto");
+  return timingSafeEqual(a, b);
 }

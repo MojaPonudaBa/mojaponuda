@@ -82,6 +82,39 @@ export interface EjnPlannedProcurement {
   CpvCode: string | null;
 }
 
+// --- Retry helper ---
+
+async function fetchWithRetry(
+  url: string,
+  options: RequestInit,
+  maxAttempts = 3,
+): Promise<Response> {
+  let lastError: unknown;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      const res = await fetch(url, options);
+
+      // Don't retry client errors (4xx) — they won't resolve with a retry
+      if (res.ok || (res.status >= 400 && res.status < 500)) {
+        return res;
+      }
+
+      // 5xx — save error and retry after backoff
+      lastError = new Error(`EJN HTTP ${res.status}`);
+    } catch (error) {
+      // Network / DNS error
+      lastError = error;
+    }
+
+    if (attempt < maxAttempts) {
+      await new Promise((resolve) => setTimeout(resolve, 1000 * 2 ** (attempt - 1)));
+    }
+  }
+
+  throw lastError;
+}
+
 // --- OData pagination helper ---
 
 interface ODataResponse<T> {
@@ -115,7 +148,7 @@ async function fetchODataPages<T>(
       return `${BASE_URL}${endpoint}?${params.toString()}`;
     })();
 
-    const res = await fetch(url, {
+    const res = await fetchWithRetry(url, {
       headers: { Accept: "application/json" },
       cache: "no-store",
     });
@@ -279,22 +312,23 @@ export async function fetchAwardNoticesByIds(awardIds: string[]): Promise<EjnAwa
     return [];
   }
 
-  const results: EjnAwardNotice[] = [];
-
+  const batches: string[][] = [];
   for (let index = 0; index < awardIds.length; index += 20) {
-    const batch = awardIds.slice(index, index + 20);
-    const filter = buildNumericIdFilter("Id", batch);
-
-    if (!filter) {
-      continue;
-    }
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const raw = await fetchODataPages<any>("/Awards", "Id desc", filter);
-    results.push(...raw.map((row) => mapAwardNotice(row as Record<string, unknown>)));
+    batches.push(awardIds.slice(index, index + 20));
   }
 
-  return results;
+  // OPT 6: Parallel batch requests instead of sequential for loop
+  const batchResults = await Promise.all(
+    batches.map(async (batch) => {
+      const filter = buildNumericIdFilter("Id", batch);
+      if (!filter) return [];
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const raw = await fetchODataPages<any>("/Awards", "Id desc", filter);
+      return raw.map((row) => mapAwardNotice(row as Record<string, unknown>));
+    })
+  );
+
+  return batchResults.flat();
 }
 
 export async function fetchAwardedSupplierGroups(
@@ -325,30 +359,29 @@ export async function fetchSupplierGroupSupplierLinks(
     batches.push(supplierGroupIds.slice(index, index + 10));
   }
 
-  const allLinks: EjnSupplierGroupSupplierLink[] = [];
+  // OPT 6: Parallel batch requests
+  const batchResults = await Promise.all(
+    batches.map(async (batch) => {
+      const filter = batch
+        .map((groupId) => `SupplierGroupId eq ${groupId}`)
+        .join(" or ");
 
-  for (const batch of batches) {
-    const filter = batch
-      .map((groupId) => `SupplierGroupId eq ${groupId}`)
-      .join(" or ");
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const raw = await fetchODataPages<any>(
+        "/SupplierGroupSupplierLinks",
+        "Id desc",
+        filter
+      );
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const raw = await fetchODataPages<any>(
-      "/SupplierGroupSupplierLinks",
-      "Id desc",
-      filter
-    );
-
-    allLinks.push(
-      ...raw.map((r) => ({
+      return raw.map((r) => ({
         SupplierGroupId: String(r.SupplierGroupId ?? ""),
         SupplierId: String(r.SupplierId ?? ""),
         IsLead: Boolean(r.IsLead),
-      }))
-    );
-  }
+      }));
+    })
+  );
 
-  return allLinks;
+  return batchResults.flat();
 }
 
 export async function fetchContractingAuthorities(
@@ -405,30 +438,29 @@ export async function fetchSuppliersByIds(
     batches.push(supplierIds.slice(index, index + 10));
   }
 
-  const allSuppliers: EjnSupplier[] = [];
+  // OPT 6: Parallel batch requests
+  const batchResults = await Promise.all(
+    batches.map(async (batch) => {
+      const filter = batch.map((supplierId) => `Id eq ${supplierId}`).join(" or ");
 
-  for (const batch of batches) {
-    const filter = batch.map((supplierId) => `Id eq ${supplierId}`).join(" or ");
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const raw = await fetchODataPages<any>(
+        "/Suppliers",
+        "Id desc",
+        filter
+      );
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const raw = await fetchODataPages<any>(
-      "/Suppliers",
-      "Id desc",
-      filter
-    );
-
-    allSuppliers.push(
-      ...raw.map((r) => ({
+      return raw.map((r) => ({
         SupplierId: String(r.Id ?? ""),
         Name: r.Name || "Nepoznato",
         Jib: r.TaxNumber || r.Jib || "",
         City: r.CityName || null,
         Municipality: null,
-      }))
-    );
-  }
+      }));
+    })
+  );
 
-  return allSuppliers;
+  return batchResults.flat();
 }
 
 export async function fetchPlannedProcurements(

@@ -81,12 +81,15 @@ export default async function DashboardPage() {
   const nowIso = now.toISOString();
 
   const [
-    , // documentsCount (unused)
+    , // documentsCount (unused in this parallel block — fetched below)
     { count: bidsCount },
     { count: wonBidsCount },
     { count: lostBidsCount },
     { data: expiringDocs },
     { data: recentBids },
+    subscriptionStatus,
+    { count: documentsCountValue },
+    { data: allBidRowsData },
   ] = await Promise.all([
     supabase.from("documents").select("*", { count: "exact", head: true }).eq("company_id", resolvedCompany.id),
     supabase.from("bids").select("*", { count: "exact", head: true }).eq("company_id", resolvedCompany.id).in("status", ["draft", "in_review", "submitted"]),
@@ -107,6 +110,18 @@ export default async function DashboardPage() {
       .eq("company_id", resolvedCompany.id)
       .order("created_at", { ascending: false })
       .limit(6),
+    // OPT 2: Reuse existing supabase client — avoids an extra connection
+    getSubscriptionStatus(user.id, user.email, supabase),
+    // OPT 1: Run documentsCount and allBidRows in parallel with the above
+    supabase
+      .from("documents")
+      .select("id", { count: "exact", head: true })
+      .eq("company_id", resolvedCompany.id),
+    supabase
+      .from("bids")
+      .select("id, tender_id, status, created_at, tenders(title, deadline, estimated_value, contracting_authority)")
+      .eq("company_id", resolvedCompany.id)
+      .order("created_at", { ascending: false }),
   ]);
 
   const demoDocuments = isDemoAccount ? getDemoDocuments(resolvedCompany.id) : [];
@@ -139,18 +154,6 @@ export default async function DashboardPage() {
   const displayDraftBids = (bidsCount ?? 0) > 0 ? (bidsCount ?? 0) : bids.filter((bid) => ["draft", "in_review", "submitted"].includes(bid.status)).length;
   const displayWonBids = (wonBidsCount ?? 0) > 0 ? (wonBidsCount ?? 0) : bids.filter((bid) => bid.status === "won").length;
   const displayLostBids = (lostBidsCount ?? 0) > 0 ? (lostBidsCount ?? 0) : bids.filter((bid) => bid.status === "lost").length;
-
-  const subscriptionStatus = await getSubscriptionStatus(user.id, user.email);
-  const { count: documentsCountValue } = await supabase
-    .from("documents")
-    .select("id", { count: "exact", head: true })
-    .eq("company_id", resolvedCompany.id);
-
-  const { data: allBidRowsData } = await supabase
-    .from("bids")
-    .select("id, tender_id, status, created_at, tenders(title, deadline, estimated_value, contracting_authority)")
-    .eq("company_id", resolvedCompany.id)
-    .order("created_at", { ascending: false });
 
   const allBidRows = ((allBidRowsData ?? []) as {
     id: string;
@@ -311,14 +314,26 @@ export default async function DashboardPage() {
   const topRelevantAuthoritiesSource = topRelevantAuthorities.length > 0 ? "live" : "empty";
 
   const today = new Date().toISOString().split("T")[0];
-  const { data: upcomingRowsData } = await supabase
-    .from("planned_procurements")
-    .select(
-      "id, description, planned_date, estimated_value, contract_type, contracting_authorities(name, jib)"
-    )
-    .gte("planned_date", today)
-    .order("planned_date", { ascending: true })
-    .limit(3);
+
+  // OPT 1: upcomingRows and competitorAnalysis are independent — run in parallel
+  const [{ data: upcomingRowsData }, resolvedCompetitorAnalysis] = await Promise.all([
+    supabase
+      .from("planned_procurements")
+      .select(
+        "id, description, planned_date, estimated_value, contract_type, contracting_authorities(name, jib)"
+      )
+      .gte("planned_date", today)
+      .order("planned_date", { ascending: true })
+      .limit(3),
+    subscriptionStatus.isSubscribed
+      ? getCompetitorAnalysis(supabase, {
+          jib: resolvedCompany.jib,
+          industry: resolvedCompany.industry,
+          keywords: resolvedCompany.keywords || [],
+          operating_regions: resolvedCompany.operating_regions || [],
+        })
+      : Promise.resolve(null),
+  ]);
 
   const upcomingRows = ((upcomingRowsData ?? []) as {
     id: string;
@@ -344,15 +359,8 @@ export default async function DashboardPage() {
   }[] = [];
   let competitorSnapshotSource: "live" | "demo" | "empty" = "empty";
 
-  if (subscriptionStatus.isSubscribed) {
-    const competitorAnalysis = await getCompetitorAnalysis(supabase, {
-      jib: resolvedCompany.jib,
-      industry: resolvedCompany.industry,
-      keywords: resolvedCompany.keywords || [],
-      operating_regions: resolvedCompany.operating_regions || [],
-    });
-
-    competitorSnapshot = competitorAnalysis.competitors
+  if (resolvedCompetitorAnalysis) {
+    competitorSnapshot = resolvedCompetitorAnalysis.competitors
       .slice(0, 3)
       .map((competitor) => ({
         name: competitor.name,
