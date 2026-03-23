@@ -271,7 +271,7 @@ export default async function DashboardPage() {
       availableRelevantRows,
       recommendationContext,
       {
-        minimumResults: 10,
+        minimumResults: 4,
       }
     );
 

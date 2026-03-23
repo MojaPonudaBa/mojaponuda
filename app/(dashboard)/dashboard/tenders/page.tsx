@@ -170,7 +170,7 @@ async function TendersContent({ searchParams }: TendersPageProps) {
       availableRecommendationRows,
       recommendationContext,
       {
-        minimumResults: 10,
+        minimumResults: 4,
       }
     );
 

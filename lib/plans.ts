@@ -29,7 +29,7 @@ const GB = 1024 * 1024 * 1024;
 export const PLANS: Record<PlanTier, Plan> = {
   basic: {
     id: "basic",
-    name: "Starter",
+    name: "Osnovni",
     price: 39,
     description: "Za male firme i početnike koji se rjeđe prijavljuju na tendere, ali žele uštedjeti vrijeme.",
     limits: {
@@ -49,7 +49,7 @@ export const PLANS: Record<PlanTier, Plan> = {
   },
   pro: {
     id: "pro",
-    name: "Pro",
+    name: "Puni",
     price: 99,
     description: "Za firme koje redovno pripremaju ponude i žele maksimalnu efikasnost i zaštitu od grešaka.",
     limits: {

@@ -62,7 +62,7 @@ export function SubscriptionCard({
   }
 
   const displayStatus = isActive ? status : "inactive";
-  const displayPlanName = isActive && plan ? plan.name : "Besplatni nalog"; // Or "Basic" if we treat non-subs as basic
+  const displayPlanName = isActive && plan ? plan.name : "Besplatni nalog";
 
   return (
     <div className="rounded-[1.5rem] border border-slate-100 bg-white p-8 shadow-sm">
@@ -94,8 +94,8 @@ export function SubscriptionCard({
       {isActive && currentPeriodEnd && (
         <div className="mt-6 rounded-xl bg-slate-50 p-4 border border-slate-100">
           <p className="text-sm font-medium text-slate-500">Sljedeća obnova</p>
-          <p className="mt-1 font-mono text-lg font-bold text-slate-900">
-            {new Date(currentPeriodEnd).toLocaleDateString("bs-BA", {
+          <p className="mt-1 text-lg font-bold text-slate-900">
+            {new Date(currentPeriodEnd).toLocaleDateString("bs-Latn-BA", {
               day: "numeric",
               month: "long",
               year: "numeric",

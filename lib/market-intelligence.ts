@@ -499,7 +499,7 @@ function selectUpcomingPlans(
   matchedCategories: string[],
   matchedAuthorityJibs: string[],
   cpvPrefixes: string[],
-  minimumResults = 5,
+  minimumResults = 4,
   limit = 8
 ): PlannedScopeRow[] {
   const scored = plans.map((plan) =>
@@ -1195,7 +1195,7 @@ export async function getMarketOverview(
           }
         ),
         recommendationContext,
-        { minimumResults: 10 }
+        { minimumResults: 4 }
       ).map(({ tender, score }) => ({
         ...tender,
         market_fit_score: score,

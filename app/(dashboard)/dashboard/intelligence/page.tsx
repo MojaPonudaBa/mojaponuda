@@ -75,7 +75,7 @@ export default async function IntelligencePage() {
       recommendedOpenCount = selectTenderRecommendations(
         scopedRecommendationRows,
         recommendationContext,
-        { minimumResults: 10 }
+        { minimumResults: 4 }
       ).length;
     } else {
       recommendedOpenCount = 0;

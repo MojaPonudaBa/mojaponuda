@@ -547,11 +547,28 @@ export async function POST(request: Request) {
       previewSummary =
         "Prikazujemo širi početni pregled tendera na osnovu djelatnosti i dostupnih signala. U sljedećem koraku dodajte kontekst za preciznije preporuke.";
       tier = "business-anywhere";
-    } else if (hasRegionFilter) {
-      previewTenders = [];
+    } else if (hasRegionFilter && withBusinessSignal.length > 0) {
+      // Nema poklapanja u regiji, ali ima tendera iz djelatnosti negdje u BiH — prikaži ih
+      previewTenders = withBusinessSignal
+        .slice(0, 6)
+        .map((item) => toPreviewTender(item, focusLabel, "broad", false));
       previewSummary =
-        "Trenutno nema otvorenih tendera iz vaše djelatnosti na lokaciji firme ni u obližnjim područjima. Nastavite dalje i dopunite profil za šire, ali i dalje relevantne preporuke.";
-      tier = "no-business-match-in-area";
+        "Trenutno nema otvorenih tendera iz vaše djelatnosti na lokaciji firme, ali smo izdvojili relevantne prilike sa šireg područja BiH.";
+      tier = "business-anywhere-fallback";
+    } else if (hasRegionFilter) {
+      // Apsolutno nema poslovnih poklapanja — ipak prikaži šta imamo
+      const topScored = scored.filter((item) => item.score > 0).slice(0, 4);
+      if (topScored.length > 0) {
+        previewTenders = topScored.map((item) => toPreviewTender(item, focusLabel, "broad", false));
+        previewSummary =
+          "Prikazujemo početni pregled tendera na osnovu širokog presjeka. Dopunite profil za preciznije preporuke.";
+        tier = "broad-fallback";
+      } else {
+        previewTenders = [];
+        previewSummary =
+          "Trenutno nema otvorenih tendera koji se jasno poklapaju s odabranom djelatnošću. Nastavite dalje i dopunite profil kako bismo proširili relevantne preporuke.";
+        tier = "no-match";
+      }
     } else {
       previewTenders = [];
       previewSummary =
