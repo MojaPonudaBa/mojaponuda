@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import {
   CheckCircle,
   ArrowRight,
@@ -89,9 +90,13 @@ function NavBar({ isLoggedIn }: { isLoggedIn?: boolean }) {
 // ─── Hero ────────────────────────────────────────────────────────────────────
 function HeroSection({ isLoggedIn }: { isLoggedIn?: boolean }) {
   return (
-    <section className="relative overflow-hidden bg-white px-4 sm:px-6 pb-12 pt-28 sm:pb-16 sm:pt-36 border-b border-slate-200">
-      <div className="absolute inset-0 -z-10 bg-[linear-gradient(to_right,#f1f5f9_1px,transparent_1px),linear-gradient(to_bottom,#f1f5f9_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)]" />
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[500px] bg-blue-500/10 blur-[120px] rounded-full -z-10" />
+    <section className="relative overflow-hidden bg-white px-4 sm:px-6 pb-12 pt-28 sm:pb-16 sm:pt-36 border-b border-slate-200 z-0">
+      <div className="absolute inset-0 -z-10 bg-[linear-gradient(to_right,#f1f5f9_1px,transparent_1px),linear-gradient(to_bottom,#f1f5f9_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] pointer-events-none" />
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[500px] opacity-60 pointer-events-none -z-10 overflow-hidden hidden md:block">
+        <div className="absolute top-0 -left-10 w-[400px] h-[400px] bg-blue-300 rounded-full mix-blend-multiply filter blur-[100px] animate-blob" />
+        <div className="absolute top-0 -right-10 w-[400px] h-[400px] bg-sky-200 rounded-full mix-blend-multiply filter blur-[100px] animate-blob animation-delay-2000" />
+        <div className="absolute -bottom-20 left-20 w-[400px] h-[400px] bg-indigo-200 rounded-full mix-blend-multiply filter blur-[100px] animate-blob animation-delay-4000" />
+      </div>
 
       <div className="relative mx-auto max-w-4xl text-center">
         <div className="inline-flex items-center gap-2 rounded-full border border-blue-100 bg-blue-50/50 px-3 py-1.5 mb-5">
@@ -378,9 +383,14 @@ function MoneySection({ isLoggedIn }: { isLoggedIn?: boolean }) {
             </div>
           </div>
 
-          <div className="rounded-[1.5rem] border border-white/10 bg-white/5 p-8 sm:p-10 backdrop-blur-sm shadow-2xl">
-            <p className="text-[14px] font-bold uppercase tracking-wider text-blue-300 mb-6">Visualna kontrola svake tačke</p>
-            <div className="space-y-3">
+          <div className="relative group rounded-[1.5rem] p-[1px] overflow-hidden shadow-2xl">
+            <div className="absolute inset-0 bg-gradient-to-r from-emerald-500 via-blue-500 to-emerald-500 opacity-0 group-hover:opacity-100 transition-opacity duration-1000 blur-sm pointer-events-none" />
+            <div className="relative rounded-[1.5rem] border border-white/10 bg-[#0f172a] p-8 sm:p-10 backdrop-blur-md overflow-hidden z-10 transition-all">
+              <div className="absolute inset-0 opacity-40 mix-blend-screen -z-10 pointer-events-none">
+                <Image src="/images/card-bg.png" alt="Premium Data Texture" fill priority className="object-cover" />
+              </div>
+              <p className="text-[14px] font-bold uppercase tracking-wider text-blue-300 mb-6 flex items-center gap-2"><Clock className="size-4 animate-pulse text-emerald-400" /> Visualna kontrola svake tačke</p>
+              <div className="space-y-3 relative z-20">
               {[
                 { done: true, text: "Uvjerenje o izmirenim porezima (PDV)" },
                 { done: true, text: "Popunjena izjava o podobnosti učesnika" },
@@ -398,7 +408,8 @@ function MoneySection({ isLoggedIn }: { isLoggedIn?: boolean }) {
                 </div>
               ))}
             </div>
-            <p className="mt-6 text-[15px] font-medium text-slate-400">Sistem crvenom bojom štiti vašu firmu od formalno neispravnih predaja dokumenata.</p>
+              <p className="mt-6 text-[15px] font-medium text-slate-400">Sistem crvenom bojom štiti vašu firmu od formalno neispravnih predaja dokumenata.</p>
+            </div>
           </div>
         </div>
       </div>
@@ -450,8 +461,13 @@ function PricingSection({ isLoggedIn }: { isLoggedIn?: boolean }) {
           </div>
 
           {/* Puni Paket — highlighted */}
-          <div className="relative rounded-[1.5rem] border-2 border-primary bg-white p-6 sm:p-8 shadow-xl shadow-blue-500/10 lg:scale-[1.05] z-10 transition-transform lg:-mt-2 flex flex-col">
-            <div className="absolute -top-4 inset-x-0 flex justify-center">
+          <div className="relative rounded-[1.5rem] p-[2px] lg:scale-[1.05] z-10 lg:-mt-2 flex flex-col group overflow-hidden shadow-xl shadow-blue-500/10 hover:shadow-blue-500/30 transition-shadow">
+            {/* Animated conic gradient background border */}
+            <div className="absolute inset-[-100%] animate-spin-slow bg-[conic-gradient(from_90deg_at_50%_50%,#0f172a_0%,#3b82f6_50%,#0f172a_100%)] opacity-30 group-hover:opacity-100 transition-opacity duration-500" />
+            
+            <div className="relative h-full w-full rounded-[1.4rem] bg-white p-6 sm:p-8 flex flex-col z-10">
+              <div className="absolute top-0 inset-x-0 h-1/2 bg-gradient-to-b from-blue-50 to-transparent opacity-50 -z-10 rounded-t-[1.4rem]" />
+              <div className="absolute -top-4 inset-x-0 flex justify-center z-20">
               <span className="rounded-full bg-primary px-4 py-1.5 text-[12px] font-bold uppercase tracking-wider text-white shadow-sm">
                 Najčešći izbor
               </span>
@@ -480,6 +496,7 @@ function PricingSection({ isLoggedIn }: { isLoggedIn?: boolean }) {
             <Link href={isLoggedIn ? "/dashboard" : "/signup"} className="mt-8 flex w-full h-[3.5rem] items-center justify-center rounded-xl bg-primary px-6 text-[16px] font-bold text-white transition-all hover:bg-blue-700 hover:shadow-lg hover:shadow-blue-500/30">
               Kreni bez limita
             </Link>
+            </div>
           </div>
 
           {/* Agencijski */}
@@ -623,6 +640,23 @@ export function LandingPage({ isLoggedIn }: LandingPageProps) {
       <FAQSection />
       <FinalCTA isLoggedIn={isLoggedIn} />
       <Footer />
+      {/* GLOBAL EXPERIMENTAL ANIMATIONS & STYLES */}
+      <style dangerouslySetInnerHTML={{ __html: `
+        @keyframes blob {
+          0% { transform: translate(0px, 0px) scale(1); }
+          33% { transform: translate(30px, -50px) scale(1.1); }
+          66% { transform: translate(-20px, 20px) scale(0.9); }
+          100% { transform: translate(0px, 0px) scale(1); }
+        }
+        .animate-blob { animation: blob 10s infinite; }
+        .animation-delay-2000 { animation-delay: 2s; }
+        .animation-delay-4000 { animation-delay: 4s; }
+        
+        @keyframes spin-slow {
+          100% { transform: rotate(360deg); }
+        }
+        .animate-spin-slow { animation: spin-slow 8s linear infinite; }
+      `}} />
     </div>
   );
 }
