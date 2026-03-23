@@ -48,34 +48,21 @@ export function TenderFilters() {
   const [deadlineTo, setDeadlineTo] = useState(
     searchParams.get("deadline_to") || ""
   );
-  const [valueMin, setValueMin] = useState(
-    searchParams.get("value_min") || ""
-  );
-  const [valueMax, setValueMax] = useState(
-    searchParams.get("value_max") || ""
-  );
   const [locations, setLocations] = useState<string[]>(searchParams.getAll("location"));
 
   const applyFilters = useCallback(() => {
     const params = new URLSearchParams();
-    
-    // Preserve current tab if it exists
     const currentTab = searchParams.get("tab");
-    if (currentTab) {
-      params.set("tab", currentTab);
-    }
-
+    if (currentTab) params.set("tab", currentTab);
     if (keyword.trim()) params.set("q", keyword.trim());
     if (contractType !== "all") params.set("contract_type", contractType);
     if (procedureType !== "all") params.set("procedure_type", procedureType);
     if (deadlineFrom) params.set("deadline_from", deadlineFrom);
     if (deadlineTo) params.set("deadline_to", deadlineTo);
-    if (valueMin) params.set("value_min", valueMin);
-    if (valueMax) params.set("value_max", valueMax);
-    locations.forEach((location) => params.append("location", location));
+    locations.forEach((l) => params.append("location", l));
     params.set("page", "1");
     router.push(`/dashboard/tenders?${params.toString()}`);
-  }, [keyword, contractType, procedureType, deadlineFrom, deadlineTo, valueMin, valueMax, locations, router, searchParams]);
+  }, [keyword, contractType, procedureType, deadlineFrom, deadlineTo, locations, router, searchParams]);
 
   function resetFilters() {
     setKeyword("");
@@ -83,15 +70,10 @@ export function TenderFilters() {
     setProcedureType("all");
     setDeadlineFrom("");
     setDeadlineTo("");
-    setValueMin("");
-    setValueMax("");
     setLocations([]);
-    
-    // Keep the current tab when resetting filters
     const currentTab = searchParams.get("tab");
     const params = new URLSearchParams();
     if (currentTab) params.set("tab", currentTab);
-    
     router.push(`/dashboard/tenders?${params.toString()}`);
   }
 
@@ -100,35 +82,38 @@ export function TenderFilters() {
   }
 
   return (
-    <div className="space-y-5 rounded-[1.5rem] border border-slate-100 bg-white p-6 shadow-sm transition-all duration-300 hover:shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
-      <div className="flex items-center gap-2 mb-2">
+    <div className="rounded-[1.5rem] border border-slate-100 bg-white p-6 shadow-sm mb-6">
+      {/* Header */}
+      <div className="flex items-center gap-2 mb-5">
         <Filter className="size-4 text-blue-500" />
-        <h3 className="font-heading text-sm font-bold text-slate-900">Napredna pretraga i filteri</h3>
+        <h3 className="font-heading text-sm font-bold text-slate-900">Pretraga i filteri</h3>
       </div>
-      
-      {/* Red 1: Keyword + tipovi */}
-      <div className="flex flex-wrap items-end gap-5">
-        <div className="min-w-[240px] flex-1 space-y-2">
-          <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-            Pretraga po ključnoj riječi
-          </Label>
-          <div className="relative group">
-            <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors" />
-            <Input
-              placeholder="Npr. računari, izgradnja puta..."
-              value={keyword}
-              onChange={(e) => setKeyword(e.target.value)}
-              onKeyDown={handleKeyDown}
-              className="h-11 rounded-xl border-slate-200 pl-10 text-sm shadow-sm focus-visible:ring-primary focus-visible:border-primary transition-all"
-            />
-          </div>
+
+      {/* Row 1: keyword full width */}
+      <div className="mb-4">
+        <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">
+          Pretraga po ključnoj riječi
+        </Label>
+        <div className="relative group">
+          <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors" />
+          <Input
+            placeholder="Npr. računari, izgradnja puta, čišćenje..."
+            value={keyword}
+            onChange={(e) => setKeyword(e.target.value)}
+            onKeyDown={handleKeyDown}
+            className="h-11 rounded-xl border-slate-200 pl-10 text-sm shadow-sm focus-visible:ring-primary focus-visible:border-primary transition-all"
+          />
         </div>
-        <div className="w-[180px] space-y-2">
+      </div>
+
+      {/* Row 2: dropdowns */}
+      <div className="flex flex-wrap gap-3 mb-4">
+        <div className="flex-1 min-w-[150px] max-w-[220px] space-y-2">
           <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-            Tip Ugovora
+            Tip ugovora
           </Label>
           <Select value={contractType} onValueChange={setContractType}>
-            <SelectTrigger className="h-11 rounded-xl border-slate-200 text-sm shadow-sm focus:ring-primary focus:border-primary transition-all">
+            <SelectTrigger className="h-11 rounded-xl border-slate-200 text-sm shadow-sm">
               <SelectValue />
             </SelectTrigger>
             <SelectContent className="rounded-xl border-slate-200 shadow-xl">
@@ -140,12 +125,12 @@ export function TenderFilters() {
             </SelectContent>
           </Select>
         </div>
-        <div className="w-[200px] space-y-2">
+        <div className="flex-1 min-w-[150px] max-w-[220px] space-y-2">
           <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
             Procedura
           </Label>
           <Select value={procedureType} onValueChange={setProcedureType}>
-            <SelectTrigger className="h-11 rounded-xl border-slate-200 text-sm shadow-sm focus:ring-primary focus:border-primary transition-all">
+            <SelectTrigger className="h-11 rounded-xl border-slate-200 text-sm shadow-sm">
               <SelectValue />
             </SelectTrigger>
             <SelectContent className="rounded-xl border-slate-200 shadow-xl">
@@ -157,20 +142,7 @@ export function TenderFilters() {
             </SelectContent>
           </Select>
         </div>
-      </div>
-
-      {/* Red 2: Datumi + vrijednosti + dugmad */}
-      <div className="grid gap-5 border-t border-slate-50 pt-5 xl:grid-cols-[minmax(280px,1.35fr)_150px_150px_140px_140px_auto] xl:items-start">
-        <div className="min-w-[280px] flex-1 space-y-2">
-          <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-            Lokacija tendera
-          </Label>
-          <RegionMultiSelect selectedRegions={locations} onChange={setLocations} />
-          <p className="text-xs text-slate-500">
-            Filtrirajte po gradu, općini ili širem području ako želite pregled samo određenih lokacija.
-          </p>
-        </div>
-        <div className="w-[150px] space-y-2">
+        <div className="flex-1 min-w-[140px] space-y-2">
           <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
             Rok od
           </Label>
@@ -181,7 +153,7 @@ export function TenderFilters() {
             className="h-11 rounded-xl border-slate-200 text-sm shadow-sm focus-visible:ring-primary focus-visible:border-primary transition-all"
           />
         </div>
-        <div className="w-[150px] space-y-2">
+        <div className="flex-1 min-w-[140px] space-y-2">
           <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
             Rok do
           </Label>
@@ -192,43 +164,29 @@ export function TenderFilters() {
             className="h-11 rounded-xl border-slate-200 text-sm shadow-sm focus-visible:ring-primary focus-visible:border-primary transition-all"
           />
         </div>
-        <div className="w-[140px] space-y-2">
+      </div>
+
+      {/* Row 3: location + action buttons always visible */}
+      <div className="flex flex-wrap items-end gap-3 pt-4 border-t border-slate-50">
+        <div className="flex-1 min-w-[220px] space-y-2">
           <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-            Min vrijednost (KM)
+            Lokacija tendera
           </Label>
-          <Input
-            type="number"
-            placeholder="0"
-            value={valueMin}
-            onChange={(e) => setValueMin(e.target.value)}
-            className="h-11 rounded-xl border-slate-200 text-sm shadow-sm focus-visible:ring-primary focus-visible:border-primary transition-all"
-          />
+          <RegionMultiSelect selectedRegions={locations} onChange={setLocations} />
         </div>
-        <div className="w-[140px] space-y-2">
-          <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-            Max vrijednost (KM)
-          </Label>
-          <Input
-            type="number"
-            placeholder="∞"
-            value={valueMax}
-            onChange={(e) => setValueMax(e.target.value)}
-            className="h-11 rounded-xl border-slate-200 text-sm shadow-sm focus-visible:ring-primary focus-visible:border-primary transition-all"
-          />
-        </div>
-        <div className="flex gap-3 self-end xl:justify-end">
-          <Button 
-            variant="outline" 
-            onClick={resetFilters} 
+        <div className="flex gap-2 self-end flex-shrink-0">
+          <Button
+            variant="outline"
+            onClick={resetFilters}
             title="Resetuj sve filtere"
-            className="h-11 rounded-xl border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-all font-bold px-4"
+            className="h-11 rounded-xl border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900 font-bold px-4"
           >
             <RotateCcw className="mr-2 size-4" />
             Resetuj
           </Button>
-          <Button 
-            onClick={applyFilters} 
-            className="h-11 rounded-xl bg-primary text-white hover:bg-blue-700 shadow-lg shadow-blue-500/30 hover:shadow-blue-500/40 hover:-translate-y-0.5 transition-all font-bold px-6"
+          <Button
+            onClick={applyFilters}
+            className="h-11 rounded-xl bg-primary text-white hover:bg-blue-700 shadow-lg shadow-blue-500/25 font-bold px-6"
           >
             <Search className="mr-2 size-4" />
             Pretraži

@@ -28,16 +28,6 @@ function formatDate(dateStr: string | null): string {
   });
 }
 
-function formatValue(value: number | null): string {
-  if (value === null || value === undefined) return "—";
-  return (
-    new Intl.NumberFormat("bs-BA", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(value) + " KM"
-  );
-}
-
 function getDeadlineColor(deadline: string | null): string {
   if (!deadline) return "text-slate-500";
   const diffDays = Math.ceil(
@@ -105,7 +95,6 @@ export default async function TenderDetailPage({
 
   const company = companyData as Company | null;
 
-  // Check for existing bid and load authority stats in parallel
   const [existingBidResult, tenderCountResult, awardsResult] = await Promise.all([
     company
       ? supabase
@@ -136,7 +125,6 @@ export default async function TenderDetailPage({
     totalTenders: number;
     totalAwards: number;
     avgDiscount: number | null;
-    avgWinningPrice: number | null;
   } | null = null;
 
   if (tender.contracting_authority_jib) {
@@ -152,34 +140,22 @@ export default async function TenderDetailPage({
         ? Math.round((discounts.reduce((s, v) => s + v, 0) / discounts.length) * 100) / 100
         : null;
 
-    const prices = awards
-      .map((a) => (a as { winning_price: number | null }).winning_price)
-      .filter((p): p is number => p !== null && p !== undefined);
-
-    const avgWinningPrice =
-      prices.length > 0
-        ? Math.round(prices.reduce((s, v) => s + v, 0) / prices.length)
-        : null;
-
     authorityStats = {
       totalTenders: tenderCountResult.count ?? 0,
       totalAwards: awardCount,
       avgDiscount,
-      avgWinningPrice,
     };
   }
 
-  // Description: use real description if available, otherwise generate with AI
-  const hasRealDescription = tender.raw_description?.trim();
-  let aiDescription: string | null = null;
-  if (!hasRealDescription && process.env.OPENAI_API_KEY) {
-    aiDescription = await generateAiDescription(
-      tender.title,
-      tender.contracting_authority,
-      tender.contract_type,
-      tender.procedure_type,
-    );
-  }
+  // Always generate AI description (real portal descriptions are often poor or missing)
+  const aiDescription = process.env.OPENAI_API_KEY
+    ? await generateAiDescription(
+        tender.title,
+        tender.contracting_authority,
+        tender.contract_type,
+        tender.procedure_type,
+      )
+    : null;
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto">
@@ -193,23 +169,21 @@ export default async function TenderDetailPage({
         </Link>
       </div>
 
-      {/* Hero header card */}
+      {/* Hero header */}
       <div className="rounded-[2rem] border border-slate-100 bg-white p-8 shadow-sm">
-        <div className="mb-6 min-w-0">
-          <div className="flex items-center gap-2 mb-3">
-            <span className="inline-flex items-center rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-bold text-primary">
-              {tender.contract_type || "Tender"}
-            </span>
-            <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-bold text-slate-600">
-              {tender.status || "Aktivan"}
-            </span>
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-heading font-bold text-slate-900 leading-tight">
-            {tender.title}
-          </h1>
+        <div className="flex items-center gap-2 mb-3">
+          <span className="inline-flex items-center rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-bold text-primary">
+            {tender.contract_type || "Tender"}
+          </span>
+          <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-bold text-slate-600">
+            {tender.status || "Aktivan"}
+          </span>
         </div>
+        <h1 className="text-2xl sm:text-3xl font-heading font-bold text-slate-900 leading-tight mb-6">
+          {tender.title}
+        </h1>
 
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4 pt-6 border-t border-slate-50">
+        <div className="grid gap-6 sm:grid-cols-3 pt-6 border-t border-slate-50">
           <InfoItem
             icon={<Building2 className="size-4" />}
             label="Naručilac"
@@ -227,29 +201,18 @@ export default async function TenderDetailPage({
             label="Procedura"
             value={tender.procedure_type || "—"}
           />
-          <InfoItem
-            icon={<BarChart3 className="size-4" />}
-            label="Procijenjena vrijednost"
-            value={formatValue(tender.estimated_value)}
-            valueClassName={tender.estimated_value ? "font-heading font-bold text-primary" : "text-slate-400"}
-          />
         </div>
       </div>
 
-      {/* CTA — full width hero button */}
+      {/* CTA banner — dark, prominent */}
       {company && (
-        <div className="rounded-[2rem] bg-slate-950 p-8 shadow-xl shadow-slate-950/20">
-          <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
-            <div className="text-white">
-              <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-400 mb-2">
-                Profesionalna priprema
-              </p>
+        <div className="rounded-[2rem] bg-slate-950 px-8 py-7 shadow-xl shadow-slate-950/20">
+          <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+            <div className="text-white min-w-0">
               <p className="text-xl font-heading font-bold text-white leading-snug">
-                {existingBidId
-                  ? "Nastavite pripremu ponude"
-                  : "Pripremite ponudu profesionalno"}
+                {existingBidId ? "Nastavite pripremu ponude" : "Pripremite ponudu profesionalno"}
               </p>
-              <p className="mt-2 text-sm text-slate-400 max-w-md leading-relaxed">
+              <p className="mt-1.5 text-sm text-slate-400 leading-relaxed max-w-md">
                 Odmah dobijete početnu listu koraka, dokumenata i zahtjeva — bez ručnog sastavljanja.
               </p>
             </div>
@@ -258,28 +221,19 @@ export default async function TenderDetailPage({
                 tenderId={id}
                 existingBidId={existingBidId}
                 isSubscribed={isSubscribed}
-                className="h-16 w-full sm:w-auto rounded-2xl bg-blue-500 px-10 text-lg font-bold text-white shadow-lg shadow-blue-500/30 hover:bg-blue-400 transition-all"
+                className="h-14 w-full sm:w-auto rounded-2xl bg-blue-500 px-8 text-base font-bold text-white shadow-lg shadow-blue-500/30 hover:bg-blue-400 transition-all"
               />
             </div>
           </div>
         </div>
       )}
 
-      {/* Main content + sidebar */}
+      {/* Content + sidebar */}
       <div className="grid gap-6 lg:grid-cols-3">
-        {/* Left: description */}
         <div className="lg:col-span-2 space-y-6">
-          {hasRealDescription ? (
-            <div className="rounded-[1.5rem] border border-slate-100 bg-white p-8 shadow-sm">
-              <h3 className="mb-4 flex items-center gap-2 text-lg font-heading font-bold text-slate-900">
-                <FileText className="size-5 text-slate-400" />
-                Opis predmeta nabavke
-              </h3>
-              <div className="prose prose-sm max-w-none text-slate-600 prose-p:leading-relaxed">
-                <p className="whitespace-pre-wrap">{tender.raw_description}</p>
-              </div>
-            </div>
-          ) : aiDescription ? (
+
+          {/* Description — always AI generated */}
+          {aiDescription ? (
             <div className="rounded-[1.5rem] border border-blue-100 bg-blue-50/40 p-8 shadow-sm">
               <h3 className="mb-1 flex items-center gap-2 text-lg font-heading font-bold text-slate-900">
                 <Sparkles className="size-5 text-blue-500" />
@@ -295,15 +249,15 @@ export default async function TenderDetailPage({
                 Opis predmeta nabavke
               </h3>
               <p className="text-sm text-slate-400">
-                Detaljan opis nije dostupan u javnim podacima za ovaj tender.
+                Detaljan opis nije dostupan za ovaj tender.
               </p>
             </div>
           )}
 
           {/* What you get */}
           <div className="rounded-[1.5rem] border border-slate-100 bg-white p-6 shadow-sm">
-            <h3 className="text-base font-bold text-slate-900">Šta dobijate odmah</h3>
-            <div className="mt-4 grid gap-3 sm:grid-cols-3 text-sm text-slate-600">
+            <h3 className="text-base font-bold text-slate-900 mb-4">Šta dobijate odmah</h3>
+            <div className="grid gap-3 sm:grid-cols-3 text-sm text-slate-600">
               <div className="rounded-xl border border-slate-100 bg-slate-50 p-3">
                 Početnu listu dokumentacije bez dodatnog ručnog sastavljanja.
               </div>
@@ -317,16 +271,14 @@ export default async function TenderDetailPage({
           </div>
         </div>
 
-        {/* Right: sidebar */}
+        {/* Sidebar */}
         <div className="space-y-6">
-          {/* Authority history */}
           {authorityStats && (
             <div className="rounded-[1.5rem] border border-slate-100 bg-white p-6 shadow-sm">
               <h3 className="text-lg font-heading font-bold text-slate-900 mb-5 flex items-center gap-2">
                 <BarChart3 className="size-5 text-slate-400" />
                 Historijat naručioca
               </h3>
-
               <div className="space-y-3">
                 <StatRow
                   label="Ukupno tendera"
@@ -339,8 +291,6 @@ export default async function TenderDetailPage({
                   icon={<Tag className="size-4 text-emerald-500" />}
                 />
               </div>
-
-              {/* Avg discount — only show when meaningful data exists */}
               {authorityStats.avgDiscount !== null && authorityStats.totalAwards > 0 && (
                 <div className="pt-4 mt-4 border-t border-slate-100">
                   <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
@@ -353,23 +303,13 @@ export default async function TenderDetailPage({
                     <span className="text-xs text-slate-500">ispod procijenjene</span>
                   </div>
                   <p className="text-xs text-slate-400 mt-1">
-                    Na osnovu {authorityStats.totalAwards} dodjel{authorityStats.totalAwards === 1 ? "e" : "a"} ovog naručioca
-                  </p>
-                </div>
-              )}
-
-              {/* No discount data notice */}
-              {authorityStats.avgDiscount === null && authorityStats.totalAwards > 0 && (
-                <div className="pt-4 mt-4 border-t border-slate-100">
-                  <p className="text-xs text-slate-400">
-                    Podaci o cijenama dodjela nisu dostupni za ovog naručioca.
+                    Na osnovu {authorityStats.totalAwards} dodjel{authorityStats.totalAwards === 1 ? "e" : "a"}
                   </p>
                 </div>
               )}
             </div>
           )}
 
-          {/* Additional options */}
           <div className="rounded-[1.5rem] border border-slate-100 bg-white p-6 shadow-sm">
             <h3 className="text-base font-bold text-slate-900 mb-4">Dodatne opcije</h3>
             <div className="space-y-3">

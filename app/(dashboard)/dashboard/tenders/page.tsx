@@ -51,8 +51,8 @@ async function TendersContent({ searchParams }: TendersPageProps) {
   const procedureTypeParam = getSingleParam(params.procedure_type) ?? "all";
   const deadlineFromParam = getSingleParam(params.deadline_from) ?? "";
   const deadlineToParam = getSingleParam(params.deadline_to) ?? "";
-  const valueMinParam = getSingleParam(params.value_min) ?? "";
-  const valueMaxParam = getSingleParam(params.value_max) ?? "";
+  const valueMinParam = "";
+  const valueMaxParam = "";
   const locationFilterValues = getMultiParam(params.location);
   const locationFilterTerms = buildRegionSearchTerms(locationFilterValues);
 
