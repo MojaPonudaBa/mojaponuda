@@ -85,7 +85,7 @@ const HERO_FLOW = [
   {
     icon: Search,
     title: "Pronalazak tendera",
-    description: "Sustav svakodnevno pronalazi i filtrira tendere za vašu djelatnost.",
+    description: "Svakodnevno pronalazimo i filtriramo tendere za vašu djelatnost.",
   },
   {
     icon: Clock,
@@ -413,7 +413,7 @@ function PracticeSection() {
               Kada odlučite da se prijavite — znate šta treba
             </h3>
             <p className="mt-3 text-base leading-7 text-slate-300">
-              Sistem vam daje jasan početni pregled zahtjeva i dokumentacije, bez nagađanja i vraćanja na početak.
+              Dobijete jasan početni pregled zahtjeva i dokumentacije, bez nagađanja i vraćanja na početak.
             </p>
             <div className="mt-8 space-y-4">
               {PRACTICE_TENDER.checklist.map((item) => (
@@ -527,7 +527,7 @@ function StatsSection() {
       icon: Clock,
       title: "Ne morate provjeravati portale svaki dan",
       description:
-        "Sustav vas obavještava čim se pojavi novi tender za vašu djelatnost.",
+        "Dobijete obavijest čim se pojavi novi tender za vašu djelatnost.",
       items: [
         "Brža reakcija na novu priliku",
         "Manje ručne pretrage i praćenja rokova",
@@ -592,11 +592,10 @@ function PricingSection() {
             </div>
             <div className="mt-8 space-y-4">
               {[
-                "Do 3 aktivna tendera",
-                "1 korisnik",
-                "1 GB prostora",
-                "Osnovni pregled tendera",
-                "Praćenje važnih dokumenata",
+                "Besplatan profil firme",
+                "Vidite signale za nove prilike",
+                "Pronađeni tenderi blizu vas",
+                "Osnovni uvid u tržište",
               ].map((f) => (
                 <div key={f} className="flex items-start gap-3">
                   <CheckCircle className="size-5 shrink-0 text-slate-400" />
@@ -627,13 +626,11 @@ function PricingSection() {
             </div>
             <div className="mt-8 space-y-4">
               {[
-                "50 aktivnih tendera",
-                "5 članova tima",
-                "10 GB prostora",
-                "Pokretanje pripreme ponude",
-                "Početna lista dokumenata i koraka",
-                "Završna provjera prije slanja",
-                "Ko vam uzima poslove"
+                "Vidite sve tendere za vašu firmu",
+                "Email obavijesti o novim poslovima",
+                "Objašnjenje relevantnosti tendera",
+                "Priprema ponude po potrebi (15 KM)",
+                "Bez rizika propuštenih prilika",
               ].map((f) => (
                 <div key={f} className="flex items-start gap-3">
                   <CheckCircle className="size-5 shrink-0 text-primary" />
@@ -659,12 +656,11 @@ function PricingSection() {
             </div>
             <div className="mt-8 space-y-4">
               {[
-                "Velik broj aktivnih tendera",
-                "20 članova tima",
-                "Do 10 firmi (klijenata)",
-                "100 GB prostora",
-                "Sve funkcionalnosti Punog paketa",
-                "Odvojeni rad po klijentima",
+                "Sve funkcionalnosti Pro paketa",
+                "Upravljanje s više profilnih firmi",
+                "Napredna analiza tržišta",
+                "Poseban pristup podršci",
+                "Idealno za agencije i konsultante",
               ].map((f) => (
                 <div key={f} className="flex items-start gap-3">
                   <CheckCircle className="size-5 shrink-0 text-slate-400" />
@@ -692,7 +688,7 @@ const FAQ_ITEMS = [
   },
   {
     q: "Koji formati dokumenata su podržani u Trezoru?",
-    a: "Sistem podržava sve standardne formate (PDF, JPG, PNG, DOCX) veličine do 20MB. Za najbolju AI ekstrakciju preporučujemo PDF format sa prepoznatim tekstom.",
+    a: "Podržani su svi standardni formate (PDF, JPG, PNG, DOCX) veličine do 20MB. Za najbolju AI ekstrakciju preporučujemo PDF format sa prepoznatim tekstom.",
   },
   {
     q: "Koliko su moji podaci sigurni?",
@@ -700,7 +696,7 @@ const FAQ_ITEMS = [
   },
   {
     q: "Kako AI pronalazi uslove u tenderu?",
-    a: "Sistem izdvaja najvažnije zahtjeve iz tendera i prikazuje ih za pregled. Vi zadržavate završnu kontrolu i potvrđujete šta je zaista spremno za slanje.",
+    a: "Platforma izdvaja najvažnije zahtjeve iz tendera i prikazuje ih za pregled. Vi zadržavate završnu kontrolu i potvrđujete šta je zaista spremno za slanje.",
   },
 ] as const;
 

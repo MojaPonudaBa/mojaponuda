@@ -409,7 +409,7 @@ export function OnboardingGuidedForm({
 
     if (saveError) {
       if (saveError.message.includes("duplicate key")) {
-        setError("Firma s ovim JIB-om već postoji u sistemu.");
+        setError("Firma s ovim JIB-om je već registrovana.");
       } else {
         setError("Greška pri spremanju podataka. Molimo pokušajte ponovo.");
       }
@@ -523,7 +523,7 @@ export function OnboardingGuidedForm({
           <div className="rounded-2xl border border-blue-100 bg-blue-50/70 p-5">
             <p className="text-sm font-semibold text-slate-900">Odaberite sve što vaša firma stvarno radi</p>
             <p className="mt-2 text-sm leading-6 text-slate-600">
-              Ne tražimo od vas jednu &quot;primarnu djelatnost&quot; jer mnoge firme nude više različitih usluga, roba i radova. Označite sve što realno nudite, a sistem će sam složiti fokus vašeg profila.
+              Ne tražimo od vas jednu &quot;primarnu djelatnost&quot; jer mnoge firme nude više različitih usluga, roba i radova. Označite sve što realno nudite, a preporuke će se same prilagoditi vašem profilu.
             </p>
           </div>
           <div className="space-y-5">
@@ -644,7 +644,7 @@ export function OnboardingGuidedForm({
           <div className="rounded-2xl border border-blue-100 bg-blue-50/70 p-5">
             <p className="text-sm font-semibold text-slate-900">Opišite firmu svojim riječima</p>
             <p className="mt-2 text-sm leading-6 text-slate-600">
-              Uključite proizvode, usluge, radove, ključne reference, specijalizacije i sve što vam je bitno da sistem zna. Što ste konkretniji, preporuke tendera će biti preciznije.
+              Uključite proizvode, usluge, radove, ključne reference, specijalizacije i sve što vam je bitno za preporuke. Što ste konkretniji, preporuke tendera će biti preciznije.
             </p>
           </div>
           <div className="space-y-2">

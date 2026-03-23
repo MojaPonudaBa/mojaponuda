@@ -72,69 +72,12 @@ export function PricingTable({
             </div>
 
             <ul className="mb-8 space-y-4 flex-1">
-              <li className="flex items-center gap-3 text-sm">
-                <Check className="size-5 shrink-0 text-emerald-500" />
-                <span className="text-slate-700">
-                  <strong className="font-semibold text-slate-900">
-                    {plan.limits.maxActiveTenders}
-                  </strong>{" "}
-                  aktivnih tendera
-                </span>
-              </li>
-              <li className="flex items-center gap-3 text-sm">
-                <Check className="size-5 shrink-0 text-emerald-500" />
-                <span className="text-slate-700">
-                  <strong className="font-semibold text-slate-900">
-                    {plan.limits.maxTeamMembers}
-                  </strong>{" "}
-                  korisnika
-                </span>
-              </li>
-              <li className="flex items-center gap-3 text-sm">
-                <Check className="size-5 shrink-0 text-emerald-500" />
-                <span className="text-slate-700">
-                  <strong className="font-semibold text-slate-900">
-                    {plan.limits.maxStorageBytes / (1024 * 1024 * 1024)} GB
-                  </strong>{" "}
-                  prostora
-                </span>
-              </li>
-              {plan.limits.maxCompanies > 1 && (
-                 <li className="flex items-center gap-3 text-sm">
-                 <Check className="size-5 shrink-0 text-emerald-500" />
-                 <span className="text-slate-700">
-                   <strong className="font-semibold text-slate-900">
-                     {plan.limits.maxCompanies}
-                   </strong>{" "}
-                   firmi
-                 </span>
-               </li>
-              )}
-
-              {/* Features */}
-              {plan.limits.features.advancedAnalysis ? (
-                <li className="flex items-center gap-3 text-sm">
+              {plan.features.map((feature, index) => (
+                <li key={index} className="flex items-center gap-3 text-sm">
                   <Check className="size-5 shrink-0 text-emerald-500" />
-                  <span className="text-slate-700">Precizniji pregled tendera i zahtjeva</span>
+                  <span className="text-slate-700">{feature}</span>
                 </li>
-              ) : (
-                <li className="flex items-center gap-3 text-sm text-slate-400">
-                  <Check className="size-5 shrink-0 text-slate-300" />
-                  <span className="line-through decoration-slate-300">Precizniji pregled tendera i zahtjeva</span>
-                </li>
-              )}
-              
-               <li className="flex items-center gap-3 text-sm">
-                  <Check className="size-5 shrink-0 text-emerald-500" />
-                  <span className="text-slate-700">Kontrola važnih dokumenata na jednom mjestu</span>
-                </li>
-
-              {plan.limits.features.submissionPackage && (
-                <li className="flex items-center gap-3 text-sm">
-                  <Check className="size-5 shrink-0 text-emerald-500" />
-                  <span className="text-slate-700">Završna priprema i paket za predaju</span>
-                </li>
-              )}
+              ))}
             </ul>
 
             <Button
@@ -151,11 +94,7 @@ export function PricingTable({
               ) : null}
               {isCurrent
                 ? "Trenutni paket"
-                : plan.id === "agency"
-                ? "Kontaktirajte nas"
-                : plan.id === "pro"
-                  ? "Preuzmi više kontrole"
-                  : "Odaberi paket"}
+                : plan.cta || "Odaberi paket"}
             </Button>
             
             {plan.id === "agency" && !isCurrent && (

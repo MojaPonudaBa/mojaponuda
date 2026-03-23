@@ -348,7 +348,7 @@ export function DashboardHomeOverview({
               ))
             ) : (
               <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 text-sm leading-6 text-slate-500">
-                Još nema dovoljno jasnih prijedloga. Dopunite profil da sistem bolje razlikuje prave prilike od buke.
+                Još nema dovoljno jasnih prijedloga. Dopunite profil da preporuke bolje razlikuju prave prilike od buke.
               </div>
             )}
           </div>
@@ -420,7 +420,7 @@ export function DashboardHomeOverview({
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Tržište</p>
                 <h2 className="mt-2 font-heading text-2xl font-bold text-slate-950">Gdje se otvara prostor</h2>
                 <p className="mt-1 text-xs text-slate-500">
-                  {topRelevantAuthoritiesSource === "live" ? "Podaci uživo iz tendera koji se uklapaju u vaš profil." : "Pojavit će se kada sistem nađe dovoljno relevantnih tendera."}
+                  {topRelevantAuthoritiesSource === "live" ? "Podaci uživo iz tendera koji se uklapaju u vaš profil." : "Pojavit će se kada se pojavi dovoljno relevantnih tendera."}
                 </p>
               </div>
               <Swords className="size-5 text-rose-600" />

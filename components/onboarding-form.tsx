@@ -274,7 +274,7 @@ export function OnboardingForm({
 
     if (saveError) {
       if (saveError.message.includes("duplicate key")) {
-        setError("Firma s ovim JIB-om već postoji u sistemu.");
+        setError("Firma s ovim JIB-om je već registrovana.");
       } else {
         setError("Greška pri spremanju podataka. Molimo pokušajte ponovo.");
       }

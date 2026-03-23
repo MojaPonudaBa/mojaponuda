@@ -29,6 +29,7 @@ export interface Plan {
   description: string;
   limits: PlanLimits;
   features: string[]; // For UI display
+  cta?: string;
   lemonSqueezyVariantId?: string;
 }
 
@@ -41,7 +42,7 @@ export const PLANS: Record<PlanTier, Plan> = {
     id: "basic",
     name: "Besplatni",
     price: 0,
-    description: "Pregled signala da postoje potencijalni tenderi.",
+    description: "Provjerite da li postoje poslovi za vašu firmu.",
     limits: {
       maxActiveTenders: 0,
       maxTeamMembers: 1,
@@ -56,19 +57,20 @@ export const PLANS: Record<PlanTier, Plan> = {
       },
     },
     features: ["Dokaz da prilike postoje"],
+    cta: "Provjeri prilike",
   },
   starter: {
     id: "starter",
     name: "Starter",
     price: PRICING.starter,
-    description: `Puni pristup personaliziranom feedu tendera. Priprema ponuda se plaća ${PRICING.tenderUnlock} KM po tenderu.`,
+    description: "Za firme koje žele redovno pratiti prilike.",
     limits: {
-      maxActiveTenders: 50, // Pustimo im da saveaju za feed/tracking
+      maxActiveTenders: 50,
       maxTeamMembers: 1,
       maxCompanies: 1,
       maxStorageBytes: 1 * GB,
       features: {
-        advancedAnalysis: false, // Execution ide po pay-per-tender (Započni pripremu)
+        advancedAnalysis: false,
         multiCompany: false,
         teamCollaboration: false,
         vaultAutoSuggest: true,
@@ -76,19 +78,19 @@ export const PLANS: Record<PlanTier, Plan> = {
       },
     },
     features: [
-      "Stvarni nazivi tendera",
-      "Naručioci, vrijednosti i rokovi",
-      "Napredni filteri",
-      "Email notifikacije",
-      "Objašnjenje relevatnosti",
+      "Vidite sve tendere koji odgovaraju vašoj firmi",
+      "Dobijate email obavijesti o novim tenderima",
+      "Jasno objašnjenje zašto je tender relevantan",
+      `Priprema ponude po potrebi (${PRICING.tenderUnlock} KM po tenderu)`,
     ],
+    cta: "Kreni koristiti",
     lemonSqueezyVariantId: process.env.NEXT_PUBLIC_LS_VARIANT_STARTER || "",
   },
   pro: {
     id: "pro",
     name: "Pro",
     price: PRICING.pro,
-    description: "Za firme koje redovno pripremaju ponude. Neograničena AI priprema.",
+    description: "Za firme koje žele uzimati tendere bez greške.",
     limits: {
       maxActiveTenders: 1000,
       maxTeamMembers: 3,
@@ -103,22 +105,23 @@ export const PLANS: Record<PlanTier, Plan> = {
       },
     },
     features: [
-      "Sve iz Starter paketa",
-      "Neograničen broj Započni pripremu ponude (AI analiza, dokumenti)",
-      "Timski rad (3 korisnika)",
-      "Analitika naručioca",
+      "Neograničena priprema ponuda",
+      "Tačno vidite šta nedostaje prije predaje",
+      "Svi dokumenti i rokovi na jednom mjestu",
+      "Smanjen rizik odbijanja ponude",
     ],
+    cta: "Uzmi potpunu kontrolu",
     lemonSqueezyVariantId: process.env.NEXT_PUBLIC_LS_VARIANT_PRO || "",
   },
   agency: {
     id: "agency",
     name: "Agencijski",
     price: PRICING.agency,
-    description: `Uslužne agencije i holding kompanije. 2 firme besplatno (ostale ${PRICING.agencyExtraCompany} KM).`,
+    description: "Za agencije i firme koje vode više klijenata.",
     limits: {
       maxActiveTenders: 5000,
       maxTeamMembers: 10,
-      maxCompanies: 10,  // We'll handle billing per dynamic company in future LS API
+      maxCompanies: 10,
       maxStorageBytes: 100 * GB,
       features: {
         advancedAnalysis: true,
@@ -129,12 +132,13 @@ export const PLANS: Record<PlanTier, Plan> = {
       },
     },
     features: [
-      "Više profilisanih firmi (multitenancy)",
       "Upravljanje desetinama klijenata sa jednog mjesta",
+      "Vlastiti profil za svaku firmu klijenta",
       "Svi AI benefiti bez ograničenja",
       `Dodatna firma samo ${PRICING.agencyExtraCompany} KM`,
       "Prioritetna podrška",
     ],
+    cta: "Kontaktirajte nas",
     lemonSqueezyVariantId: process.env.NEXT_PUBLIC_LS_VARIANT_AGENCY || "",
   },
 };

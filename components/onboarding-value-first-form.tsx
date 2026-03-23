@@ -90,7 +90,7 @@ const STEPS = [
   {
     id: "precision",
     title: "Želite preciznije preporuke?",
-    description: "Dodajte još malo konteksta da sistem tačnije zna koje poslove stvarno možete raditi.",
+    description: "Dodajte još malo konteksta da preporuke tačnije znaju koje poslove stvarno možete raditi.",
     icon: Target,
     completionLabel: "Profil 70%",
   },
@@ -359,7 +359,7 @@ export function OnboardingValueFirstForm({
         : null,
       regionSelectionLabels.length > 0
         ? `Firma se nalazi ili ima poslovnicu u: ${regionSelectionLabels.join(", ")}.`
-        : "Lokacija firme nije sužena, pa sistem gleda prilike sa nivoa cijele Bosne i Hercegovine.",
+        : "Lokacija firme nije sužena, pa se vide prilike sa nivoa cijele Bosne i Hercegovine.",
     ]
       .filter((item): item is string => Boolean(item))
       .join(" ");
@@ -450,7 +450,7 @@ export function OnboardingValueFirstForm({
         : null,
       regionSelectionLabels.length > 0
         ? `Firma se nalazi ili ima poslovnicu u: ${regionSelectionLabels.join(", ")}.`
-        : "Lokacija firme nije sužena, pa sistem gleda prilike sa nivoa cijele Bosne i Hercegovine.",
+        : "Lokacija firme nije sužena, pa se vide prilike sa nivoa cijele Bosne i Hercegovine.",
     ]
       .filter((item): item is string => Boolean(item))
       .join(" ");
@@ -567,7 +567,7 @@ export function OnboardingValueFirstForm({
 
     if (saveError) {
       if (saveError.message.includes("duplicate key")) {
-        setError("Firma s ovim JIB-om već postoji u sistemu.");
+        setError("Firma s ovim JIB-om je već registrovana.");
       } else {
         setError("Greška pri spremanju podataka. Molimo pokušajte ponovo.");
       }

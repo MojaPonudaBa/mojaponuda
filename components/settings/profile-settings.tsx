@@ -477,7 +477,7 @@ export function ProfileSettings({ company }: ProfileSettingsProps) {
                     <div className="mb-4">
                       <Label className="text-base font-bold text-slate-900">Preciznije usmjerite preporuke prema onome što zaista nudite</Label>
                       <p className="mt-1 text-sm text-slate-500">
-                        Ovi izbori služe kao smjer za preporuke i analizu tržišta. Ne zaključavaju vas tvrdo na usku nišu, nego pomažu da sistem bolje razumije vaš stvarni poslovni fokus.
+                        Ovi izbori služe kao smjer za preporuke i analizu tržišta. Ne zaključavaju vas tvrdo na usku nišu, nego pomažu da preporuke bolje razumiju vaš stvarni poslovni fokus.
                       </p>
                     </div>
                     <div className="space-y-5">
@@ -567,7 +567,7 @@ export function ProfileSettings({ company }: ProfileSettingsProps) {
             <div className="space-y-2">
               <Label className="text-purple-900 font-bold">Automatska priprema profila</Label>
               <p className="text-xs text-slate-500 mb-2">
-                Upišite čime se firma bavi. Sistem će u pozadini doraditi preporuke i predložiti dodatne CPV kodove.
+                Upišite čime se firma bavi. Preporuke će se u pozadini doraditi i predložiti dodatne CPV kodove.
               </p>
               <Textarea 
                 placeholder="Npr. Izvodimo elektroinstalacione radove, održavamo javnu rasvjetu i isporučujemo kabel, razvodne ormare i prateću opremu..." 
@@ -591,7 +591,7 @@ export function ProfileSettings({ company }: ProfileSettingsProps) {
             <div className="space-y-2">
               <Label>Vaši dodatni pojmovi</Label>
               <p className="text-xs text-slate-500">
-                Ovdje vidite samo pojmove koje ste vi ručno unijeli. Sistemski pojmovi ostaju skriveni u pozadini.
+                Ovdje vidite samo pojmove koje ste vi ručno unijeli. Standardni pojmovi ostaju skriveni u pozadini.
               </p>
               <div className="flex gap-2">
                 <Input 

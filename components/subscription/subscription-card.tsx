@@ -86,8 +86,8 @@ export function SubscriptionCard({
         <p className="text-sm font-medium text-slate-500">Šta to znači za vaš rad</p>
         <p className="mt-1 text-sm leading-6 text-slate-700">
           {isActive
-            ? `Trenutno imate pristup paketu ${displayPlanName}, što znači više kontrole prije slanja ponude i pristup premium tržišnim uvidima.`
-            : "Trenutno ste na besplatnom nivou: možete pregledati tendera i postaviti profil, a pripremu ponude i premium uvide otključavate kada vam zatrebaju."}
+            ? `Trenutno koristite paket ${displayPlanName}. Ovo vam omogućava da imate punu kontrolu nad procesom i smanjite rizik od grešaka pri slanju ponuda.`
+            : "Trenutno ste na besplatnom nivou: možete pratiti prilike za vašu firmu, a puni pristup i pripremu ponuda otključavate kada vam zatreba."}
         </p>
       </div>
 
