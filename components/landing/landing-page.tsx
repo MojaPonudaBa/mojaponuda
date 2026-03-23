@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { motion } from "framer-motion";
+import { motion, Variants } from "framer-motion";
 import {
   CheckCircle,
   ArrowRight,
@@ -26,7 +26,7 @@ interface LandingPageProps {
 }
 
 // Minimalistic framer-motion variants for premium slide-ins
-const fadeUpContainer = {
+const fadeUpContainer: Variants = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
@@ -34,7 +34,7 @@ const fadeUpContainer = {
   }
 };
 
-const fadeUpItem = {
+const fadeUpItem: Variants = {
   hidden: { opacity: 0, y: 30 },
   visible: { opacity: 1, y: 0, transition: { duration: 0.7, ease: [0.22, 1, 0.36, 1] } }
 };
