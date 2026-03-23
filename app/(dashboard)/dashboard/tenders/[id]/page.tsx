@@ -4,7 +4,6 @@ import { createClient } from "@/lib/supabase/server";
 import type { Tender, Company } from "@/types/database";
 import { Button } from "@/components/ui/button";
 import { StartBidButton } from "@/components/tenders/start-bid-button";
-import { QuickScanButton } from "@/components/tenders/quick-scan-button";
 import { getSubscriptionStatus } from "@/lib/subscription";
 import { getOpenAIClient } from "@/lib/openai";
 import {
@@ -310,11 +309,10 @@ export default async function TenderDetailPage({
             </div>
           )}
 
-          <div className="rounded-[1.5rem] border border-slate-100 bg-white p-6 shadow-sm">
-            <h3 className="text-base font-bold text-slate-900 mb-4">Dodatne opcije</h3>
-            <div className="space-y-3">
-              <QuickScanButton tenderId={id} isSubscribed={isSubscribed} />
-              {tender.portal_url ? (
+          {tender.portal_url && (
+            <div className="rounded-[1.5rem] border border-slate-100 bg-white p-6 shadow-sm">
+              <h3 className="text-base font-bold text-slate-900 mb-4">Izvorni dokument</h3>
+              <div className="space-y-3">
                 <a
                   href={tender.portal_url}
                   target="_blank"
@@ -324,9 +322,9 @@ export default async function TenderDetailPage({
                   <ExternalLink className="size-4" />
                   Otvori na portalu
                 </a>
-              ) : null}
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </div>
