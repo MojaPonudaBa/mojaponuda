@@ -90,13 +90,12 @@ function NavBar({ isLoggedIn }: { isLoggedIn?: boolean }) {
 // ─── Hero ────────────────────────────────────────────────────────────────────
 function HeroSection({ isLoggedIn }: { isLoggedIn?: boolean }) {
   return (
-    <section className="relative overflow-hidden bg-white px-4 sm:px-6 pb-12 pt-28 sm:pb-16 sm:pt-36 border-b border-slate-200 z-0">
-      <div className="absolute inset-0 -z-10 bg-[linear-gradient(to_right,#f1f5f9_1px,transparent_1px),linear-gradient(to_bottom,#f1f5f9_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] pointer-events-none" />
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[500px] opacity-60 pointer-events-none -z-10 overflow-hidden hidden md:block">
-        <div className="absolute top-0 -left-10 w-[400px] h-[400px] bg-blue-300 rounded-full mix-blend-multiply filter blur-[100px] animate-blob" />
-        <div className="absolute top-0 -right-10 w-[400px] h-[400px] bg-sky-200 rounded-full mix-blend-multiply filter blur-[100px] animate-blob animation-delay-2000" />
-        <div className="absolute -bottom-20 left-20 w-[400px] h-[400px] bg-indigo-200 rounded-full mix-blend-multiply filter blur-[100px] animate-blob animation-delay-4000" />
+    <section className="relative overflow-hidden bg-white px-4 sm:px-6 pb-12 pt-28 sm:pb-16 sm:pt-36 border-b border-slate-200">
+      <div className="absolute inset-0 -z-10 bg-[linear-gradient(to_right,#f1f5f9_1px,transparent_1px),linear-gradient(to_bottom,#f1f5f9_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)]" />
+      <div className="absolute top-0 right-0 h-[800px] w-[800px] blur-[1px] opacity-[0.25] -z-10 mix-blend-multiply translate-x-1/4 -translate-y-1/4 pointer-events-none select-none">
+        <Image src="/images/premium-glass-hero.png" alt="Premium Abstract Glass Background" fill className="object-contain" priority />
       </div>
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[500px] bg-blue-500/10 blur-[120px] rounded-full -z-10" />
 
       <div className="relative mx-auto max-w-4xl text-center">
         <div className="inline-flex items-center gap-2 rounded-full border border-blue-100 bg-blue-50/50 px-3 py-1.5 mb-5">
@@ -147,20 +146,18 @@ function HeroSection({ isLoggedIn }: { isLoggedIn?: boolean }) {
         </div>
 
         {/* 3 Metric-driven Cards */}
-        <div className="mt-16 grid gap-5 text-left md:grid-cols-3 relative">
-          <div className="absolute top-1/2 left-1/2 h-full w-full -translate-x-1/2 -translate-y-1/2 bg-blue-100/30 blur-[100px] -z-10 rounded-full" />
+        <div className="mt-16 grid gap-5 text-left md:grid-cols-3">
           {[
             { metric: "3x", title: "više tendera", desc: "Sistem filtrira tržište i izdvaja samo one prilike koje bi vjerovatno propustili ručnim radom." },
             { metric: "10x", title: "brža priprema", desc: "Automatska analiza obimne dokumentacije uklanja desetine sati dosadnog ručnog čitanja." },
             { metric: "2x", title: "veća potencijalna zarada", desc: "Bez propuštenih prilika i bez odbačenih prijava zbog sitnih birokratskih previda." },
           ].map((item) => (
-             <div key={item.title} className="group relative flex flex-col gap-2 rounded-2xl bg-white p-6 shadow-sm transition-all hover:-translate-y-1 hover:shadow-xl hover:shadow-blue-500/10 border border-slate-200/50">
-               <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-blue-100 to-white opacity-0 transition-opacity group-hover:opacity-100 -z-10" />
+             <div key={item.title} className="flex flex-col gap-2 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition-all hover:shadow-md hover:-translate-y-1">
                <div className="flex items-baseline gap-2">
-                 <span className="font-heading text-[2.5rem] font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-blue-400 group-hover:from-blue-500 group-hover:to-emerald-400 transition-all duration-300 relative z-10">{item.metric}</span>
+                 <span className="font-heading text-[2.5rem] font-extrabold tracking-tight text-blue-600">{item.metric}</span>
                </div>
-               <span className="text-[1.125rem] font-bold text-slate-900 leading-tight relative z-10">{item.title}</span>
-               <p className="text-[15px] text-slate-600 leading-relaxed mt-1 relative z-10">{item.desc}</p>
+               <span className="text-[1.125rem] font-bold text-slate-900 leading-tight">{item.title}</span>
+               <p className="text-[15px] text-slate-600 leading-relaxed mt-1">{item.desc}</p>
              </div>
           ))}
         </div>
@@ -213,17 +210,16 @@ function HowItWorksSection() {
           <div className="hidden lg:block absolute top-12 left-10 right-10 h-0.5 border-t-2 border-dashed border-slate-200 -z-0" />
 
           {steps.map((s) => (
-            <div key={s.title} className="group relative rounded-2xl border border-slate-100 bg-white/80 backdrop-blur-sm p-6 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.05)] transition-all hover:-translate-y-1 hover:shadow-[0_10px_20px_-10px_rgba(6,81,237,0.15)] z-10">
-              <div className="absolute inset-0 -z-10 rounded-2xl blur-md bg-gradient-to-br from-blue-400 to-emerald-400 opacity-0 group-hover:opacity-10 transition-opacity duration-500" />
-              <div className="flex justify-between items-start mb-5">
-                <div className="flex size-12 items-center justify-center rounded-xl bg-gradient-to-br from-blue-50 to-slate-50 text-blue-600 ring-1 ring-slate-100 shadow-sm transition-transform duration-300 group-hover:scale-110">
+            <div key={s.title} className="relative rounded-2xl border border-white/60 bg-white p-6 shadow-sm transition-all hover:shadow-md hover:-translate-y-0.5 z-10">
+              <div className="flex justify-between items-start mb-4">
+                <div className="flex size-12 items-center justify-center rounded-xl bg-blue-50 text-blue-600 ring-4 ring-white">
                   <s.icon className="size-6" />
                 </div>
-                <span className="rounded-full bg-slate-100/80 px-2.5 py-1 text-[11px] font-bold tracking-wider text-slate-500 uppercase border border-slate-200/50">
+                <span className="rounded-md bg-slate-100 px-2 py-1 text-[11px] font-bold tracking-wider text-slate-500 uppercase border border-slate-200/60">
                   {s.badge}
                 </span>
               </div>
-              <h3 className="font-heading text-lg font-bold leading-tight text-slate-900 group-hover:text-blue-600 transition-colors">{s.title}</h3>
+              <h3 className="font-heading text-lg font-bold leading-tight text-slate-900">{s.title}</h3>
               <p className="mt-2 text-base leading-relaxed text-slate-600">{s.desc}</p>
             </div>
           ))}
@@ -240,13 +236,8 @@ function HowItWorksSection() {
 // ─── Prije / Poslije ─────────────────────────────────────────────────────────
 function BeforeAfterSection({ isLoggedIn }: { isLoggedIn?: boolean }) {
   return (
-    <section id="usporedba" className="relative bg-white px-4 sm:px-6 py-16 sm:py-24 border-b border-slate-100 overflow-hidden z-0">
-      {/* Premium Ambient Light */}
-      <div className="absolute top-1/2 left-1/4 h-[500px] w-[500px] -translate-y-1/2 rounded-full bg-emerald-50/50 blur-[120px] -z-10" />
-      <div className="absolute top-1/2 right-1/4 h-[500px] w-[500px] -translate-y-1/2 rounded-full bg-blue-50/50 blur-[120px] -z-10" />
-      <div className="absolute inset-0 bg-[radial-gradient(#e2e8f0_1px,transparent_1px)] [background-size:24px_24px] opacity-30 select-none pointer-events-none -z-10" />
-
-      <div className="mx-auto max-w-5xl relative z-10">
+    <section id="usporedba" className="bg-white px-4 sm:px-6 py-16 sm:py-20 border-b border-slate-100">
+      <div className="mx-auto max-w-5xl">
         <div className="text-center mb-12">
           <h2 className="font-heading text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
             Koliko vremena gubite na jedan tender?
@@ -271,10 +262,10 @@ function BeforeAfterSection({ isLoggedIn }: { isLoggedIn?: boolean }) {
             <div className="mb-6 space-y-2 relative">
               <div className="flex justify-between text-[13px] font-bold text-slate-600">
                 <span>Utrošeno vrijeme procesa</span>
-                <span className="text-red-500 font-extrabold">100% vremena</span>
+                <span className="text-red-500">100%</span>
               </div>
-              <div className="h-2 w-full rounded-full bg-slate-200 overflow-hidden shadow-inner flex">
-                <div className="h-full w-full rounded-full bg-gradient-to-r from-red-400 to-red-500" />
+              <div className="h-2 w-full rounded-full bg-slate-200 overflow-hidden">
+                <div className="h-full w-full rounded-full bg-red-400" />
               </div>
             </div>
 
@@ -310,10 +301,10 @@ function BeforeAfterSection({ isLoggedIn }: { isLoggedIn?: boolean }) {
             <div className="mb-6 space-y-2 relative">
               <div className="flex justify-between text-[13px] font-bold text-slate-600">
                 <span>Utrošeno vrijeme procesa</span>
-                <span className="text-emerald-600 font-extrabold">Oduzima 10% vremena</span>
+                <span className="text-emerald-700">-90% kraće (10x brže)</span>
               </div>
-              <div className="h-2 w-full rounded-full bg-slate-100 overflow-hidden shadow-inner flex">
-                <div className="h-full w-[10%] rounded-full bg-gradient-to-r from-emerald-400 to-emerald-500 transition-all duration-1000 ease-out" />
+              <div className="h-2 w-full rounded-full bg-emerald-200/50 overflow-hidden">
+                <div className="h-full w-[10%] rounded-full bg-emerald-500" />
               </div>
             </div>
 
@@ -383,14 +374,9 @@ function MoneySection({ isLoggedIn }: { isLoggedIn?: boolean }) {
             </div>
           </div>
 
-          <div className="relative group rounded-[1.5rem] p-[1px] overflow-hidden shadow-2xl">
-            <div className="absolute inset-0 bg-gradient-to-r from-emerald-500 via-blue-500 to-emerald-500 opacity-0 group-hover:opacity-100 transition-opacity duration-1000 blur-sm pointer-events-none" />
-            <div className="relative rounded-[1.5rem] border border-white/10 bg-[#0f172a] p-8 sm:p-10 backdrop-blur-md overflow-hidden z-10 transition-all">
-              <div className="absolute inset-0 opacity-40 mix-blend-screen -z-10 pointer-events-none">
-                <Image src="/images/card-bg.png" alt="Premium Data Texture" fill priority className="object-cover" />
-              </div>
-              <p className="text-[14px] font-bold uppercase tracking-wider text-blue-300 mb-6 flex items-center gap-2"><Clock className="size-4 animate-pulse text-emerald-400" /> Visualna kontrola svake tačke</p>
-              <div className="space-y-3 relative z-20">
+          <div className="rounded-[1.5rem] border border-white/10 bg-white/5 p-8 sm:p-10 backdrop-blur-sm shadow-2xl">
+            <p className="text-[14px] font-bold uppercase tracking-wider text-blue-300 mb-6">Visualna kontrola svake tačke</p>
+            <div className="space-y-3">
               {[
                 { done: true, text: "Uvjerenje o izmirenim porezima (PDV)" },
                 { done: true, text: "Popunjena izjava o podobnosti učesnika" },
@@ -408,8 +394,7 @@ function MoneySection({ isLoggedIn }: { isLoggedIn?: boolean }) {
                 </div>
               ))}
             </div>
-              <p className="mt-6 text-[15px] font-medium text-slate-400">Sistem crvenom bojom štiti vašu firmu od formalno neispravnih predaja dokumenata.</p>
-            </div>
+            <p className="mt-6 text-[15px] font-medium text-slate-400">Sistem crvenom bojom štiti vašu firmu od formalno neispravnih predaja dokumenata.</p>
           </div>
         </div>
       </div>
@@ -461,13 +446,8 @@ function PricingSection({ isLoggedIn }: { isLoggedIn?: boolean }) {
           </div>
 
           {/* Puni Paket — highlighted */}
-          <div className="relative rounded-[1.5rem] p-[2px] lg:scale-[1.05] z-10 lg:-mt-2 flex flex-col group overflow-hidden shadow-xl shadow-blue-500/10 hover:shadow-blue-500/30 transition-shadow">
-            {/* Animated conic gradient background border */}
-            <div className="absolute inset-[-100%] animate-spin-slow bg-[conic-gradient(from_90deg_at_50%_50%,#0f172a_0%,#3b82f6_50%,#0f172a_100%)] opacity-30 group-hover:opacity-100 transition-opacity duration-500" />
-            
-            <div className="relative h-full w-full rounded-[1.4rem] bg-white p-6 sm:p-8 flex flex-col z-10">
-              <div className="absolute top-0 inset-x-0 h-1/2 bg-gradient-to-b from-blue-50 to-transparent opacity-50 -z-10 rounded-t-[1.4rem]" />
-              <div className="absolute -top-4 inset-x-0 flex justify-center z-20">
+          <div className="relative rounded-[1.5rem] border-2 border-primary bg-white p-6 sm:p-8 shadow-xl shadow-blue-500/10 lg:scale-[1.05] z-10 transition-transform lg:-mt-2 flex flex-col">
+            <div className="absolute -top-4 inset-x-0 flex justify-center">
               <span className="rounded-full bg-primary px-4 py-1.5 text-[12px] font-bold uppercase tracking-wider text-white shadow-sm">
                 Najčešći izbor
               </span>
@@ -496,7 +476,6 @@ function PricingSection({ isLoggedIn }: { isLoggedIn?: boolean }) {
             <Link href={isLoggedIn ? "/dashboard" : "/signup"} className="mt-8 flex w-full h-[3.5rem] items-center justify-center rounded-xl bg-primary px-6 text-[16px] font-bold text-white transition-all hover:bg-blue-700 hover:shadow-lg hover:shadow-blue-500/30">
               Kreni bez limita
             </Link>
-            </div>
           </div>
 
           {/* Agencijski */}
@@ -584,10 +563,13 @@ function FAQSection() {
 // ─── Final CTA ───────────────────────────────────────────────────────────────
 function FinalCTA({ isLoggedIn }: { isLoggedIn?: boolean }) {
   return (
-    <section className="relative overflow-hidden bg-slate-900 px-4 sm:px-6 py-24 sm:py-32 text-center border-t border-slate-800 z-0">
-      <div className="absolute inset-0 opacity-20 -z-20 bg-[linear-gradient(to_right,#818cf8_1px,transparent_1px),linear-gradient(to_bottom,#818cf8_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_80%,transparent_100%)] pointer-events-none" />
-      <div className="absolute top-0 left-1/2 h-[600px] w-[800px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-emerald-500/10 blur-[130px] mix-blend-screen pointer-events-none -z-10" />
-      <div className="absolute bottom-0 right-0 h-[500px] w-[600px] rounded-full bg-blue-600/15 blur-[120px] mix-blend-screen pointer-events-none -z-10" />
+    <section className="relative overflow-hidden bg-slate-900 px-4 sm:px-6 py-20 sm:py-24 text-center">
+      <div className="absolute inset-0 opacity-40 -z-20">
+        <Image src="/images/premium-dark-cta.png" alt="Premium Vercel-style Dark Background" fill className="object-cover" />
+      </div>
+      <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/40 to-slate-900/10 -z-10" />
+      <div className="absolute inset-0 bg-primary/10" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 size-[800px] rounded-full bg-primary/20 blur-[120px] -z-10 mix-blend-screen" />
       <div className="relative z-10 mx-auto max-w-3xl">
         <h2 className="font-heading text-3xl font-bold tracking-tight text-white sm:text-4xl">
           Počnite raditi prije nego propustite sljedeći posao.
@@ -640,23 +622,6 @@ export function LandingPage({ isLoggedIn }: LandingPageProps) {
       <FAQSection />
       <FinalCTA isLoggedIn={isLoggedIn} />
       <Footer />
-      {/* GLOBAL EXPERIMENTAL ANIMATIONS & STYLES */}
-      <style dangerouslySetInnerHTML={{ __html: `
-        @keyframes blob {
-          0% { transform: translate(0px, 0px) scale(1); }
-          33% { transform: translate(30px, -50px) scale(1.1); }
-          66% { transform: translate(-20px, 20px) scale(0.9); }
-          100% { transform: translate(0px, 0px) scale(1); }
-        }
-        .animate-blob { animation: blob 10s infinite; }
-        .animation-delay-2000 { animation-delay: 2s; }
-        .animation-delay-4000 { animation-delay: 4s; }
-        
-        @keyframes spin-slow {
-          100% { transform: rotate(360deg); }
-        }
-        .animate-spin-slow { animation: spin-slow 8s linear infinite; }
-      `}} />
     </div>
   );
 }
