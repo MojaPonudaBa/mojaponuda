@@ -29,16 +29,16 @@ const GB = 1024 * 1024 * 1024;
 export const PLANS: Record<PlanTier, Plan> = {
   basic: {
     id: "basic",
-    name: "Osnovni",
-    price: 50,
-    description: "Za male firme koje povremeno sudjeluju na tenderima.",
+    name: "Starter",
+    price: 39,
+    description: "Za male firme i početnike koji se rjeđe prijavljuju na tendere, ali žele uštedjeti vrijeme.",
     limits: {
-      maxActiveTenders: 3,
+      maxActiveTenders: 5,
       maxTeamMembers: 1,
       maxCompanies: 1,
       maxStorageBytes: 1 * GB,
       features: {
-        advancedAnalysis: false, // Basic analysis only
+        advancedAnalysis: false,
         multiCompany: false,
         teamCollaboration: false,
         vaultAutoSuggest: true,
@@ -49,12 +49,12 @@ export const PLANS: Record<PlanTier, Plan> = {
   },
   pro: {
     id: "pro",
-    name: "Puni",
-    price: 100,
-    description: "Za firme koje redovno pripremaju ponude.",
+    name: "Pro",
+    price: 99,
+    description: "Za firme koje redovno pripremaju ponude i žele maksimalnu efikasnost i zaštitu od grešaka.",
     limits: {
       maxActiveTenders: 50,
-      maxTeamMembers: 5,
+      maxTeamMembers: 3,
       maxCompanies: 1,
       maxStorageBytes: 10 * GB,
       features: {
@@ -70,11 +70,11 @@ export const PLANS: Record<PlanTier, Plan> = {
   agency: {
     id: "agency",
     name: "Agencijski",
-    price: 250,
-    description: "Za konzultante i agencije koje vode više firmi.",
+    price: 249,
+    description: "Za konsultante i korporacije koje vode tendere za više firmi pod jednim krovom.",
     limits: {
-      maxActiveTenders: 1000, // Effectively unlimited
-      maxTeamMembers: 20,
+      maxActiveTenders: 1000,
+      maxTeamMembers: 10,
       maxCompanies: 10,
       maxStorageBytes: 100 * GB,
       features: {
