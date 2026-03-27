@@ -313,16 +313,6 @@ export function AgencyClientDetail({
                   </div>
                 </div>
               )}
-              {company.cpv_codes && company.cpv_codes.length > 0 && (
-                <div>
-                  <p className="text-sm text-slate-500 mb-2">CPV kodovi</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {company.cpv_codes.slice(0, 5).map((c) => (
-                      <span key={c} className="rounded-md border border-slate-200 bg-white px-2 py-0.5 text-xs font-mono text-slate-600">{c}</span>
-                    ))}
-                  </div>
-                </div>
-              )}
               <div className="pt-2">
                 <button
                   type="button"

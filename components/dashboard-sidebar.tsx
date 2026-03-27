@@ -23,10 +23,9 @@ import {
   Target,
   Users,
   Building2,
-  Plus,
+  ChevronsUpDown,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { ClientSelector } from "@/components/agency/client-selector";
 
 interface NavItem {
   href: string;
@@ -41,6 +40,12 @@ const coreItems: NavItem[] = [
   { href: "/dashboard/tenders", label: "Tenderi", icon: Search },
   { href: "/dashboard/bids", label: "Moje ponude", icon: Briefcase },
   { href: "/dashboard/vault", label: "Dokumenti", icon: FileText },
+];
+
+const agencyCoreItems: NavItem[] = [
+  { href: "/dashboard", label: "Početna", icon: LayoutDashboard, exact: true },
+  { href: "/dashboard/tenders", label: "Tenderi", icon: Search },
+  { href: "/dashboard/agency", label: "Svi klijenti", icon: Users, exact: true },
 ];
 
 const intelligenceItems: NavItem[] = [
@@ -79,21 +84,20 @@ export function DashboardSidebar({ userEmail, companyName, isAdmin = false, isAg
   const router = useRouter();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
+  const [clientDropdownOpen, setClientDropdownOpen] = useState(false);
+
   const sections = isAdmin
     ? [{ label: "Admin", items: adminItems }]
-    : [
-        { label: "Glavno", items: isAgency ? [
-          { href: "/dashboard", label: "Početna", icon: LayoutDashboard, exact: true },
-          { href: "/dashboard/tenders", label: "Tenderi", icon: Search },
-          { href: "/dashboard/agency", label: "Svi klijenti", icon: Users, exact: true },
-          { href: "/dashboard/settings", label: "Postavke", icon: Settings },
-          { href: "/dashboard/subscription", label: "Pretplata", icon: CreditCard },
-        ] : coreItems },
-        ...(isAgency ? [] : [
+    : isAgency
+      ? [
+          { label: "Glavno", items: agencyCoreItems },
+          { label: "Račun", items: accountItems },
+        ]
+      : [
+          { label: "Glavno", items: coreItems },
           { label: "Tržište", items: intelligenceItems },
           { label: "Račun", items: accountItems },
-        ]),
-      ];
+        ];
 
   async function handleSignOut() {
     const supabase = createClient();
@@ -144,11 +148,6 @@ export function DashboardSidebar({ userEmail, companyName, isAdmin = false, isAg
       </div>
 
       <nav className="hide-scrollbar min-h-0 flex-1 overflow-y-auto pr-1">
-        {isAgency && agencyClients.length > 0 && (
-          <div className="mb-6 px-2">
-            <ClientSelector clients={agencyClients} />
-          </div>
-        )}
         {sections.map((section, index) => (
           <div key={section.label} className={index === 0 ? "" : "mt-7"}>
             <div className="mb-6 px-2">
@@ -161,6 +160,58 @@ export function DashboardSidebar({ userEmail, companyName, isAdmin = false, isAg
             </div>
           </div>
         ))}
+
+        {/* Agency client selector */}
+        {isAgency && agencyClients.length > 0 && (
+          <div className="mt-7">
+            <div className="mb-3 px-2">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">Klijent</p>
+            </div>
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setClientDropdownOpen((v) => !v)}
+                className={cn(
+                  "flex w-full items-center gap-3 rounded-2xl px-3.5 py-3 text-[13px] font-medium transition-all duration-200",
+                  pathname.startsWith("/dashboard/agency/clients")
+                    ? "bg-white/12 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_10px_25px_-18px_rgba(15,23,42,0.95)]"
+                    : "text-slate-300 hover:bg-white/6 hover:text-white"
+                )}
+              >
+                <Building2 className="size-4 shrink-0 text-slate-400" />
+                <span className="flex-1 truncate">
+                  {agencyClients.find((c) => pathname.includes(c.id))?.name ?? "Odaberi klijenta"}
+                </span>
+                <ChevronsUpDown className={cn("size-3.5 shrink-0 text-slate-400 transition-transform", clientDropdownOpen && "text-white")} />
+              </button>
+              {clientDropdownOpen && (
+                <div className="absolute left-0 right-0 top-full z-50 mt-1.5 rounded-2xl border border-slate-200 bg-white p-1.5 shadow-[0_20px_45px_-24px_rgba(15,23,42,0.45)]">
+                  <div className="max-h-52 overflow-y-auto">
+                    {agencyClients.map((client) => (
+                      <button
+                        key={client.id}
+                        type="button"
+                        onClick={() => {
+                          setClientDropdownOpen(false);
+                          router.push(`/dashboard/agency/clients/${client.id}`);
+                        }}
+                        className={cn(
+                          "flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition-colors",
+                          pathname.includes(client.id)
+                            ? "bg-blue-50 text-blue-700"
+                            : "text-slate-700 hover:bg-slate-50"
+                        )}
+                      >
+                        <Building2 className="size-3.5 shrink-0 text-slate-400" />
+                        <span className="truncate">{client.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </nav>
 
       <div className="mt-auto border-t border-white/8 pt-4">
