@@ -406,7 +406,7 @@ function compareScoredRecommendations<TTender extends RecommendationTenderInput>
   a: ScoredTenderRecommendation<TTender>,
   b: ScoredTenderRecommendation<TTender>
 ): number {
-  // Primary: combined score (includes location bonus) descending
+  // Primary: relevance score (no location in score)
   if (a.score !== b.score) {
     return b.score - a.score;
   }
@@ -415,7 +415,7 @@ function compareScoredRecommendations<TTender extends RecommendationTenderInput>
     return b.positiveSignalCount - a.positiveSignalCount;
   }
 
-  // Tiebreaker: closer location first
+  // Secondary: distance (closer first)
   if (a.locationPriority !== b.locationPriority) {
     return a.locationPriority - b.locationPriority;
   }
@@ -669,23 +669,10 @@ export function scoreTenderRecommendation<TTender extends RecommendationTenderIn
   const sameGroupRegionMatch = locationScope === "same_group";
   const neighboringRegionMatch = locationScope === "neighboring";
   const hasLocationPreference = context.anchorLat !== null || context.regionTerms.length > 0;
-  const locationPriority = getLocationPriority(locationScope);
 
-  let score = 0;
-  score += titleMatches.length * 5;
-  score += matchedKeywords.length * 2;
-  score += multiWordMatches.length * 2;
-
-  if (cpvMatch) {
-    score += 7;
-  }
-
-  if (context.preferredContractTypes.length > 0 && contractMatch) {
-    score += 2;
-  }
-
-  // Location bonus: continuous, distance-based (max +3, doesn't override relevance)
-  // Uses actual km distance if anchor coords available, otherwise tier-based
+  // locationPriority: actual km distance if anchor available, else tier (0-3)
+  // Used only for sort order, never in score
+  let locationPriority: number;
   if (context.anchorLat !== null && context.anchorLng !== null) {
     const candidates = [
       tender.authority_municipality,
@@ -700,23 +687,27 @@ export function scoreTenderRecommendation<TTender extends RecommendationTenderIn
         break;
       }
     }
-    if (distKm !== null) {
-      // 0–30km → +3, 30–80km → +2, 80–150km → +1, 150km+ → 0
-      if (distKm <= 30) score += 3;
-      else if (distKm <= 80) score += 2;
-      else if (distKm <= 150) score += 1;
-    } else if (regionMatch) {
-      score += 2;
-    } else if (sameGroupRegionMatch) {
-      score += 1;
-    }
+    // Use actual km as priority (lower = closer = better)
+    // Unknown location gets 9999 so it sorts last
+    locationPriority = distKm ?? 9999;
   } else {
-    if (regionMatch) {
-      score += 2;
-    } else if (sameGroupRegionMatch) {
-      score += 1;
-    }
+    locationPriority = getLocationPriority(locationScope);
   }
+
+  let score = 0;
+  score += titleMatches.length * 5;
+  score += matchedKeywords.length * 2;
+  score += multiWordMatches.length * 2;
+
+  if (cpvMatch) {
+    score += 7;
+  }
+
+  if (context.preferredContractTypes.length > 0 && contractMatch) {
+    score += 2;
+  }
+
+  // No location bonus in score — location only affects sort order via locationPriority
 
   const negativePenalty =
     negativeTitleMatches.length * 6 +
