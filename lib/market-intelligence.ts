@@ -846,6 +846,7 @@ export async function getCompetitorAnalysis(
       (operatingRegions.length === 0 || regionMatch) &&
       (searchTerms.length === 0 || isCategoryMatch);
 
+    // If linked tender exists and clearly doesn't match, skip
     if (
       linkedTenderScore &&
       !linkedTenderScore.qualifies &&
@@ -854,7 +855,14 @@ export async function getCompetitorAnalysis(
       continue;
     }
 
-    if (!linkedTenderScore && hasBusinessSignalInProfile) {
+    // If no linked tender, allow if award directly matches profile (handles expired/archived tenders)
+    const directProfileMatch =
+      hasBusinessSignalInProfile &&
+      isCategoryMatch &&
+      isProfileMatch &&
+      (operatingRegions.length === 0 || regionMatch);
+
+    if (!linkedTenderScore && !directProfileMatch) {
       continue;
     }
 
@@ -874,6 +882,7 @@ export async function getCompetitorAnalysis(
       strongTenderMatch ||
       strongFallbackTenderMatch ||
       strongAuthorityEvidence ||
+      directProfileMatch ||
       (!hasBusinessSignalInProfile && isAuthorityMatch && isCategoryMatch && regionMatch);
 
     if (!passesEvidenceGate) {

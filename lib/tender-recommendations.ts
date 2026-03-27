@@ -375,16 +375,18 @@ function compareScoredRecommendations<TTender extends RecommendationTenderInput>
   a: ScoredTenderRecommendation<TTender>,
   b: ScoredTenderRecommendation<TTender>
 ): number {
+  // Primary: location tier (local first)
+  if (a.locationPriority !== b.locationPriority) {
+    return a.locationPriority - b.locationPriority;
+  }
+
+  // Within same location tier: score descending
   if (a.score !== b.score) {
     return b.score - a.score;
   }
 
   if (a.positiveSignalCount !== b.positiveSignalCount) {
     return b.positiveSignalCount - a.positiveSignalCount;
-  }
-
-  if (a.locationPriority !== b.locationPriority) {
-    return a.locationPriority - b.locationPriority;
   }
 
   return new Date(a.tender.deadline ?? 0).getTime() - new Date(b.tender.deadline ?? 0).getTime();
