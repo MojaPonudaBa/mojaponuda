@@ -406,18 +406,18 @@ function compareScoredRecommendations<TTender extends RecommendationTenderInput>
   a: ScoredTenderRecommendation<TTender>,
   b: ScoredTenderRecommendation<TTender>
 ): number {
-  // Primary: location tier (local first)
-  if (a.locationPriority !== b.locationPriority) {
-    return a.locationPriority - b.locationPriority;
-  }
-
-  // Within same location tier: score descending
+  // Primary: combined score (includes location bonus) descending
   if (a.score !== b.score) {
     return b.score - a.score;
   }
 
   if (a.positiveSignalCount !== b.positiveSignalCount) {
     return b.positiveSignalCount - a.positiveSignalCount;
+  }
+
+  // Tiebreaker: closer location first
+  if (a.locationPriority !== b.locationPriority) {
+    return a.locationPriority - b.locationPriority;
   }
 
   return new Date(a.tender.deadline ?? 0).getTime() - new Date(b.tender.deadline ?? 0).getTime();
@@ -684,10 +684,38 @@ export function scoreTenderRecommendation<TTender extends RecommendationTenderIn
     score += 2;
   }
 
-  if (regionMatch) {
-    score += 2;
-  } else if (sameGroupRegionMatch) {
-    score += 1;
+  // Location bonus: continuous, distance-based (max +3, doesn't override relevance)
+  // Uses actual km distance if anchor coords available, otherwise tier-based
+  if (context.anchorLat !== null && context.anchorLng !== null) {
+    const candidates = [
+      tender.authority_municipality,
+      tender.authority_city,
+      tender.authority_canton,
+    ];
+    let distKm: number | null = null;
+    for (const place of candidates) {
+      const coords = getCoordsForPlace(place);
+      if (coords) {
+        distKm = haversineKm(context.anchorLat, context.anchorLng, coords.lat, coords.lng);
+        break;
+      }
+    }
+    if (distKm !== null) {
+      // 0–30km → +3, 30–80km → +2, 80–150km → +1, 150km+ → 0
+      if (distKm <= 30) score += 3;
+      else if (distKm <= 80) score += 2;
+      else if (distKm <= 150) score += 1;
+    } else if (regionMatch) {
+      score += 2;
+    } else if (sameGroupRegionMatch) {
+      score += 1;
+    }
+  } else {
+    if (regionMatch) {
+      score += 2;
+    } else if (sameGroupRegionMatch) {
+      score += 1;
+    }
   }
 
   const negativePenalty =
