@@ -31,7 +31,7 @@ const PROCEDURE_TYPES = [
   { value: "Direktni sporazum", label: "Direktni" },
 ];
 
-export function TenderFilters() {
+export function TenderFilters({ basePath = "/dashboard/tenders" }: { basePath?: string }) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -61,8 +61,8 @@ export function TenderFilters() {
     if (deadlineTo) params.set("deadline_to", deadlineTo);
     locations.forEach((l) => params.append("location", l));
     params.set("page", "1");
-    router.push(`/dashboard/tenders?${params.toString()}`);
-  }, [keyword, contractType, procedureType, deadlineFrom, deadlineTo, locations, router, searchParams]);
+    router.push(`${basePath}?${params.toString()}`);
+  }, [keyword, contractType, procedureType, deadlineFrom, deadlineTo, locations, router, searchParams, basePath]);
 
   function resetFilters() {
     setKeyword("");
@@ -74,7 +74,7 @@ export function TenderFilters() {
     const currentTab = searchParams.get("tab");
     const params = new URLSearchParams();
     if (currentTab) params.set("tab", currentTab);
-    router.push(`/dashboard/tenders?${params.toString()}`);
+    router.push(`${basePath}?${params.toString()}`);
   }
 
   function handleKeyDown(e: React.KeyboardEvent) {
