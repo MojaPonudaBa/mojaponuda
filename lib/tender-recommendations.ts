@@ -677,8 +677,7 @@ export function scoreTenderRecommendation<TTender extends RecommendationTenderIn
     !blockedByNegativeTitle &&
     contractMatch &&
     score >= 2 &&
-    (cpvMatch || titleMatches.length > 0 || matchedKeywords.length > 0) &&
-    (!hasLocationPreference || locationScope !== "broad");
+    (cpvMatch || titleMatches.length > 0 || matchedKeywords.length > 0);
   const qualifies =
     ((hasPositiveSignal && score >= (cpvMatch ? 2 : 4)) || fallbackTypeScopedMatch) &&
     contractMatch &&

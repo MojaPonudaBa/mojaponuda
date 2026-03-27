@@ -88,7 +88,7 @@ export function DashboardSidebar({ userEmail, companyName, isAdmin = false, isAg
   // Build client-specific nav when a client is selected
   const clientNavItems: NavItem[] = activeClient
     ? [
-        { href: `/dashboard/agency/clients/${activeClient.id}`, label: "Početna", icon: LayoutDashboard, exact: true },
+        { href: `/dashboard/agency/clients/${activeClient.id}`, label: "Pregled", icon: LayoutDashboard, exact: true },
         { href: `/dashboard/agency/clients/${activeClient.id}/tenders`, label: "Tenderi", icon: Search },
         { href: `/dashboard/agency/clients/${activeClient.id}/bids`, label: "Ponude", icon: Briefcase },
         { href: `/dashboard/agency/clients/${activeClient.id}/documents`, label: "Dokumenti", icon: FileText },
@@ -101,7 +101,13 @@ export function DashboardSidebar({ userEmail, companyName, isAdmin = false, isAg
     { href: "/dashboard/tenders", label: "Tenderi", icon: Search },
   ];
 
+  const agencyIntelligenceItems: NavItem[] = [
+    { href: "/dashboard/intelligence", label: "Analiza tržišta", icon: BarChart3, exact: true },
+    { href: "/dashboard/intelligence/upcoming", label: "Planirano", icon: Calendar },
+  ];
+
   const agencyAccountItems: NavItem[] = [
+    { href: "/dashboard/settings", label: "Postavke", icon: Settings },
     { href: "/dashboard/subscription", label: "Pretplata", icon: CreditCard },
   ];
 
@@ -110,12 +116,11 @@ export function DashboardSidebar({ userEmail, companyName, isAdmin = false, isAg
     : isAgency && activeClient
       ? [
           { label: activeClient.name, items: clientNavItems },
-          { label: "Agencija", items: agencyDefaultItems },
-          { label: "Račun", items: agencyAccountItems },
         ]
       : isAgency
         ? [
             { label: "Glavno", items: agencyDefaultItems },
+            { label: "Tržište", items: agencyIntelligenceItems },
             { label: "Račun", items: agencyAccountItems },
           ]
         : [
@@ -173,6 +178,19 @@ export function DashboardSidebar({ userEmail, companyName, isAdmin = false, isAg
       </div>
 
       <nav className="hide-scrollbar min-h-0 flex-1 overflow-y-auto pr-1">
+        {/* Back to agency button when viewing a client */}
+        {isAgency && activeClient && (
+          <div className="mb-5">
+            <Link
+              href="/dashboard/agency"
+              className="flex items-center gap-2 rounded-2xl px-3.5 py-2.5 text-[13px] font-medium text-slate-400 transition-all duration-200 hover:bg-white/6 hover:text-white"
+            >
+              <ArrowLeft className="size-4" />
+              Agencijski pregled
+            </Link>
+          </div>
+        )}
+
         {sections.map((section, index) => (
           <div key={section.label} className={index === 0 ? "" : "mt-7"}>
             <div className="mb-6 px-2">

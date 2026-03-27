@@ -19,9 +19,51 @@ export default async function SettingsPage() {
     redirect("/login");
   }
 
-  // Agency users don't have their own company profile — redirect to CRM
-  const { plan } = await getSubscriptionStatus(user.id, user.email, supabase);
-  if (isAgencyPlan(plan)) redirect("/dashboard/agency");
+  const status = await getSubscriptionStatus(user.id, user.email, supabase);
+  const isAgency = isAgencyPlan(status.plan);
+
+  // Agency settings view
+  if (isAgency) {
+    return (
+      <div className="max-w-[1000px] mx-auto space-y-8">
+        <div>
+          <h1 className="text-3xl font-heading font-bold text-slate-900 tracking-tight">
+            Postavke agencije
+          </h1>
+          <p className="mt-2 text-base text-slate-500">
+            Upravljajte postavkama vaše agencije i vašim računom.
+          </p>
+        </div>
+
+        <Tabs defaultValue="team" className="space-y-6">
+          <TabsList className="bg-white border border-slate-200 p-1 h-auto rounded-xl">
+            <TabsTrigger
+              value="team"
+              className="rounded-lg px-4 py-2 data-[state=active]:bg-slate-100 data-[state=active]:text-slate-900 font-medium"
+            >
+              <Users className="mr-2 size-4" />
+              Tim
+            </TabsTrigger>
+            <TabsTrigger
+              value="account"
+              className="rounded-lg px-4 py-2 data-[state=active]:bg-red-50 data-[state=active]:text-red-700 font-medium text-slate-500 hover:text-slate-700"
+            >
+              <ShieldAlert className="mr-2 size-4" />
+              Račun & Opasna zona
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="team" className="focus-visible:ring-0">
+            <TeamSettings status={status} />
+          </TabsContent>
+
+          <TabsContent value="account" className="focus-visible:ring-0">
+            <DangerZone />
+          </TabsContent>
+        </Tabs>
+      </div>
+    );
+  }
 
   const { data } = await supabase
     .from("companies")
@@ -34,8 +76,6 @@ export default async function SettingsPage() {
   if (!company) {
     redirect("/onboarding");
   }
-
-  const status = await getSubscriptionStatus(user.id, user.email);
 
   return (
     <div className="max-w-[1000px] mx-auto space-y-8">

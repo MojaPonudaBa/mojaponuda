@@ -5,20 +5,28 @@ import {
   buildRecommendationContext,
   fetchRecommendedTenderCandidates,
   hasRecommendationSignals,
-  selectTenderRecommendations,
+  scoreTenderRecommendation,
   type RecommendationTenderInput,
 } from "@/lib/tender-recommendations";
 import { TenderCard } from "@/components/tenders/tender-card";
 import { Sparkles } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { AgencyClientTendersToggle } from "@/components/agency/agency-client-tenders-toggle";
+
+const TOP_N = 10;
 
 export default async function AgencyClientTendersPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
   const { id } = await params;
+  const sp = await searchParams;
+  const showAllBiH = sp.allBiH === "true";
+
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
@@ -82,44 +90,59 @@ export default async function AgencyClientTendersPage({
   }
 
   // Fetch existing bids for this company to mark already-bid tenders
-  const { data: existingBids } = await supabase
-    .from("bids")
-    .select("tender_id")
-    .eq("company_id", company.id);
+  const [{ data: existingBids }, candidates] = await Promise.all([
+    supabase.from("bids").select("tender_id").eq("company_id", company.id),
+    fetchRecommendedTenderCandidates<RecommendationTenderInput>(
+      supabase,
+      recommendationContext,
+      {
+        limit: 300,
+        select: "id, title, deadline, estimated_value, contracting_authority, contracting_authority_jib, contract_type, raw_description, cpv_code, ai_analysis, authority_city, authority_municipality, authority_canton, authority_entity",
+      }
+    ),
+  ]);
 
   const existingBidTenderIds = new Set((existingBids ?? []).map((b) => b.tender_id));
 
-  const candidates = await fetchRecommendedTenderCandidates<RecommendationTenderInput>(
-    supabase,
-    recommendationContext,
-    {
-      limit: 200,
-      select: "id, title, deadline, estimated_value, contracting_authority, contracting_authority_jib, contract_type, raw_description, cpv_code, ai_analysis, authority_city, authority_municipality, authority_canton, authority_entity",
-    }
-  );
+  // Score all candidates
+  const allScored = candidates
+    .map((tender) => scoreTenderRecommendation(tender, recommendationContext))
+    .filter((s) => !existingBidTenderIds.has(s.tender.id))
+    .filter((s) => s.score >= 2 && !s.negativeTitleMatches.length);
 
-  const scored = selectTenderRecommendations(candidates, recommendationContext, {
-    minimumResults: 6,
+  // Sort by location priority (local first), then by score within each tier
+  const sorted = [...allScored].sort((a, b) => {
+    if (!showAllBiH && a.locationPriority !== b.locationPriority) {
+      return a.locationPriority - b.locationPriority;
+    }
+    if (a.score !== b.score) return b.score - a.score;
+    if (a.positiveSignalCount !== b.positiveSignalCount) return b.positiveSignalCount - a.positiveSignalCount;
+    return new Date(a.tender.deadline ?? 0).getTime() - new Date(b.tender.deadline ?? 0).getTime();
   });
 
-  // Filter out already-bid tenders
-  const tenders = scored
-    .filter((s) => !existingBidTenderIds.has(s.tender.id))
-    .map((s) => ({
-      ...s.tender,
-      score: s.score,
-      reasons: s.reasons,
-    }));
+  const tenders = sorted.slice(0, TOP_N).map((s) => ({
+    ...s.tender,
+    score: s.score,
+    reasons: s.reasons,
+    locationScope: s.locationScope,
+  }));
+
+  const hasRegions = (company.operating_regions ?? []).length > 0;
 
   return (
     <div className="space-y-6 max-w-[1200px] mx-auto">
-      <div>
-        <h1 className="text-3xl font-heading font-bold text-slate-900 tracking-tight">
-          Tenderi — {company.name}
-        </h1>
-        <p className="mt-1.5 text-base text-slate-500">
-          Preporučeni tenderi za ovog klijenta na osnovu profila, djelatnosti i lokacije.
-        </p>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h1 className="text-3xl font-heading font-bold text-slate-900 tracking-tight">
+            Tenderi — {company.name}
+          </h1>
+          <p className="mt-1.5 text-base text-slate-500">
+            Top {TOP_N} preporučenih tendera, sortirani po blizini lokacije klijenta.
+          </p>
+        </div>
+        {hasRegions && (
+          <AgencyClientTendersToggle clientId={id} showAllBiH={showAllBiH} />
+        )}
       </div>
 
       {tenders.length === 0 ? (
