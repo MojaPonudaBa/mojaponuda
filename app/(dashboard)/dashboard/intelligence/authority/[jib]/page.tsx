@@ -116,8 +116,8 @@ export default async function AuthorityProfilePage({
       {/* Header */}
       <div className="flex items-start gap-4">
         <Link href="/dashboard/intelligence">
-          <Button variant="ghost" size="icon" className="rounded-xl hover:bg-slate-100">
-            <ArrowLeft className="size-5 text-slate-500" />
+          <Button variant="outline" size="icon" className="rounded-xl">
+            <ArrowLeft className="size-5 text-slate-600" />
           </Button>
         </Link>
         <div>

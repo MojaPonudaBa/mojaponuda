@@ -166,8 +166,8 @@ export default async function TenderDetailPage({
       {/* Back button */}
       <div>
         <Link href="/dashboard/tenders">
-          <Button variant="ghost" size="sm" className="-ml-2 text-slate-500 hover:text-slate-900">
-            <ArrowLeft className="mr-2 size-4" />
+          <Button variant="outline" size="sm" className="gap-2 text-slate-600 hover:text-slate-900">
+            <ArrowLeft className="size-4" />
             Nazad na tendere
           </Button>
         </Link>

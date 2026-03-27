@@ -1,0 +1,152 @@
+import { redirect, notFound } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
+import { getSubscriptionStatus } from "@/lib/subscription";
+import type { Tender } from "@/types/database";
+import {
+  buildRecommendationContext,
+  fetchRecommendedTenderCandidates,
+  hasRecommendationSignals,
+  selectTenderRecommendations,
+} from "@/lib/tender-recommendations";
+import { TenderCard } from "@/components/tenders/tender-card";
+import { Sparkles } from "lucide-react";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+
+export default async function AgencyClientTendersPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const { plan } = await getSubscriptionStatus(user.id, user.email, supabase);
+  if (plan.id !== "agency") redirect("/dashboard");
+
+  const { data: agencyClient } = await supabase
+    .from("agency_clients")
+    .select(`
+      id, company_id,
+      companies (
+        id, name, industry, cpv_codes, keywords, operating_regions
+      )
+    `)
+    .eq("id", id)
+    .eq("agency_user_id", user.id)
+    .maybeSingle();
+
+  if (!agencyClient) notFound();
+
+  const company = agencyClient.companies as {
+    id: string; name: string; industry: string | null;
+    cpv_codes: string[] | null; keywords: string[] | null; operating_regions: string[] | null;
+  } | null;
+
+  if (!company) notFound();
+
+  const recommendationContext = buildRecommendationContext({
+    industry: company.industry,
+    keywords: company.keywords,
+    cpv_codes: company.cpv_codes,
+    operating_regions: company.operating_regions,
+  });
+
+  if (!hasRecommendationSignals(recommendationContext)) {
+    return (
+      <div className="space-y-6 max-w-[1200px] mx-auto">
+        <div>
+          <h1 className="text-3xl font-heading font-bold text-slate-900 tracking-tight">
+            Tenderi — {company.name}
+          </h1>
+          <p className="mt-1.5 text-base text-slate-500">
+            Preporučeni tenderi za ovog klijenta na osnovu profila firme.
+          </p>
+        </div>
+        <div className="flex flex-col items-center justify-center py-20 text-center">
+          <div className="mb-4 flex size-16 items-center justify-center rounded-full bg-amber-50 text-amber-600">
+            <Sparkles className="size-8" />
+          </div>
+          <h3 className="mb-2 text-xl font-bold text-slate-900">Profil nije dovoljno popunjen</h3>
+          <p className="mb-6 max-w-md text-slate-500">
+            Da bi sistem mogao preporučiti tendere, profil klijenta mora imati djelatnosti, lokaciju ili opis.
+          </p>
+          <Button asChild>
+            <Link href={`/dashboard/agency/clients/${id}`}>Nazad na klijenta</Link>
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // Same logic as regular user's tenders page: fetch candidates, filter bids, selectTenderRecommendations
+  const [{ data: existingBids }, candidates] = await Promise.all([
+    supabase.from("bids").select("tender_id").eq("company_id", company.id),
+    fetchRecommendedTenderCandidates<
+      Tender & {
+        authority_city: string | null;
+        authority_municipality: string | null;
+        authority_canton: string | null;
+        authority_entity: string | null;
+      }
+    >(supabase, recommendationContext, {
+      select: "*",
+      limit: 240,
+    }),
+  ]);
+
+  const existingBidTenderIds = new Set((existingBids ?? []).map((b) => b.tender_id));
+
+  const availableRows = candidates.filter(
+    (tender) => !existingBidTenderIds.has(tender.id)
+  );
+
+  const rankedRecommendations = selectTenderRecommendations(
+    availableRows,
+    recommendationContext,
+    { minimumResults: 4 }
+  );
+
+  const tenders = rankedRecommendations.map(({ tender }) => tender as Tender);
+
+  return (
+    <div className="space-y-6 max-w-[1200px] mx-auto">
+      <div>
+        <h1 className="text-3xl font-heading font-bold text-slate-900 tracking-tight">
+          Tenderi — {company.name}
+        </h1>
+        <p className="mt-1.5 text-base text-slate-500">
+          Preporučeni tenderi za ovog klijenta na osnovu profila firme.
+        </p>
+      </div>
+
+      <p className="text-sm font-medium text-slate-500">
+        Preporučeno {tenders.length} {tenders.length === 1 ? "tender" : "tendera"}
+      </p>
+
+      {tenders.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-20 text-center">
+          <div className="mb-4 flex size-16 items-center justify-center rounded-full bg-slate-100 text-slate-400">
+            <Sparkles className="size-8" />
+          </div>
+          <h3 className="mb-2 text-xl font-bold text-slate-900">Nema preporučenih tendera</h3>
+          <p className="max-w-md text-slate-500">
+            Trenutno nema aktivnih tendera koji odgovaraju profilu ovog klijenta. Provjerite ponovo kasnije.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {tenders.map((tender) => (
+            <TenderCard
+              key={tender.id}
+              tender={tender}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}

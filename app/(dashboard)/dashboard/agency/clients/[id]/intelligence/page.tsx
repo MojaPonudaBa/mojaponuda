@@ -64,6 +64,10 @@ export default async function AgencyClientIntelligencePage({
       })
     : null;
 
+  // Fetch existing bids so we exclude already-bid tenders (same as tenders page)
+  const { data: existingBids } = await supabase.from("bids").select("tender_id").eq("company_id", company.id);
+  const existingBidTenderIds = new Set((existingBids ?? []).map((b) => b.tender_id));
+
   let recommendedOpenCount: number | null = null;
   const recCtx = buildRecommendationContext(company);
   if (hasRecommendationSignals(recCtx)) {
@@ -71,7 +75,8 @@ export default async function AgencyClientIntelligencePage({
       select: "id, title, deadline, estimated_value, contracting_authority, contracting_authority_jib, contract_type, raw_description",
       nowIso: now.toISOString(), limit: 240,
     });
-    recommendedOpenCount = selectTenderRecommendations(rows, recCtx, { minimumResults: 4 }).length;
+    const availableRows = rows.filter((r) => !existingBidTenderIds.has(r.id));
+    recommendedOpenCount = selectTenderRecommendations(availableRows, recCtx, { minimumResults: 4 }).length;
   } else {
     recommendedOpenCount = 0;
   }

@@ -212,7 +212,7 @@ export default async function AgencyClientHomePage({
     }>(supabase, recommendationContext, {
       select: "id, title, deadline, estimated_value, contracting_authority, contracting_authority_jib, contract_type, raw_description",
       nowIso,
-      limit: 60,
+      limit: 240,
     });
 
     const availableRelevantRows = relevantRows.filter(

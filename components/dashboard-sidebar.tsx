@@ -186,7 +186,7 @@ export function DashboardSidebar({ userEmail, companyName, isAdmin = false, isAg
           <div className="mb-5">
             <Link
               href="/dashboard/agency"
-              className="flex items-center gap-2 rounded-2xl px-3.5 py-2.5 text-[13px] font-medium text-slate-400 transition-all duration-200 hover:bg-white/6 hover:text-white"
+              className="flex items-center gap-2 rounded-2xl border border-slate-600 bg-slate-800/60 px-3.5 py-2.5 text-[13px] font-semibold text-slate-200 transition-all duration-200 hover:border-slate-400 hover:bg-slate-700/60 hover:text-white"
             >
               <ArrowLeft className="size-4" />
               Agencijski pregled

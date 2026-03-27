@@ -177,8 +177,8 @@ export default async function CompanyIntelligencePage({
     <div className="max-w-[1280px] space-y-8">
       <div className="flex items-start gap-4">
         <Link href="/dashboard/intelligence#direct-rivals">
-          <Button variant="ghost" size="icon" className="rounded-xl hover:bg-slate-100">
-            <ArrowLeft className="size-5 text-slate-500" />
+          <Button variant="outline" size="icon" className="rounded-xl">
+            <ArrowLeft className="size-5 text-slate-600" />
           </Button>
         </Link>
         <div className="min-w-0">
