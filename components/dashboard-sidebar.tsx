@@ -83,13 +83,13 @@ export function DashboardSidebar({ userEmail, companyName, isAdmin = false, isAg
   // Detect if viewing a specific client's sub-pages (tenders/bids/docs)
   const clientMatch = pathname.match(/\/dashboard\/agency\/clients\/([^/]+)/);
   const activeClientId = clientMatch?.[1] ?? null;
-  const isClientSubPage = activeClientId ? /\/dashboard\/agency\/clients\/[^/]+\/(tenders|bids|documents)/.test(pathname) : false;
+  const isClientSubPage = activeClientId ? /\/dashboard\/agency\/clients\/[^/]+\/(home|tenders|bids|documents)/.test(pathname) : false;
   const activeClient = isClientSubPage && activeClientId ? agencyClients.find((c) => c.id === activeClientId) : null;
 
   // Build client-specific nav when a client is selected (sub-page mode)
   const clientNavItems: NavItem[] = activeClient
     ? [
-        { href: `/dashboard/agency/clients/${activeClient.id}`, label: "Pregled", icon: LayoutDashboard, exact: true },
+        { href: `/dashboard/agency/clients/${activeClient.id}/home`, label: "Početna", icon: LayoutDashboard, exact: true },
         { href: `/dashboard/agency/clients/${activeClient.id}/tenders`, label: "Tenderi", icon: Search },
         { href: `/dashboard/agency/clients/${activeClient.id}/bids`, label: "Ponude", icon: Briefcase },
         { href: `/dashboard/agency/clients/${activeClient.id}/documents`, label: "Dokumenti", icon: FileText },
@@ -241,7 +241,7 @@ export function DashboardSidebar({ userEmail, companyName, isAdmin = false, isAg
                         type="button"
                         onClick={() => {
                           setClientDropdownOpen(false);
-                          router.push(`/dashboard/agency/clients/${client.id}`);
+                          router.push(`/dashboard/agency/clients/${client.id}/home`);
                         }}
                         className={cn(
                           "flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition-colors",
