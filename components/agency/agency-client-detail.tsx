@@ -300,16 +300,6 @@ export function AgencyClientDetail({
                   <span className="text-sm font-semibold text-slate-900">{parsedProfile.legacyIndustryText}</span>
                 </div>
               )}
-              {company.keywords && company.keywords.length > 0 && (
-                <div>
-                  <p className="text-sm text-slate-500 mb-2">Ključne riječi</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {company.keywords.map((k) => (
-                      <span key={k} className="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">{k}</span>
-                    ))}
-                  </div>
-                </div>
-              )}
               {company.operating_regions && company.operating_regions.length > 0 && (
                 <div>
                   <p className="text-sm text-slate-500 mb-2">Lokacija</p>
