@@ -390,12 +390,14 @@ export function buildSameGroupRegionFallback(selectedRegions: string[]): string[
 export function buildNeighboringGroupRegionFallback(selectedRegions: string[]): string[] {
   const expanded = expandSelectedRegions(selectedRegions);
   const selectedRegionSet = new Set(expanded);
+
+  // Find all group keys that have at least one selected municipality (not just fully selected groups)
   const selectedGroupKeys = new Set(
-    BIH_REGION_GROUPS.map((group) => group.parentRegion ?? group.label).filter((groupKey) => {
-      const municipalities = groupKeyToMunicipalities.get(groupKey) ?? [];
-      return municipalities.length > 0 && municipalities.every((municipality) => selectedRegionSet.has(municipality));
-    })
+    expanded
+      .map((region) => municipalityToGroupKey.get(region))
+      .filter(Boolean) as string[]
   );
+
   const neighboringRegions = new Set<string>();
 
   selectedGroupKeys.forEach((groupKey) => {
