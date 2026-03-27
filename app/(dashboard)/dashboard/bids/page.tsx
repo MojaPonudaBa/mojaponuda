@@ -10,6 +10,7 @@ interface BidWithTender {
   id: string;
   status: BidStatus;
   created_at: string;
+  company_id: string;
   tenders: {
     id: string;
     title: string;
@@ -29,7 +30,71 @@ export default async function BidsPage() {
     redirect("/login");
   }
 
+  const { plan } = await getSubscriptionStatus(user.id, user.email, supabase);
+  const isAgency = isAgencyPlan(plan);
   const isDemoAccount = isDemoUser(user.email);
+
+  // Agency: fetch bids across all client companies
+  if (isAgency) {
+    const { data: acRows } = await supabase
+      .from("agency_clients")
+      .select("company_id, companies (id, name)")
+      .eq("agency_user_id", user.id);
+
+    const clientCompanies = (acRows ?? []).map((row) => {
+      const c = row.companies as { id: string; name: string } | null;
+      return { companyId: c?.id ?? row.company_id, companyName: c?.name ?? "Nepoznat" };
+    });
+
+    const companyIds = clientCompanies.map((c) => c.companyId);
+    const companyNameMap = new Map(clientCompanies.map((c) => [c.companyId, c.companyName]));
+
+    let agencyBids: { id: string; status: BidStatus; created_at: string; tender: { id: string; title: string; contracting_authority: string | null; deadline: string | null }; clientName: string }[] = [];
+
+    if (companyIds.length > 0) {
+      const { data: bidsData } = await supabase
+        .from("bids")
+        .select("id, status, created_at, company_id, tenders(id, title, contracting_authority, deadline)")
+        .in("company_id", companyIds)
+        .order("created_at", { ascending: false });
+
+      agencyBids = ((bidsData as BidWithTender[] | null) ?? []).map((b) => ({
+        id: b.id,
+        status: b.status,
+        created_at: b.created_at,
+        tender: b.tenders,
+        clientName: companyNameMap.get(b.company_id) ?? "Nepoznat",
+      }));
+    }
+
+    const { data: tendersData } = await supabase
+      .from("tenders")
+      .select("id, title, contracting_authority")
+      .order("created_at", { ascending: false })
+      .limit(500);
+
+    const tenders = (tendersData ?? []) as { id: string; title: string; contracting_authority: string | null }[];
+
+    return (
+      <div className="space-y-8 max-w-[1200px] mx-auto">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="text-3xl font-heading font-bold text-slate-900 tracking-tight">
+              Ponude svih klijenata
+            </h1>
+            <p className="mt-1 text-base text-slate-500">
+              Sve ponude vaših klijenata na jednom mjestu. Svaka ponuda ima oznaku klijenta.
+            </p>
+          </div>
+          <NewBidModal tenders={tenders} />
+        </div>
+
+        <BidsTable bids={agencyBids} showClientColumn />
+      </div>
+    );
+  }
+
+  // Regular user flow
   const { data: companyData } = await supabase
     .from("companies")
     .select("id, jib, industry, keywords")
@@ -39,8 +104,6 @@ export default async function BidsPage() {
   const company = companyData as Company | null;
 
   if (!isCompanyProfileComplete(company)) {
-    const { plan } = await getSubscriptionStatus(user!.id, user!.email, supabase);
-    if (isAgencyPlan(plan)) redirect("/dashboard/agency");
     redirect("/onboarding");
   }
 
@@ -49,7 +112,7 @@ export default async function BidsPage() {
   // Dohvati ponude s tender podacima
   const { data: bidsData } = await supabase
     .from("bids")
-    .select("id, status, created_at, tenders(id, title, contracting_authority, deadline)")
+    .select("id, status, created_at, company_id, tenders(id, title, contracting_authority, deadline)")
     .eq("company_id", resolvedCompany.id)
     .order("created_at", { ascending: false });
 

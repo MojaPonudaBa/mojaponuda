@@ -9,12 +9,14 @@ import {
   ArrowRight,
   ChevronRight,
   FileText,
-  Lock
+  Lock,
+  Users,
 } from "lucide-react";
 
 interface TenderCardProps {
   tender: Tender;
   locked?: boolean;
+  clientNames?: string[];
 }
 
 function formatDate(dateStr: string | null): string {
@@ -66,7 +68,7 @@ const TYPE_COLORS: Record<string, string> = {
   Radovi: "border-amber-200 bg-amber-50 text-amber-800",
 };
 
-export function TenderCard({ tender, locked = false }: TenderCardProps) {
+export function TenderCard({ tender, locked = false, clientNames }: TenderCardProps) {
   const deadline = getDeadlineStatus(tender.deadline);
   const typeColor = tender.contract_type
     ? TYPE_COLORS[tender.contract_type] ?? "border-slate-200 bg-slate-50 text-slate-700"
@@ -89,6 +91,18 @@ export function TenderCard({ tender, locked = false }: TenderCardProps) {
               <p className={`text-base font-semibold leading-snug text-slate-900 transition-colors line-clamp-2 pr-4 ${locked ? "blur-sm select-none" : "group-hover:text-slate-700"}`}>
                 {locked ? `Tender #${tender.id.substring(0, 4)} - ${tender.contract_type ?? 'Javna nabavka'}` : tender.title}
               </p>
+
+              {/* Client attribution badges (agency view) */}
+              {clientNames && clientNames.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mt-1">
+                  {clientNames.map((name) => (
+                    <span key={name} className="inline-flex items-center gap-1 rounded-md border border-violet-200 bg-violet-50 px-2 py-0.5 text-[10px] font-bold text-violet-700">
+                      <Users className="size-2.5" />
+                      {name}
+                    </span>
+                  ))}
+                </div>
+              )}
 
               {/* Meta row */}
               <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 mt-2">

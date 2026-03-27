@@ -13,6 +13,7 @@ import {
   matchesTenderLocationTerms,
   selectTenderRecommendations,
   type RecommendationContext,
+  type RecommendationTenderInput,
 } from "@/lib/tender-recommendations";
 import { TenderFilters } from "@/components/tenders/tender-filters";
 import { TenderCard } from "@/components/tenders/tender-card";
@@ -69,13 +70,126 @@ async function TendersContent({ searchParams }: TendersPageProps) {
 
   const subscriptionStatus = user ? await getSubscriptionStatus(user.id, user.email, supabase) : null;
   const isLocked = subscriptionStatus?.plan?.id === "basic";
+  const isAgency = subscriptionStatus?.plan?.id === "agency";
+
+  // Agency: multi-client recommendation data
+  interface AgencyClientCompany {
+    agencyClientId: string;
+    companyId: string;
+    companyName: string;
+    industry: string | null;
+    keywords: string[] | null;
+    cpv_codes: string[] | null;
+    operating_regions: string[] | null;
+  }
+  let agencyClients: AgencyClientCompany[] = [];
+  let agencyTenderClientMap = new Map<string, { tender: Tender; clientNames: string[]; score: number }>();
+  let agencyTotalCount = 0;
 
   let recommendationContext: RecommendationContext | null = null;
   let hasProfile = false;
   let hasRecommendationSignalsForProfile = false;
   let existingBidTenderIds = new Set<string>();
 
-  if (activeTab === "recommended" && user) {
+  if (activeTab === "recommended" && user && isAgency) {
+    // Fetch all agency client companies
+    const { data: acRows } = await supabase
+      .from("agency_clients")
+      .select("id, company_id, companies (id, name, industry, keywords, cpv_codes, operating_regions)")
+      .eq("agency_user_id", user.id);
+
+    agencyClients = (acRows ?? []).map((row) => {
+      const c = row.companies as { id: string; name: string; industry: string | null; keywords: string[] | null; cpv_codes: string[] | null; operating_regions: string[] | null } | null;
+      return {
+        agencyClientId: row.id,
+        companyId: c?.id ?? row.company_id,
+        companyName: c?.name ?? "Nepoznat",
+        industry: c?.industry ?? null,
+        keywords: c?.keywords ?? null,
+        cpv_codes: c?.cpv_codes ?? null,
+        operating_regions: c?.operating_regions ?? null,
+      };
+    });
+
+    if (agencyClients.length > 0) {
+      hasProfile = true;
+      hasRecommendationSignalsForProfile = true;
+
+      // Build recommendation contexts and fetch candidates for each client (parallel)
+      const clientResults = await Promise.all(
+        agencyClients.map(async (client) => {
+          const ctx = buildRecommendationContext({
+            industry: client.industry,
+            keywords: client.keywords,
+            cpv_codes: client.cpv_codes,
+            operating_regions: client.operating_regions,
+          });
+          if (!hasRecommendationSignals(ctx)) return { client, scored: [] };
+
+          const candidates = await fetchRecommendedTenderCandidates<RecommendationTenderInput>(
+            supabase, ctx,
+            { select: "*", limit: 120 }
+          );
+          const scored = selectTenderRecommendations(candidates, ctx, { minimumResults: 4 });
+          return { client, scored };
+        })
+      );
+
+      // Merge: group by tender ID, collect client names, keep best score
+      const mergedMap = new Map<string, { tender: Tender; clientNames: string[]; score: number }>();
+      for (const { client, scored } of clientResults) {
+        for (const s of scored) {
+          const existing = mergedMap.get(s.tender.id);
+          if (existing) {
+            if (!existing.clientNames.includes(client.companyName)) {
+              existing.clientNames.push(client.companyName);
+            }
+            if (s.score > existing.score) existing.score = s.score;
+          } else {
+            mergedMap.set(s.tender.id, {
+              tender: s.tender as unknown as Tender,
+              clientNames: [client.companyName],
+              score: s.score,
+            });
+          }
+        }
+      }
+
+      // Sort by score descending
+      const sorted = [...mergedMap.values()].sort((a, b) => b.score - a.score);
+
+      // Apply keyword filter if present
+      let filtered = sorted;
+      if (keywordParam) {
+        const term = keywordParam.toLowerCase();
+        filtered = sorted.filter(({ tender }) =>
+          [tender.title, tender.raw_description, tender.contracting_authority]
+            .filter(Boolean)
+            .some((v) => v!.toLowerCase().includes(term))
+        );
+      }
+
+      if (locationFilterTerms.length > 0) {
+        filtered = filtered.filter(({ tender }) =>
+          matchesTenderLocationTerms(tender as RecommendationTenderInput, locationFilterTerms)
+        );
+      }
+
+      agencyTotalCount = filtered.length;
+      // Store paginated results for rendering
+      for (const item of filtered.slice(offset, offset + PAGE_SIZE)) {
+        agencyTenderClientMap.set(item.tender.id, item);
+      }
+
+      // Use first client's context as fallback for the outer page shell
+      recommendationContext = buildRecommendationContext({
+        industry: agencyClients[0].industry,
+        keywords: agencyClients[0].keywords,
+        cpv_codes: agencyClients[0].cpv_codes,
+        operating_regions: agencyClients[0].operating_regions,
+      });
+    }
+  } else if (activeTab === "recommended" && user) {
     const { data: company } = await supabase
       .from("companies")
       .select("id, industry, keywords, cpv_codes, operating_regions")
@@ -122,7 +236,7 @@ async function TendersContent({ searchParams }: TendersPageProps) {
       );
     }
 
-    if (!hasProfile || !recommendationContext || !hasRecommendationSignalsForProfile) {
+    if (!isAgency && (!hasProfile || !recommendationContext || !hasRecommendationSignalsForProfile)) {
       return (
         <div className="flex flex-col items-center justify-center py-20 text-center">
           <div className="mb-4 flex size-16 items-center justify-center rounded-full bg-amber-50 text-amber-600">
@@ -136,6 +250,25 @@ async function TendersContent({ searchParams }: TendersPageProps) {
           </p>
           <Button asChild>
             <Link href="/dashboard/settings">Uredi Profil</Link>
+          </Button>
+        </div>
+      );
+    }
+
+    if (isAgency && agencyClients.length === 0) {
+      return (
+        <div className="flex flex-col items-center justify-center py-20 text-center">
+          <div className="mb-4 flex size-16 items-center justify-center rounded-full bg-amber-50 text-amber-600">
+            <Sparkles className="size-8" />
+          </div>
+          <h3 className="mb-2 text-xl font-bold text-slate-900">
+            Dodajte klijente
+          </h3>
+          <p className="mb-6 max-w-md text-slate-500">
+            Dodajte klijente u svoj agencijski panel da biste vidjeli preporučene tendere za svaku firmu koju vodite.
+          </p>
+          <Button asChild>
+            <Link href="/dashboard/agency">Idi na klijente</Link>
           </Button>
         </div>
       );
@@ -155,7 +288,12 @@ async function TendersContent({ searchParams }: TendersPageProps) {
   let tenders: Tender[] = [];
   let totalCount = 0;
 
-  if (activeTab === "recommended" && recommendationContext) {
+  if (activeTab === "recommended" && isAgency) {
+    // Agency: multi-client recommendations already computed above
+    totalCount = agencyTotalCount;
+    tenders = [...agencyTenderClientMap.values()]
+      .map(({ tender }) => tender);
+  } else if (activeTab === "recommended" && recommendationContext) {
     const scopedRecommendationRows = await fetchRecommendedTenderCandidates<
       Tender & {
         authority_city: string | null;
@@ -367,7 +505,12 @@ async function TendersContent({ searchParams }: TendersPageProps) {
           )}
 
           {tenders.map((tender) => (
-            <TenderCard key={tender.id} tender={tender} locked={isLocked} />
+            <TenderCard
+              key={tender.id}
+              tender={tender}
+              locked={isLocked}
+              clientNames={agencyTenderClientMap.get(tender.id)?.clientNames}
+            />
           ))}
         </div>
       )}
@@ -392,6 +535,7 @@ export default async function TendersPage(props: TendersPageProps) {
 
   const subscriptionStatus = user ? await getSubscriptionStatus(user.id, user.email, supabase) : null;
   const isLocked = subscriptionStatus?.plan?.id === "basic";
+  const isAgencyOuter = subscriptionStatus?.plan?.id === "agency";
 
   const activeTabOrigin = getSingleParam(params.tab) === "all" ? "all" : "recommended";
   const activeTab = isLocked ? "recommended" : activeTabOrigin;
@@ -405,7 +549,9 @@ export default async function TendersPage(props: TendersPageProps) {
             Tenderi i preporuke
           </h1>
           <p className="mt-1.5 text-base text-slate-500">
-            Pregledajte sve aktivne tendere ili otvorite one koji se najbolje uklapaju u vaš profil i lokaciju firme.
+            {isAgencyOuter
+              ? "Preporučeni tenderi za sve klijente koje vodite, sa oznakom za kojeg klijenta je svaki tender."
+              : "Pregledajte sve aktivne tendere ili otvorite one koji se najbolje uklapaju u vaš profil i lokaciju firme."}
           </p>
         </div>
         {showGeoReport ? (

@@ -28,10 +28,12 @@ interface BidRow {
     contracting_authority: string | null;
     deadline: string | null;
   };
+  clientName?: string;
 }
 
 interface BidsTableProps {
   bids: BidRow[];
+  showClientColumn?: boolean;
 }
 
 function formatDate(dateStr: string | null): string {
@@ -51,7 +53,7 @@ const STATUS_STYLES: Record<string, string> = {
   lost: "bg-red-50 text-red-700 border-red-200",
 };
 
-export function BidsTable({ bids }: BidsTableProps) {
+export function BidsTable({ bids, showClientColumn = false }: BidsTableProps) {
   const router = useRouter();
   const [statusFilter, setStatusFilter] = useState("all");
   const [updatingId, setUpdatingId] = useState<string | null>(null);
@@ -121,6 +123,7 @@ export function BidsTable({ bids }: BidsTableProps) {
             <thead>
               <tr className="border-b border-slate-100 bg-slate-50/50 text-xs font-bold text-slate-500 uppercase tracking-wider">
                 <th className="px-6 py-4 font-bold">Naziv tendera</th>
+                {showClientColumn && <th className="px-6 py-4 font-bold">Klijent</th>}
                 <th className="px-6 py-4 font-bold">Naručilac</th>
                 <th className="px-6 py-4 font-bold">Rok</th>
                 <th className="px-6 py-4 font-bold">Status</th>
@@ -138,6 +141,17 @@ export function BidsTable({ bids }: BidsTableProps) {
                       {bid.tender.title}
                     </p>
                   </td>
+                  {showClientColumn && (
+                    <td className="px-6 py-4">
+                      {bid.clientName ? (
+                        <span className="inline-flex items-center gap-1.5 rounded-md border border-violet-200 bg-violet-50 px-2 py-1 text-xs font-bold text-violet-700">
+                          {bid.clientName}
+                        </span>
+                      ) : (
+                        <span className="text-sm text-slate-400">—</span>
+                      )}
+                    </td>
+                  )}
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-2 text-slate-600">
                       <Building2 className="size-3.5 text-slate-400" />
