@@ -26,6 +26,7 @@ import {
   Plus,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { ClientSelector } from "@/components/agency/client-selector";
 
 interface NavItem {
   href: string;
@@ -78,27 +79,20 @@ export function DashboardSidebar({ userEmail, companyName, isAdmin = false, isAg
   const router = useRouter();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
-  const agencyClientItems: NavItem[] = agencyClients.map((c) => ({
-    href: `/dashboard/agency/clients/${c.id}`,
-    label: c.name,
-    icon: Building2,
-  }));
-
   const sections = isAdmin
     ? [{ label: "Admin", items: adminItems }]
     : [
-        { label: "Glavno", items: coreItems },
-        { label: "Tržište", items: intelligenceItems },
-        ...(isAgency
-          ? [{
-              label: "Klijenti",
-              items: [
-                { href: "/dashboard/agency", label: "Svi klijenti", icon: Users, exact: true },
-                ...agencyClientItems,
-              ],
-            }]
-          : []),
-        { label: "Račun", items: accountItems },
+        { label: "Glavno", items: isAgency ? [
+          { href: "/dashboard", label: "Početna", icon: LayoutDashboard, exact: true },
+          { href: "/dashboard/tenders", label: "Tenderi", icon: Search },
+          { href: "/dashboard/agency", label: "Svi klijenti", icon: Users, exact: true },
+          { href: "/dashboard/settings", label: "Postavke", icon: Settings },
+          { href: "/dashboard/subscription", label: "Pretplata", icon: CreditCard },
+        ] : coreItems },
+        ...(isAgency ? [] : [
+          { label: "Tržište", items: intelligenceItems },
+          { label: "Račun", items: accountItems },
+        ]),
       ];
 
   async function handleSignOut() {
@@ -150,6 +144,11 @@ export function DashboardSidebar({ userEmail, companyName, isAdmin = false, isAg
       </div>
 
       <nav className="hide-scrollbar min-h-0 flex-1 overflow-y-auto pr-1">
+        {isAgency && agencyClients.length > 0 && (
+          <div className="mb-6 px-2">
+            <ClientSelector clients={agencyClients} />
+          </div>
+        )}
         {sections.map((section, index) => (
           <div key={section.label} className={index === 0 ? "" : "mt-7"}>
             <div className="mb-6 px-2">
