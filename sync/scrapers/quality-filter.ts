@@ -85,10 +85,9 @@ export function applyQualityFilter(item: ScrapedOpportunity): QualityFilterResul
     return { passed: false, reason: "Title too short or missing (< 10 chars)" };
   }
 
-  // Rule 2: Must have some description (at least 20 chars) - relaxed
-  if (!item.description || item.description.trim().length < 20) {
-    return { passed: false, reason: "Description too short or missing (< 20 chars)" };
-  }
+  // Rule 2: Description is preferred but NOT required.
+  // Many government sites list grants with just a title + PDF link.
+  // Missing description reduces relevance score but doesn't disqualify.
 
   // Rule 3: Deadline must not be expired (only if deadline exists)
   if (item.deadline) {

@@ -3,7 +3,7 @@
  * Legal: Publicly available government/agency websites.
  */
 
-import { fetchHtml, extractLinks, stripTags, parseDate, parseValue } from "./fetch-html";
+import { fetchHtml, extractLinks, extractLinksWithText, stripTags, parseDate, parseValue, extractBestDescription } from "./fetch-html";
 import type { ScrapedOpportunity, ScraperResult } from "./types";
 
 interface AgencyConfig {
@@ -51,7 +51,11 @@ async function scrapeAgency(agency: AgencyConfig): Promise<ScraperResult> {
     const html = await fetchHtml(url);
     if (!html) return { source, items: [], error: "Stranica nedostupna" };
 
-    const links = extractLinks(html, agency.baseUrl, agency.linkPattern).slice(0, 15);
+    let links = extractLinks(html, agency.baseUrl, agency.linkPattern);
+    if (links.length === 0) {
+      links = extractLinksWithText(html, agency.baseUrl, agency.linkPattern);
+    }
+    links = links.slice(0, 15);
 
     for (const link of links) {
       try {
@@ -66,7 +70,7 @@ async function scrapeAgency(agency: AgencyConfig): Promise<ScraperResult> {
           title,
           issuer: agency.name,
           category: "Poticaji i grantovi",
-          description: extractDescription(pageHtml),
+          description: extractDescription(pageHtml) ?? extractBestDescription(pageHtml),
           requirements: null,
           value: extractValue(pageHtml),
           deadline: extractDeadline(pageHtml),

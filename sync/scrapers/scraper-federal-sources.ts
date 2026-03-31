@@ -10,7 +10,7 @@
  * Legal: Publicly available government websites, informational content only.
  */
 
-import { fetchHtml, extractLinks, stripTags, parseDate, parseValue } from "./fetch-html";
+import { fetchHtml, extractLinks, extractLinksWithText, stripTags, parseDate, parseValue, extractBestDescription } from "./fetch-html";
 import type { ScrapedOpportunity, ScraperResult } from "./types";
 
 interface FederalSourceConfig {
@@ -113,8 +113,11 @@ async function scrapeFederalSource(config: FederalSourceConfig): Promise<Scraper
     const html = await fetchHtml(url);
     if (!html) return { source, items: [], error: "Stranica nedostupna" };
 
-    // Extract links to individual grant pages
-    const links = extractLinks(html, config.baseUrl, config.linkPattern);
+    // Extract links: try URL-pattern first, then anchor-text matching as fallback
+    let links = extractLinks(html, config.baseUrl, config.linkPattern);
+    if (links.length === 0) {
+      links = extractLinksWithText(html, config.baseUrl, config.linkPattern);
+    }
     const uniqueLinks = links.slice(0, 20); // max 20 per run
 
     for (const link of uniqueLinks) {
@@ -130,7 +133,7 @@ async function scrapeFederalSource(config: FederalSourceConfig): Promise<Scraper
           title,
           issuer: config.issuer,
           category: "Poticaji i grantovi",
-          description: extractDescription(pageHtml),
+          description: extractDescription(pageHtml) ?? extractBestDescription(pageHtml),
           requirements: extractRequirements(pageHtml),
           value: extractValue(pageHtml),
           deadline: extractDeadline(pageHtml),

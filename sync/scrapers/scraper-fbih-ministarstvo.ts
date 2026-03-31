@@ -4,7 +4,7 @@
  * Legal: Publicly available government website, informational content only.
  */
 
-import { fetchHtml, extractLinks, stripTags, parseDate, parseValue } from "./fetch-html";
+import { fetchHtml, extractLinks, extractLinksWithText, stripTags, parseDate, parseValue, extractBestDescription } from "./fetch-html";
 import type { ScrapedOpportunity, ScraperResult } from "./types";
 
 const SOURCE = "fmrpo.gov.ba";
@@ -29,7 +29,11 @@ export async function scrapeFmrpo(): Promise<ScraperResult> {
     const BASE_URL = new URL(usedUrl).origin;
 
     // Extract links to individual grant pages
-    const links = extractLinks(html, BASE_URL, /javni-poziv|poziv|grant|subvencij|poticaj/i);
+    const PATTERN = /javni-poziv|poziv|grant|subvencij|poticaj/i;
+    let links = extractLinks(html, BASE_URL, PATTERN);
+    if (links.length === 0) {
+      links = extractLinksWithText(html, BASE_URL, PATTERN);
+    }
     const uniqueLinks = links.slice(0, 20); // max 20 per run
 
     for (const link of uniqueLinks) {
@@ -45,7 +49,7 @@ export async function scrapeFmrpo(): Promise<ScraperResult> {
           title,
           issuer: "Federalno ministarstvo razvoja, poduzetništva i obrta",
           category: "Poticaji i grantovi",
-          description: extractDescription(pageHtml),
+          description: extractDescription(pageHtml) ?? extractBestDescription(pageHtml),
           requirements: extractRequirements(pageHtml),
           value: extractValue(pageHtml),
           deadline: extractDeadline(pageHtml),

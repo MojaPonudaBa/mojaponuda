@@ -14,7 +14,7 @@
  * Legal: Publicly available government websites, informational content only.
  */
 
-import { fetchHtml, extractLinks, stripTags, parseDate, parseValue } from "./fetch-html";
+import { fetchHtml, extractLinks, extractLinksWithText, stripTags, parseDate, parseValue, extractBestDescription } from "./fetch-html";
 import type { ScrapedOpportunity, ScraperResult } from "./types";
 
 interface CantonConfig {
@@ -119,6 +119,10 @@ async function scrapeCantonalSource(config: CantonConfig): Promise<ScraperResult
     if (links.length === 0) {
       links = tryStrategy3_RegexFallback(html, config);
     }
+    if (links.length === 0) {
+      // Fallback: match anchor TEXT (not just URL)
+      links = extractLinksWithText(html, config.baseUrl, config.linkPattern);
+    }
 
     const uniqueLinks = [...new Set(links)].slice(0, 20); // max 20 per run
 
@@ -135,7 +139,7 @@ async function scrapeCantonalSource(config: CantonConfig): Promise<ScraperResult
           title,
           issuer: config.issuer,
           category: "Poticaji i grantovi",
-          description: extractDescription(pageHtml),
+          description: extractDescription(pageHtml) ?? extractBestDescription(pageHtml),
           requirements: extractRequirements(pageHtml),
           value: extractValue(pageHtml),
           deadline: extractDeadline(pageHtml),

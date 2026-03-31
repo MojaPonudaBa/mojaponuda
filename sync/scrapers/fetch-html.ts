@@ -69,6 +69,37 @@ export function extractLinks(html: string, baseUrl: string, pattern?: RegExp): s
   return [...new Set(links)];
 }
 
+/**
+ * Extract links where EITHER the URL or the anchor text matches the pattern.
+ * Much more effective for government sites where URLs are numeric but text is descriptive.
+ * Only returns same-origin links.
+ */
+export function extractLinksWithText(html: string, baseUrl: string, pattern: RegExp): string[] {
+  // Match <a> tags with their href and inner text
+  const re = /<a[^>]*href=["']([^"']+)["'][^>]*>((?:(?!<\/a>)[\s\S])*)<\/a>/gi;
+  const links: string[] = [];
+  const baseDomain = new URL(baseUrl).hostname;
+  let match: RegExpExecArray | null;
+  while ((match = re.exec(html)) !== null) {
+    const href = match[1];
+    const text = stripTags(match[2]).trim();
+    // Accept if URL or anchor text matches pattern
+    if (!pattern.test(href) && !pattern.test(text)) continue;
+    // Skip anchors, mailto, tel, javascript
+    if (href.startsWith("#") || href.startsWith("mailto:") || href.startsWith("tel:") || href.startsWith("javascript:")) continue;
+    try {
+      const url = new URL(href, baseUrl);
+      // Only same-origin links
+      if (url.hostname === baseDomain || url.hostname.endsWith("." + baseDomain)) {
+        links.push(url.toString());
+      }
+    } catch {
+      // skip invalid URLs
+    }
+  }
+  return [...new Set(links)];
+}
+
 /** Parse a date string in various formats to ISO date */
 export function parseDate(raw: string | null | undefined): string | null {
   if (!raw) return null;
@@ -100,6 +131,52 @@ export function parseDate(raw: string | null | undefined): string | null {
       return ymd[0];
     }
     return null;
+  }
+
+  return null;
+}
+
+/**
+ * Extract the best available description from a page.
+ * Tries: og:description, meta description, first meaningful <p>, content div.
+ */
+export function extractBestDescription(html: string): string | null {
+  // 1. og:description
+  const og = html.match(/<meta[^>]*property=["']og:description["'][^>]*content=["']([^"']+)["']/i)
+    ?? html.match(/<meta[^>]*content=["']([^"']+)["'][^>]*property=["']og:description["']/i);
+  if (og) {
+    const text = stripTags(og[1]).trim();
+    if (text.length > 30) return text.slice(0, 1000);
+  }
+
+  // 2. meta description
+  const meta = html.match(/<meta[^>]*name=["']description["'][^>]*content=["']([^"']+)["']/i)
+    ?? html.match(/<meta[^>]*content=["']([^"']+)["'][^>]*name=["']description["']/i);
+  if (meta) {
+    const text = stripTags(meta[1]).trim();
+    if (text.length > 30) return text.slice(0, 1000);
+  }
+
+  // 3. Content area (article, main, common class names)
+  const contentPatterns = [
+    /<article[^>]*>([\s\S]*?)<\/article>/i,
+    /<main[^>]*>([\s\S]*?)<\/main>/i,
+    /<div[^>]*class="[^"]*(?:content|entry-content|post-content|article-body|page-content|field-item)[^"]*"[^>]*>([\s\S]*?)<\/div>/i,
+    /<div[^>]*id="[^"]*(?:content|main-content|post-body)[^"]*"[^>]*>([\s\S]*?)<\/div>/i,
+  ];
+  for (const pattern of contentPatterns) {
+    const match = html.match(pattern);
+    if (match) {
+      const text = stripTags(match[1]).trim();
+      if (text.length > 50) return text.slice(0, 1000);
+    }
+  }
+
+  // 4. First meaningful <p> tag (skip very short ones)
+  const paragraphs = html.matchAll(/<p[^>]*>([\s\S]*?)<\/p>/gi);
+  for (const p of paragraphs) {
+    const text = stripTags(p[1]).trim();
+    if (text.length > 40) return text.slice(0, 1000);
   }
 
   return null;
