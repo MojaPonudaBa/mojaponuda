@@ -82,52 +82,30 @@ const GRANT_ANNOUNCEMENT_KEYWORDS = [
 export function applyQualityFilter(item: ScrapedOpportunity): QualityFilterResult {
   // Rule 1: Must have a title (at least 10 chars)
   if (!item.title || item.title.trim().length < 10) {
-    return {
-      passed: false,
-      reason: "Title too short or missing (< 10 chars)",
-    };
+    return { passed: false, reason: "Title too short or missing (< 10 chars)" };
   }
 
-  // Rule 2: Must have a meaningful description (at least 50 chars)
-  if (!item.description || item.description.trim().length < 50) {
-    return {
-      passed: false,
-      reason: "Description too short or missing (< 50 chars)",
-    };
+  // Rule 2: Must have some description (at least 20 chars) - relaxed
+  if (!item.description || item.description.trim().length < 20) {
+    return { passed: false, reason: "Description too short or missing (< 20 chars)" };
   }
 
-  // Rule 3: Must have a deadline
-  if (!item.deadline) {
-    return {
-      passed: false,
-      reason: "No deadline specified",
-    };
+  // Rule 3: Deadline must not be expired (only if deadline exists)
+  if (item.deadline) {
+    const deadlineDate = new Date(item.deadline);
+    const now = new Date();
+    if (deadlineDate < now) {
+      return { passed: false, reason: "Deadline has expired" };
+    }
   }
 
-  // Rule 4: Deadline must not be expired
-  const deadlineDate = new Date(item.deadline);
-  const now = new Date();
-  if (deadlineDate < now) {
-    return {
-      passed: false,
-      reason: "Deadline has expired",
-    };
-  }
-
-  // Rule 5: Must be relevant (keyword matching)
+  // Rule 4: Must be relevant (keyword matching) - lowered threshold
   const relevanceScore = calculateRelevanceScore(item);
-  if (relevanceScore < 0.3) {
-    return {
-      passed: false,
-      reason: "Not relevant (low keyword match)",
-      relevanceScore,
-    };
+  if (relevanceScore < 0.1) {
+    return { passed: false, reason: "Not relevant (low keyword match)", relevanceScore };
   }
 
-  return {
-    passed: true,
-    relevanceScore,
-  };
+  return { passed: true, relevanceScore };
 }
 
 /**

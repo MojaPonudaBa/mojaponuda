@@ -97,6 +97,7 @@ export async function POST(request: NextRequest) {
     let itemsNew = 0;
     let itemsSkipped = 0;
     let itemsFiltered = 0;
+    let filterReasons: Record<string, number> = {};
 
     if (source.category === "opportunities") {
       const results = await getOpportunityResults(sourceId);
@@ -113,20 +114,16 @@ export async function POST(request: NextRequest) {
       const qualityOpportunities = filterResult.filtered;
       itemsFiltered = filterResult.stats.failed;
 
-      const existingHashMap = new Map<string, string>();
-      if (qualityOpportunities.length > 0) {
-        const externalIds = qualityOpportunities.map((o) => o.external_id);
-        const { data: existingOpps } = await supabase
-          .from("opportunities")
-          .select("external_id, content_hash")
-          .in("external_id", externalIds);
-
-        if (existingOpps) {
-          for (const opp of existingOpps as unknown as Array<{ external_id: string; content_hash: string | null }>) {
-            if (opp.content_hash) existingHashMap.set(opp.external_id, opp.content_hash);
-          }
-        }
+      // Log filter reasons for debugging
+      if (filterResult.stats.failed > 0) {
+        console.log(`[ScrapeSource:${sourceId}] Filter reasons:`, filterResult.stats.reasons);
+        filterReasons = filterResult.stats.reasons;
       }
+      console.log(`[ScrapeSource:${sourceId}] Quality passed: ${filterResult.stats.passed}/${filterResult.stats.total}`);
+
+      const existingHashMap = new Map<string, string>();
+      // Skip content_hash lookup - column may not exist yet in DB
+      // Items already in DB will be caught by external_id check below
 
       const processedOpportunities = processOpportunitiesWithHashing(
         qualityOpportunities,
@@ -195,7 +192,6 @@ export async function POST(request: NextRequest) {
             source_url: item.source_url,
             eligibility_signals: item.eligibility_signals,
             external_id: item.external_id,
-            content_hash: item.content_hash,
             quality_score: score,
             published: score >= PUBLISH_THRESHOLD,
             status: "active",
@@ -277,6 +273,7 @@ export async function POST(request: NextRequest) {
       itemsNew,
       itemsSkipped,
       itemsFiltered,
+      filterReasons: Object.keys(filterReasons).length > 0 ? filterReasons : undefined,
       errors: errors.length > 0 ? errors : undefined,
       duration_ms: Date.now() - start,
     });

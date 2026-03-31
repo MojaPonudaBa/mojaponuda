@@ -25,6 +25,7 @@ interface ScraperStatus {
     itemsNew: number;
     itemsSkipped: number;
     itemsFiltered?: number;
+    filterReasons?: Record<string, number>;
     duration_ms: number;
     errors?: string[];
   };
@@ -71,6 +72,7 @@ export function ScraperSourcesList({ initialLogs }: ScraperSourcesListProps) {
             itemsNew: data.itemsNew,
             itemsSkipped: data.itemsSkipped,
             itemsFiltered: data.itemsFiltered,
+            filterReasons: data.filterReasons,
             duration_ms: data.duration_ms,
             errors: data.errors,
           },
@@ -315,6 +317,11 @@ export function ScraperSourcesList({ initialLogs }: ScraperSourcesListProps) {
                       {status.result.errors && status.result.errors.length > 0 && (
                         <div className="mt-2 text-xs text-red-600">
                           Greške: {status.result.errors.join(", ")}
+                        </div>
+                      )}
+                      {status.result.filterReasons && Object.keys(status.result.filterReasons).length > 0 && (
+                        <div className="mt-2 text-xs text-amber-700">
+                          Razlozi filtriranja: {Object.entries(status.result.filterReasons).map(([r, n]) => `${r} (${n})`).join(", ")}
                         </div>
                       )}
                     </div>

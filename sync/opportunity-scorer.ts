@@ -47,7 +47,7 @@ export function scoreOpportunity(item: ScrapedOpportunity): number {
   return Math.max(0, Math.min(100, score));
 }
 
-export const PUBLISH_THRESHOLD = 40;
+export const PUBLISH_THRESHOLD = 20;
 
 /** Generate a URL-safe slug from title */
 export function generateSlug(title: string, type: "tender" | "poticaj", id: string): string {

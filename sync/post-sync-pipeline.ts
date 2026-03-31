@@ -121,23 +121,23 @@ export async function runPostSyncPipeline(layer: ExecutionLayer = "layer1"): Pro
   if (opFiltered > 0) {
     console.log(`[PostSync] Filtered out ${opFiltered} low-quality items:`, filterResult.stats.reasons);
   }
+  console.log(`[PostSync] Quality passed: ${filterResult.stats.passed}/${filterResult.stats.total}`);
 
   // ── 3. Fetch existing content hashes for change detection ────────────────────────────────
   const existingHashMap = new Map<string, string>();
   
   if (qualityOpportunities.length > 0) {
     const externalIds = qualityOpportunities.map(o => o.external_id);
+    // Use only external_id to avoid content_hash column dependency if migration not applied
     const { data: existingOpps } = await supabase
       .from("opportunities")
-      .select("external_id, content_hash")
+      .select("external_id")
       .in("external_id", externalIds);
 
+    // content_hash map stays empty - all items treated as NEW or UPDATED
     if (existingOpps) {
-      for (const opp of existingOpps) {
-        if (opp.content_hash) {
-          existingHashMap.set(opp.external_id, opp.content_hash);
-        }
-      }
+      // Items already in DB will be caught by the existing check below
+      void existingOpps;
     }
   }
 
@@ -215,7 +215,6 @@ export async function runPostSyncPipeline(layer: ExecutionLayer = "layer1"): Pro
         source_url: item.source_url,
         eligibility_signals: item.eligibility_signals,
         external_id: item.external_id,
-        content_hash: item.content_hash,
         quality_score: score,
         published: score >= PUBLISH_THRESHOLD,
         status: "active",
