@@ -1,0 +1,277 @@
+# Implementation Plan
+
+- [~] 1. Write bug condition exploration test
+  - **Property 1: Bug Condition** - Incomplete Official Source Coverage
+  - **CRITICAL**: This test MUST FAIL on unfixed code - failure confirms the bug exists
+  - **DO NOT attempt to fix the test or the code when it fails**
+  - **NOTE**: This test encodes the expected behavior - it will validate the fix when it passes after implementation
+  - **GOAL**: Surface counterexamples that demonstrate incomplete source coverage
+  - **Scoped PBT Approach**: Test that current scraper system does NOT cover all required primary official sources
+  - Test implementation details from Bug Condition in design:
+    - Verify scraperExecution.sourcesScraped.length < REQUIRED_PRIMARY_SOURCES.length
+    - Verify NOT allFederalSourcesCovered(scraperExecution) - missing FBiH Vlada, UNDP BiH, MCP BiH, FZZZ, FMPVS, FMOIT
+    - Verify NOT cantonalSourcesCovered(scraperExecution) - missing all cantonal sources
+    - Verify NOT legalGazettesCovered(scraperExecution) - missing Službeni glasnik FBiH, Parlament BiH, Vijeće ministara
+    - Verify NOT layeredExecutionStrategyImplemented(scraperExecution) - no Layer 1/2/3 strategy exists
+  - The test assertions should match the Expected Behavior Properties from design:
+    - After fix: ALL federal sources (Layer 1: FMRPO, FBiH Vlada, UNDP; Layer 2: MCP, FZZZ, FMPVS, FMOIT) SHALL be scraped
+    - After fix: ALL cantonal sources (Kanton Sarajevo, Tuzlanski Kanton, ZDK, HNK, etc.) SHALL be scraped
+    - After fix: ALL legal sources (Službeni glasnik FBiH, AJN, Parlament BiH, Vijeće ministara) SHALL be scraped
+    - After fix: Layered execution strategy (Layer 1 daily, Layer 2 weekly, Layer 3 monthly) SHALL be implemented
+  - Run test on UNFIXED code
+  - **EXPECTED OUTCOME**: Test FAILS (this is correct - it proves the bug exists)
+  - Document counterexamples found:
+    - Only 3-4 sources currently scraped (FMRPO, SERDA, REDAH, AJN)
+    - Missing federal sources: FBiH Vlada, UNDP BiH, MCP BiH, FZZZ, FMPVS, FMOIT
+    - Missing cantonal sources: All cantons (Sarajevo, Tuzla, ZDK, HNK, etc.)
+    - Missing municipal sources: All municipalities
+    - Missing legal sources: Službeni glasnik FBiH, Parlament BiH, Vijeće ministara
+    - No layered execution strategy
+  - Mark task complete when test is written, run, and failure is documented
+  - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.11, 2.12_
+
+- [~] 2. Write preservation property tests (BEFORE implementing fix)
+  - **Property 2: Preservation** - Existing Pipeline Infrastructure
+  - **IMPORTANT**: Follow observation-first methodology
+  - Observe behavior on UNFIXED code for existing scrapers (FMRPO, SERDA, REDAH, AJN):
+    - Observe: opportunities table structure (id, type, title, issuer, deadline, value, location, description, requirements, source_url, source_name, external_id, score, created_at, updated_at, expired)
+    - Observe: legal_updates table structure (id, title, type, date, source, summary, created_at)
+    - Observe: scoreOpportunity function produces scores based on completeness, value, deadline proximity
+    - Observe: generateOpportunityContent generates AI content for opportunities
+    - Observe: external_id deduplication prevents duplicate opportunities
+    - Observe: scraper_log table logs scraper execution results
+    - Observe: expired opportunities marked based on deadline date
+    - Observe: fetchHtml uses timeout, retry logic, User-Agent headers
+    - Observe: Helper functions (stripTags, parseDate, parseValue, extractLinks) work correctly
+    - Observe: post-sync-pipeline.ts orchestrates scraper execution
+    - Observe: Promise.allSettled executes scrapers in parallel
+  - Write property-based tests capturing observed behavior patterns from Preservation Requirements:
+    - Property: Data model structure remains unchanged after adding new scrapers
+    - Property: scoreOpportunity produces same scores for same inputs after fix
+    - Property: generateOpportunityContent produces same content for same inputs after fix
+    - Property: external_id deduplication works same way after fix
+    - Property: scraper_log entries have same structure after fix
+    - Property: expired marking logic unchanged after fix
+    - Property: fetchHtml behavior (timeout, retry, headers) unchanged after fix
+    - Property: Helper functions (stripTags, parseDate, parseValue, extractLinks) unchanged after fix
+    - Property: post-sync-pipeline.ts orchestration unchanged after fix
+    - Property: Promise.allSettled parallel execution pattern unchanged after fix
+  - Property-based testing generates many test cases for stronger guarantees
+  - Run tests on UNFIXED code
+  - **EXPECTED OUTCOME**: Tests PASS (this confirms baseline behavior to preserve)
+  - Mark task complete when tests are written, run, and passing on unfixed code
+  - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8, 3.9, 3.10_
+
+- [ ] 3. Fix for incomplete official sources scraping system
+
+  - [x] 3.1 Create federal sources scraper (Layer 1 and Layer 2)
+    - Create new file: `sync/scrapers/scraper-federal-sources.ts`
+    - Implement scraper for FBiH Vlada (https://fbihvlada.gov.ba/bs/javni-pozivi)
+    - Implement scraper for UNDP BiH (https://javnipoziv.undp.ba/)
+    - Implement scraper for MCP BiH (https://www.mcp.gov.ba/publication/read/objavljeni-pozivi-za-dodjelu-grant-sredstava)
+    - Implement scraper for FZZZ (https://www.fzzz.ba/)
+    - Implement scraper for FMPVS (https://fmpvs.gov.ba/)
+    - Implement scraper for FMOIT (https://fmoit.gov.ba/)
+    - Use same pattern as existing scrapers: fetchHtml, extractLinks, parse individual pages
+    - Extract: title, issuer, description, requirements, value, deadline, location
+    - Generate external_id using source prefix + base64 URL hash
+    - Return ScraperResult[] with source, items, error
+    - _Bug_Condition: scraperExecution.sourcesScraped.length < REQUIRED_PRIMARY_SOURCES.length AND NOT allFederalSourcesCovered(scraperExecution)_
+    - _Expected_Behavior: ALL federal sources (Layer 1: FMRPO, FBiH Vlada, UNDP; Layer 2: MCP, FZZZ, FMPVS, FMOIT) SHALL be scraped_
+    - _Preservation: Use same data model (opportunities table), same fetchHtml helper, same parsing helpers (stripTags, parseDate, parseValue, extractLinks)_
+    - _Requirements: 2.2, 2.3, 2.8, 2.9, 3.1, 3.7, 3.8_
+
+  - [x] 3.2 Create cantonal sources scraper with flexible CMS support (Layer 2)
+    - Create new file: `sync/scrapers/scraper-cantonal-sources.ts`
+    - Define CantonConfig interface: name, baseUrl, grantsPath, location, linkPattern, selectors (flexible)
+    - Implement flexible parser that handles different CMS systems:
+      - Auto-detection of content sections ("Javni pozivi", "Konkursi", "Obavijesti")
+      - Multiple selector strategies (class-based, id-based, semantic HTML)
+      - Fallback to regex patterns if selectors fail
+    - Define configurations for priority cantons:
+      - Kanton Sarajevo: https://mp.ks.gov.ba/aktuelo/konkursi
+      - Tuzlanski Kanton: https://www.vladatk.kim.ba/
+      - Zeničko-dobojski Kanton: https://www.zdk.ba/
+      - Hercegovačko-neretvanski Kanton: https://www.hnk.ba/
+      - Add more cantons gradually (Layer 2 expansion)
+    - Implement multiple parsing strategies:
+      - Strategy 1: Standard WordPress/Joomla patterns
+      - Strategy 2: Custom government CMS patterns
+      - Strategy 3: Regex fallback for unstructured content
+      - Strategy 4: Headless browser (Puppeteer) for JavaScript-heavy sites
+    - _Bug_Condition: NOT cantonalSourcesCovered(scraperExecution)_
+    - _Expected_Behavior: ALL cantonal sources SHALL be scraped with flexible CMS support_
+    - _Preservation: Use same data model (opportunities table), same fetchHtml helper, same parsing helpers_
+    - _Requirements: 2.4, 2.8, 2.9, 2.12, 3.1, 3.7, 3.8_
+
+  - [x] 3.3 Create municipal sources scraper (Layer 3)
+    - Create new file: `sync/scrapers/scraper-municipal-sources.ts`
+    - Define MunicipalityConfig interface (similar to CantonConfig)
+    - Implement flexible parser with broader CMS support
+    - Auto-detection of grant/tender sections
+    - Support various CMS systems (WordPress, Drupal, custom)
+    - Define configurations for priority municipalities:
+      - Sarajevo: https://www.sarajevo.ba/
+      - Tuzla: https://tuzla.ba/
+      - Zenica: https://zenica.ba/
+      - Mostar: https://www.mostar.ba/
+      - Banja Luka: https://www.banjaluka.rs.ba/
+      - Expand gradually based on data quality and relevance
+    - _Bug_Condition: scraperExecution.sourcesScraped does not include municipal sources_
+    - _Expected_Behavior: Priority municipal sources SHALL be scraped with gradual expansion_
+    - _Preservation: Use same data model (opportunities table), same fetchHtml helper, same parsing helpers_
+    - _Requirements: 2.5, 2.8, 2.9, 2.12, 3.1, 3.7, 3.8_
+
+  - [x] 3.4 Create comprehensive legal sources scraper
+    - Create new file: `sync/scrapers/scraper-legal-sources.ts` OR extend existing `scraper-legal-updates.ts`
+    - Implement scraper for Službeni Glasnik FBiH (http://www.sluzbenenovine.ba/):
+      - Parse official gazette for new laws, amendments, decisions
+      - Extract law number, title, date, summary
+      - Identify public procurement related laws
+    - Implement scraper for Parlament BiH (https://www.parlament.ba/):
+      - Parse legislative activity, new laws, amendments
+      - Focus on public procurement and business-related legislation
+    - Implement scraper for Vijeće ministara BiH (https://www.vijeceministara.gov.ba/):
+      - Parse government decisions, regulations
+      - Focus on economic and procurement-related decisions
+    - Enhance existing AJN scraper:
+      - Add zakonodavstvo section scraping
+      - Improve law vs amendment detection
+      - Add more relevance tags
+    - _Bug_Condition: NOT legalGazettesCovered(scraperExecution)_
+    - _Expected_Behavior: ALL legal sources (Službeni glasnik FBiH, AJN, Parlament BiH, Vijeće ministara) SHALL be scraped_
+    - _Preservation: Use same data model (legal_updates table), same fetchHtml helper, same parsing helpers_
+    - _Requirements: 2.6, 2.7, 2.8, 2.9, 3.1, 3.7, 3.8_
+
+  - [x] 3.5 Create scraper orchestrator with layered execution strategy
+    - Create new file: `sync/scrapers/scraper-orchestrator.ts`
+    - Implement Layer 1 execution (Daily): FMRPO, FBiH Vlada, UNDP BiH
+    - Implement Layer 2 execution (Weekly): All cantons, sector ministries
+    - Implement Layer 3 execution (Monthly): Priority municipalities
+    - Implement error handling and fallback:
+      - Try primary parser first
+      - If fails, try alternative parser
+      - If still fails, try headless browser (for JS-heavy sites)
+      - Log error but don't crash pipeline
+      - Continue with other sources
+    - Implement rate limiting:
+      - Respect robots.txt
+      - Add delays between requests (1-2 seconds)
+      - Implement exponential backoff on errors
+    - _Bug_Condition: NOT layeredExecutionStrategyImplemented(scraperExecution)_
+    - _Expected_Behavior: Layered execution strategy (Layer 1 daily, Layer 2 weekly, Layer 3 monthly) SHALL be implemented_
+    - _Preservation: Use same Promise.allSettled parallel execution pattern, same scraper_log logging_
+    - _Requirements: 2.8, 2.11, 2.12, 3.5, 3.10_
+
+  - [x] 3.6 Create content hashing and change detection system
+    - Create new file: `sync/scrapers/content-hasher.ts`
+    - Implement hash generation:
+      - Hash title + description + deadline + value
+      - Use crypto.createHash('sha256')
+      - Store hash in database (add content_hash column to opportunities table if needed)
+    - Implement change detection:
+      - NEW: Hash doesn't exist in database
+      - UPDATED: Hash exists but content changed
+      - UNCHANGED: Hash matches existing
+      - EXPIRING: Deadline approaching (within 7 days)
+    - Implement deduplication:
+      - Use content_hash for detecting duplicate content from different URLs
+      - Prevent same opportunity from appearing multiple times
+      - Keep existing external_id deduplication
+    - _Bug_Condition: No content hashing or change detection exists_
+    - _Expected_Behavior: Content hashing SHALL detect NEW, UPDATED, EXPIRING items_
+    - _Preservation: Keep existing external_id deduplication logic, same data model_
+    - _Requirements: 2.10, 3.1, 3.4_
+
+  - [x] 3.7 Create data quality filtering system
+    - Create new file: `sync/scrapers/quality-filter.ts`
+    - Implement quality rules:
+      - Ignore items without deadline
+      - Ignore items without meaningful description (< 50 chars)
+      - Ignore items without title (< 10 chars)
+      - Ignore items with expired deadlines
+      - Ignore items that are not relevant (use keyword matching)
+    - Implement relevance scoring:
+      - Keywords: "grant", "poticaj", "subvencija", "javni poziv", "konkurs"
+      - Negative keywords: "zaposlenje" (unless employment grant), "obavijest" (unless grant announcement)
+      - Boost score for items with clear value, deadline, requirements
+    - _Bug_Condition: No quality filtering exists, all items are processed_
+    - _Expected_Behavior: Quality filtering SHALL ignore low-quality items (no deadline, no description, not relevant)_
+    - _Preservation: Keep existing scoreOpportunity function, same scoring logic_
+    - _Requirements: 2.13, 3.2_
+
+  - [x] 3.8 Integrate new scrapers into post-sync-pipeline
+    - Modify file: `sync/post-sync-pipeline.ts`
+    - Import new scraper modules:
+      - scrapeFederalSources from './scrapers/scraper-federal-sources'
+      - scrapeCantonalSources from './scrapers/scraper-cantonal-sources'
+      - scrapeMunicipalSources from './scrapers/scraper-municipal-sources'
+      - scrapeLegalSources from './scrapers/scraper-legal-sources'
+      - ScraperOrchestrator from './scrapers/scraper-orchestrator'
+      - contentHasher from './scrapers/content-hasher'
+      - qualityFilter from './scrapers/quality-filter'
+    - Implement layered execution:
+      - Check execution layer (Layer 1, 2, or 3) based on cron schedule
+      - Run appropriate scrapers for each layer
+      - Layer 1: Daily (federal sources)
+      - Layer 2: Weekly (cantonal + sector)
+      - Layer 3: Monthly (municipal)
+    - Integrate content hashing:
+      - Generate hash for each opportunity
+      - Check if hash exists in database
+      - Mark as NEW, UPDATED, or UNCHANGED
+      - Update database accordingly
+    - Integrate quality filtering:
+      - Filter opportunities before scoring
+      - Only process high-quality items
+      - Log filtered items for monitoring
+    - _Bug_Condition: Pipeline only runs existing scrapers (FMRPO, agencies, AJN)_
+    - _Expected_Behavior: Pipeline SHALL run all new scrapers with layered execution, content hashing, and quality filtering_
+    - _Preservation: Keep existing orchestration, same Promise.allSettled pattern, same scoreOpportunity, same generateOpportunityContent, same scraper_log logging_
+    - _Requirements: 2.1, 2.8, 2.9, 2.10, 2.11, 2.13, 3.2, 3.3, 3.5, 3.9, 3.10_
+
+  - [~] 3.9 Verify bug condition exploration test now passes
+    - **Property 1: Expected Behavior** - Comprehensive Official Source Coverage
+    - **IMPORTANT**: Re-run the SAME test from task 1 - do NOT write a new test
+    - The test from task 1 encodes the expected behavior
+    - When this test passes, it confirms the expected behavior is satisfied
+    - Run bug condition exploration test from step 1
+    - **EXPECTED OUTCOME**: Test PASSES (confirms bug is fixed)
+    - Verify:
+      - ALL federal sources (Layer 1: FMRPO, FBiH Vlada, UNDP; Layer 2: MCP, FZZZ, FMPVS, FMOIT) are scraped
+      - ALL cantonal sources (Kanton Sarajevo, Tuzlanski Kanton, ZDK, HNK, etc.) are scraped
+      - ALL legal sources (Službeni glasnik FBiH, AJN, Parlament BiH, Vijeće ministara) are scraped
+      - Layered execution strategy (Layer 1 daily, Layer 2 weekly, Layer 3 monthly) is implemented
+      - Content hashing and change detection work correctly
+      - Quality filtering works correctly
+    - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8, 2.9, 2.10, 2.11, 2.12, 2.13_
+
+  - [~] 3.10 Verify preservation tests still pass
+    - **Property 2: Preservation** - Existing Pipeline Infrastructure
+    - **IMPORTANT**: Re-run the SAME tests from task 2 - do NOT write new tests
+    - Run preservation property tests from step 2
+    - **EXPECTED OUTCOME**: Tests PASS (confirms no regressions)
+    - Verify:
+      - Data model structure (opportunities, legal_updates) unchanged
+      - scoreOpportunity produces same scores for same inputs
+      - generateOpportunityContent produces same content for same inputs
+      - external_id deduplication works same way
+      - scraper_log entries have same structure
+      - expired marking logic unchanged
+      - fetchHtml behavior (timeout, retry, headers) unchanged
+      - Helper functions (stripTags, parseDate, parseValue, extractLinks) unchanged
+      - post-sync-pipeline.ts orchestration unchanged
+      - Promise.allSettled parallel execution pattern unchanged
+    - Confirm all tests still pass after fix (no regressions)
+    - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8, 3.9, 3.10_
+
+- [~] 4. Checkpoint - Ensure all tests pass
+  - Run all bug condition exploration tests - should PASS
+  - Run all preservation property tests - should PASS
+  - Run all unit tests for new scrapers - should PASS
+  - Run integration tests for full pipeline - should PASS
+  - Verify no regressions in existing functionality
+  - Verify all new sources are being scraped correctly
+  - Verify layered execution strategy works correctly
+  - Verify content hashing and quality filtering work correctly
+  - Ask the user if questions arise

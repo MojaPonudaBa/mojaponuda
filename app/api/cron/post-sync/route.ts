@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { runPostSyncPipeline } from "@/sync/post-sync-pipeline";
+import type { ExecutionLayer } from "@/sync/scrapers/scraper-orchestrator";
 
 export const maxDuration = 300;
 
@@ -12,7 +13,17 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const result = await runPostSyncPipeline();
+    // Get execution layer from query parameter (default: layer1)
+    const { searchParams } = new URL(request.url);
+    const layerParam = searchParams.get("layer") || "layer1";
+    
+    // Validate layer parameter
+    const validLayers: ExecutionLayer[] = ["layer1", "layer2", "layer3"];
+    const layer: ExecutionLayer = validLayers.includes(layerParam as ExecutionLayer) 
+      ? (layerParam as ExecutionLayer) 
+      : "layer1";
+
+    const result = await runPostSyncPipeline(layer);
     return NextResponse.json({ status: "ok", ...result });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

@@ -2,7 +2,13 @@ import "server-only";
 import { createClient } from "@supabase/supabase-js";
 import { scrapeFmrpo } from "./scrapers/scraper-fbih-ministarstvo";
 import { scrapeRazvojneAgencije } from "./scrapers/scraper-razvojne-agencije";
+import { scrapeFederalSources } from "./scrapers/scraper-federal-sources";
+import { scrapeCantonalSources } from "./scrapers/scraper-cantonal-sources";
+import { scrapeMunicipalSources } from "./scrapers/scraper-municipal-sources";
 import { scrapeLegalUpdates } from "./scrapers/scraper-legal-updates";
+import type { ExecutionLayer } from "./scrapers/scraper-orchestrator";
+import { processOpportunitiesWithHashing } from "./scrapers/content-hasher";
+import { filterOpportunities } from "./scrapers/quality-filter";
 import { scoreOpportunity, generateSlug, PUBLISH_THRESHOLD } from "./opportunity-scorer";
 import { generateOpportunityContent, generateLegalSummary } from "./ai-content-generator";
 import type { ScrapedOpportunity } from "./scrapers/types";
@@ -18,62 +24,164 @@ function createServiceClient() {
 export interface PostSyncResult {
   opportunities_processed: number;
   opportunities_published: number;
+  opportunities_filtered: number;
   legal_updates_processed: number;
   errors: string[];
   duration_ms: number;
+  execution_layer?: ExecutionLayer;
 }
 
-export async function runPostSyncPipeline(): Promise<PostSyncResult> {
+/**
+ * Run post-sync pipeline with layered execution strategy
+ * @param layer - Execution layer: "layer1" (daily), "layer2" (weekly), "layer3" (monthly)
+ */
+export async function runPostSyncPipeline(layer: ExecutionLayer = "layer1"): Promise<PostSyncResult> {
   const start = Date.now();
   const errors: string[] = [];
   let opProcessed = 0;
   let opPublished = 0;
+  let opFiltered = 0;
   let legalProcessed = 0;
 
   const supabase = createServiceClient();
 
-  // ── 1. Scrape poticaje (parallel) ──────────────────────────────
-  const [fmrpoResult, agencyResults, legalResults] = await Promise.allSettled([
-    scrapeFmrpo(),
-    scrapeRazvojneAgencije(),
-    scrapeLegalUpdates(),
-  ]);
-
+  // ── 1. Scrape opportunities using layered execution strategy ──────────────────────────────
   const allOpportunities: ScrapedOpportunity[] = [];
 
-  if (fmrpoResult.status === "fulfilled") {
-    if (fmrpoResult.value.error) errors.push(`fmrpo: ${fmrpoResult.value.error}`);
-    allOpportunities.push(...fmrpoResult.value.items);
-  }
+  // Layer 1 (Daily): High-priority federal sources
+  if (layer === "layer1") {
+    const [fmrpoResult, agencyResults, federalResults] = await Promise.allSettled([
+      scrapeFmrpo(),
+      scrapeRazvojneAgencije(),
+      scrapeFederalSources(),
+    ]);
 
-  if (agencyResults.status === "fulfilled") {
-    for (const r of agencyResults.value) {
-      if (r.error) errors.push(`${r.source}: ${r.error}`);
-      allOpportunities.push(...r.items);
+    if (fmrpoResult.status === "fulfilled") {
+      if (fmrpoResult.value.error) errors.push(`fmrpo: ${fmrpoResult.value.error}`);
+      allOpportunities.push(...fmrpoResult.value.items);
+    }
+
+    if (agencyResults.status === "fulfilled") {
+      for (const r of agencyResults.value) {
+        if (r.error) errors.push(`${r.source}: ${r.error}`);
+        allOpportunities.push(...r.items);
+      }
+    }
+
+    if (federalResults.status === "fulfilled") {
+      for (const r of federalResults.value) {
+        if (r.error) errors.push(`${r.source}: ${r.error}`);
+        allOpportunities.push(...r.items);
+      }
     }
   }
 
-  // ── 2. Process opportunities ────────────────────────────────────
-  for (const item of allOpportunities) {
+  // Layer 2 (Weekly): Cantonal sources and sector ministries
+  if (layer === "layer2") {
+    const [cantonalResults, federalResults] = await Promise.allSettled([
+      scrapeCantonalSources(),
+      scrapeFederalSources(),
+    ]);
+
+    if (cantonalResults.status === "fulfilled") {
+      for (const r of cantonalResults.value) {
+        if (r.error) errors.push(`${r.source}: ${r.error}`);
+        allOpportunities.push(...r.items);
+      }
+    }
+
+    if (federalResults.status === "fulfilled") {
+      for (const r of federalResults.value) {
+        if (r.error) errors.push(`${r.source}: ${r.error}`);
+        allOpportunities.push(...r.items);
+      }
+    }
+  }
+
+  // Layer 3 (Monthly): Municipal sources
+  if (layer === "layer3") {
+    const [municipalResults] = await Promise.allSettled([
+      scrapeMunicipalSources(),
+    ]);
+
+    if (municipalResults.status === "fulfilled") {
+      for (const r of municipalResults.value) {
+        if (r.error) errors.push(`${r.source}: ${r.error}`);
+        allOpportunities.push(...r.items);
+      }
+    }
+  }
+
+  // ── 2. Apply quality filtering ────────────────────────────────
+  const filterResult = filterOpportunities(allOpportunities);
+  const qualityOpportunities = filterResult.filtered;
+  opFiltered = filterResult.stats.failed;
+
+  // Log filtering statistics
+  if (opFiltered > 0) {
+    console.log(`[PostSync] Filtered out ${opFiltered} low-quality items:`, filterResult.stats.reasons);
+  }
+
+  // ── 3. Fetch existing content hashes for change detection ────────────────────────────────
+  const existingHashMap = new Map<string, string>();
+  
+  if (qualityOpportunities.length > 0) {
+    const externalIds = qualityOpportunities.map(o => o.external_id);
+    const { data: existingOpps } = await supabase
+      .from("opportunities")
+      .select("external_id, content_hash")
+      .in("external_id", externalIds);
+
+    if (existingOpps) {
+      for (const opp of existingOpps) {
+        if (opp.content_hash) {
+          existingHashMap.set(opp.external_id, opp.content_hash);
+        }
+      }
+    }
+  }
+
+  // ── 4. Process opportunities with content hashing ────────────────────────────────
+  const processedOpportunities = processOpportunitiesWithHashing(qualityOpportunities, existingHashMap);
+
+  for (const item of processedOpportunities) {
     opProcessed++;
     try {
+      // Skip duplicates (same content from different URLs)
+      if (item.is_duplicate) {
+        console.log(`[PostSync] Skipping duplicate: ${item.title.slice(0, 50)}...`);
+        continue;
+      }
+
+      // Skip unchanged items (no content changes)
+      if (item.change_status === "UNCHANGED") {
+        console.log(`[PostSync] Skipping unchanged: ${item.title.slice(0, 50)}...`);
+        continue;
+      }
+
       const score = scoreOpportunity(item);
       if (score < PUBLISH_THRESHOLD) continue;
 
       // Check if already exists
       const { data: existing } = await supabase
         .from("opportunities")
-        .select("id, quality_score")
+        .select("id, quality_score, content_hash")
         .eq("external_id", item.external_id)
         .maybeSingle();
 
       if (existing) {
-        // Update if score improved
-        if (score > (existing.quality_score ?? 0)) {
+        // Update if content changed or score improved
+        if (item.change_status === "UPDATED" || score > (existing.quality_score ?? 0)) {
           await supabase
             .from("opportunities")
-            .update({ quality_score: score, updated_at: new Date().toISOString() })
+            .update({ 
+              quality_score: score, 
+              content_hash: item.content_hash,
+              updated_at: new Date().toISOString() 
+            })
             .eq("id", existing.id);
+          
+          console.log(`[PostSync] Updated: ${item.title.slice(0, 50)}... (status: ${item.change_status})`);
         }
         continue;
       }
@@ -107,6 +215,7 @@ export async function runPostSyncPipeline(): Promise<PostSyncResult> {
         source_url: item.source_url,
         eligibility_signals: item.eligibility_signals,
         external_id: item.external_id,
+        content_hash: item.content_hash,
         quality_score: score,
         published: score >= PUBLISH_THRESHOLD,
         status: "active",
@@ -120,15 +229,20 @@ export async function runPostSyncPipeline(): Promise<PostSyncResult> {
         ai_generated_at: aiContent ? new Date().toISOString() : null,
       });
 
-      if (!insertError) opPublished++;
+      if (!insertError) {
+        opPublished++;
+        console.log(`[PostSync] Published NEW: ${item.title.slice(0, 50)}...`);
+      }
     } catch (err) {
       errors.push(`opportunity ${item.external_id}: ${String(err)}`);
     }
   }
 
-  // ── 3. Process legal updates ────────────────────────────────────
-  if (legalResults.status === "fulfilled") {
-    for (const result of legalResults.value) {
+  // ── 5. Process legal updates (all layers) ────────────────────────────────────
+  const legalResults = await Promise.allSettled([scrapeLegalUpdates()]);
+
+  if (legalResults[0].status === "fulfilled") {
+    for (const result of legalResults[0].value) {
       if (result.error) errors.push(`legal ${result.source}: ${result.error}`);
 
       for (const item of result.items) {
@@ -162,16 +276,16 @@ export async function runPostSyncPipeline(): Promise<PostSyncResult> {
     }
   }
 
-  // ── 4. Log scraper run ──────────────────────────────────────────
+  // ── 6. Log scraper run ──────────────────────────────────────────
   await supabase.from("scraper_log").insert({
-    source: "post-sync-pipeline",
+    source: `post-sync-pipeline-${layer}`,
     items_found: allOpportunities.length,
     items_new: opPublished,
     items_skipped: opProcessed - opPublished,
     error: errors.length > 0 ? errors.slice(0, 3).join("; ") : null,
   });
 
-  // ── 5. Expire old opportunities ─────────────────────────────────
+  // ── 7. Expire old opportunities ─────────────────────────────────
   await supabase
     .from("opportunities")
     .update({ status: "expired" })
@@ -181,8 +295,10 @@ export async function runPostSyncPipeline(): Promise<PostSyncResult> {
   return {
     opportunities_processed: opProcessed,
     opportunities_published: opPublished,
+    opportunities_filtered: opFiltered,
     legal_updates_processed: legalProcessed,
     errors,
     duration_ms: Date.now() - start,
+    execution_layer: layer,
   };
 }
