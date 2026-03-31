@@ -25,6 +25,7 @@ import {
   Building2,
   ChevronsUpDown,
   ArrowLeft,
+  Sparkles,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -41,6 +42,7 @@ const coreItems: NavItem[] = [
   { href: "/dashboard/tenders", label: "Tenderi", icon: Search },
   { href: "/dashboard/bids", label: "Moje ponude", icon: Briefcase },
   { href: "/dashboard/vault", label: "Dokumenti", icon: FileText },
+  { href: "/dashboard/prilike", label: "Prilike i poticaji", icon: Sparkles, pro: true },
 ];
 
 const intelligenceItems: NavItem[] = [
@@ -58,6 +60,7 @@ const adminItems: NavItem[] = [
   { href: "/dashboard/admin/agencies", label: "Agencije", icon: Users },
   { href: "/dashboard/admin/leads", label: "Leads", icon: Target },
   { href: "/dashboard/admin/financials", label: "Financials", icon: CircleDollarSign },
+  { href: "/dashboard/admin/prilike", label: "Prilike", icon: Sparkles },
   { href: "/dashboard/admin/system", label: "System", icon: Wrench },
 ];
 
