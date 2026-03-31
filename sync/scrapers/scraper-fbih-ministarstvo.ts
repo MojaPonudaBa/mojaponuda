@@ -8,18 +8,28 @@ import { fetchHtml, extractLinks, stripTags, parseDate, parseValue } from "./fet
 import type { ScrapedOpportunity, ScraperResult } from "./types";
 
 const SOURCE = "fmrpo.gov.ba";
-const BASE_URL = "https://www.fmrpo.gov.ba";
-const GRANTS_URL = `${BASE_URL}/javni-pozivi`;
+// Primary: dedicated grants subdomain; Fallback: main site
+const GRANTS_URLS = [
+  "https://javnipozivi.fmrpo.gov.ba/",
+  "https://www.fmrpo.gov.ba/javni-pozivi",
+  "https://fmrpo.gov.ba/javni-pozivi",
+];
 
 export async function scrapeFmrpo(): Promise<ScraperResult> {
   const items: ScrapedOpportunity[] = [];
 
   try {
-    const html = await fetchHtml(GRANTS_URL);
-    if (!html) return { source: SOURCE, items: [], error: "Stranica nedostupna" };
+    let html: string | null = null;
+    let usedUrl = "";
+    for (const url of GRANTS_URLS) {
+      html = await fetchHtml(url);
+      if (html) { usedUrl = url; break; }
+    }
+    if (!html) return { source: SOURCE, items: [], error: `Stranica nedostupna (pokušano: ${GRANTS_URLS.join(", ")})` };
+    const BASE_URL = new URL(usedUrl).origin;
 
     // Extract links to individual grant pages
-    const links = extractLinks(html, BASE_URL, /javni-poziv|grant|subvencij|poticaj/i);
+    const links = extractLinks(html, BASE_URL, /javni-poziv|poziv|grant|subvencij|poticaj/i);
     const uniqueLinks = links.slice(0, 20); // max 20 per run
 
     for (const link of uniqueLinks) {

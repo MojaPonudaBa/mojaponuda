@@ -5,10 +5,10 @@
 
 import { scrapeFmrpo } from "./scraper-fbih-ministarstvo";
 import { scrapeRazvojneAgencije } from "./scraper-razvojne-agencije";
-import { scrapeFederalSources } from "./scraper-federal-sources";
-import { scrapeCantonalSources } from "./scraper-cantonal-sources";
-import { scrapeMunicipalSources } from "./scraper-municipal-sources";
-import { scrapeLegalUpdates } from "./scraper-legal-updates";
+import { scrapeSingleFederalSource } from "./scraper-federal-sources";
+import { scrapeSingleCantonalSource } from "./scraper-cantonal-sources";
+import { scrapeSingleMunicipalSource } from "./scraper-municipal-sources";
+import { scrapeSingleLegalSource } from "./scraper-legal-updates";
 import type { ScraperResult } from "./types";
 import type { LegalScraperResult } from "./scraper-legal-updates";
 
@@ -33,7 +33,7 @@ export const SCRAPER_SOURCES: ScraperSource[] = [
   {
     id: "fmrpo",
     name: "FMRPO - Federalno ministarstvo razvoja, poduzetništva i obrta",
-    url: "https://www.fmrpo.gov.ba/javni-pozivi",
+    url: "https://javnipozivi.fmrpo.gov.ba/",
     category: "opportunities",
     layer: "layer1",
     description: "Javni pozivi za poticaje i grantove",
@@ -253,55 +253,29 @@ export async function runScraperById(
     case "fbih-vlada":
     case "undp-bih":
     case "mcp-bih":
-      const federalResults = await scrapeFederalSources();
-      // Filter by source ID
-      if (sourceId === "fbih-vlada") {
-        return federalResults.filter((r) => r.source.includes("fbihvlada"));
-      } else if (sourceId === "undp-bih") {
-        return federalResults.filter((r) => r.source.includes("undp"));
-      } else if (sourceId === "mcp-bih") {
-        return federalResults.filter((r) => r.source.includes("mcp"));
-      }
-      return federalResults;
+    case "fzzz":
+    case "fmpvs":
+    case "fmoit":
+      return [await scrapeSingleFederalSource(sourceId)];
 
     case "kanton-sarajevo":
     case "kanton-tuzla":
     case "kanton-zenica":
-    case "fzzz":
-    case "fmpvs":
-    case "fmoit":
-      const cantonalResults = await scrapeCantonalSources();
-      // Filter by source ID if needed
-      return cantonalResults;
+      return [await scrapeSingleCantonalSource(sourceId)];
 
     case "grad-sarajevo":
     case "grad-tuzla":
     case "grad-zenica":
     case "grad-mostar":
     case "grad-banja-luka":
-      const municipalResults = await scrapeMunicipalSources();
-      // Filter by source ID if needed
-      return municipalResults;
+      return [await scrapeSingleMunicipalSource(sourceId)];
 
     case "ajn-news":
     case "ajn-laws":
     case "glasnik-fbih":
     case "parlament-bih":
     case "vijece-ministara":
-      const legalResults = await scrapeLegalUpdates();
-      // Filter by source ID
-      if (sourceId === "ajn-news") {
-        return legalResults.filter((r) => r.source.includes("javnenabavke") && !r.source.includes("zakonodavstvo"));
-      } else if (sourceId === "ajn-laws") {
-        return legalResults.filter((r) => r.source.includes("zakonodavstvo"));
-      } else if (sourceId === "glasnik-fbih") {
-        return legalResults.filter((r) => r.source.includes("sluzbenenovine"));
-      } else if (sourceId === "parlament-bih") {
-        return legalResults.filter((r) => r.source.includes("parlament"));
-      } else if (sourceId === "vijece-ministara") {
-        return legalResults.filter((r) => r.source.includes("vijeceministara"));
-      }
-      return legalResults;
+      return [await scrapeSingleLegalSource(sourceId)];
 
     default:
       throw new Error(`Unknown scraper source: ${sourceId}`);

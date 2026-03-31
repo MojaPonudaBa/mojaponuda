@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isAdminEmail } from "@/lib/admin";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { SCRAPER_SOURCES } from "@/sync/scrapers/scraper-registry";
 import { filterOpportunities } from "@/sync/scrapers/quality-filter";
 import { processOpportunitiesWithHashing } from "@/sync/scrapers/content-hasher";
@@ -8,15 +9,16 @@ import { scoreOpportunity, generateSlug, PUBLISH_THRESHOLD } from "@/sync/opport
 import { generateOpportunityContent, generateLegalSummary } from "@/sync/ai-content-generator";
 import { scrapeFmrpo } from "@/sync/scrapers/scraper-fbih-ministarstvo";
 import { scrapeRazvojneAgencije } from "@/sync/scrapers/scraper-razvojne-agencije";
-import { scrapeFederalSources } from "@/sync/scrapers/scraper-federal-sources";
-import { scrapeCantonalSources } from "@/sync/scrapers/scraper-cantonal-sources";
-import { scrapeMunicipalSources } from "@/sync/scrapers/scraper-municipal-sources";
-import { scrapeLegalUpdates } from "@/sync/scrapers/scraper-legal-updates";
+import { scrapeSingleFederalSource } from "@/sync/scrapers/scraper-federal-sources";
+import { scrapeSingleCantonalSource } from "@/sync/scrapers/scraper-cantonal-sources";
+import { scrapeSingleMunicipalSource } from "@/sync/scrapers/scraper-municipal-sources";
+import { scrapeSingleLegalSource } from "@/sync/scrapers/scraper-legal-updates";
 import type { ScrapedOpportunity, ScraperResult } from "@/sync/scrapers/types";
 import type { LegalScraperResult } from "@/sync/scrapers/scraper-legal-updates";
 
 export const maxDuration = 300;
 
+/** Scrape ONLY the single requested source (not the entire group) */
 async function getOpportunityResults(sourceId: string): Promise<ScraperResult[]> {
   switch (sourceId) {
     case "fmrpo":
@@ -30,38 +32,25 @@ async function getOpportunityResults(sourceId: string): Promise<ScraperResult[]>
     case "fzzz":
     case "fmpvs":
     case "fmoit":
-      return await scrapeFederalSources();
+      return [await scrapeSingleFederalSource(sourceId)];
     case "kanton-sarajevo":
     case "kanton-tuzla":
     case "kanton-zenica":
-      return await scrapeCantonalSources();
+      return [await scrapeSingleCantonalSource(sourceId)];
     case "grad-sarajevo":
     case "grad-tuzla":
     case "grad-zenica":
     case "grad-mostar":
     case "grad-banja-luka":
-      return await scrapeMunicipalSources();
+      return [await scrapeSingleMunicipalSource(sourceId)];
     default:
       return [];
   }
 }
 
+/** Scrape ONLY the single requested legal source */
 async function getLegalResults(sourceId: string): Promise<LegalScraperResult[]> {
-  const all = await scrapeLegalUpdates();
-  switch (sourceId) {
-    case "ajn-news":
-      return all.filter((r) => r.source === "javnenabavke.gov.ba");
-    case "ajn-laws":
-      return all.filter((r) => r.source === "javnenabavke.gov.ba/zakonodavstvo");
-    case "glasnik-fbih":
-      return all.filter((r) => r.source.includes("sluzbenenovine"));
-    case "parlament-bih":
-      return all.filter((r) => r.source.includes("parlament"));
-    case "vijece-ministara":
-      return all.filter((r) => r.source.includes("vijeceministara"));
-    default:
-      return all;
-  }
+  return [await scrapeSingleLegalSource(sourceId)];
 }
 
 export async function POST(request: NextRequest) {
@@ -90,6 +79,9 @@ export async function POST(request: NextRequest) {
     if (!source) {
       return NextResponse.json({ error: "Nepoznat izvor." }, { status: 404 });
     }
+
+    // Use admin (service role) client for DB operations — bypasses RLS
+    const adminDb = createAdminClient();
 
     const start = Date.now();
     const errors: string[] = [];
@@ -143,7 +135,7 @@ export async function POST(request: NextRequest) {
             continue;
           }
 
-          const { data: existing } = await supabase
+          const { data: existing } = await adminDb
             .from("opportunities")
             .select("id, quality_score")
             .eq("external_id", item.external_id)
@@ -151,7 +143,7 @@ export async function POST(request: NextRequest) {
 
           if (existing) {
             if (item.change_status === "UPDATED" || score > (existing.quality_score ?? 0)) {
-              await supabase
+              await adminDb
                 .from("opportunities")
                 .update({
                   quality_score: score,
@@ -177,7 +169,7 @@ export async function POST(request: NextRequest) {
           const id = crypto.randomUUID();
           const slug = generateSlug(item.title, "poticaj", id);
 
-          const { error: insertError } = await supabase.from("opportunities").insert({
+          const { error: insertError } = await adminDb.from("opportunities").insert({
             id,
             type: "poticaj",
             slug,
@@ -224,7 +216,7 @@ export async function POST(request: NextRequest) {
 
         for (const item of result.items) {
           try {
-            const { data: existing } = await supabase
+            const { data: existing } = await adminDb
               .from("legal_updates")
               .select("id")
               .eq("external_id", item.external_id)
@@ -238,7 +230,7 @@ export async function POST(request: NextRequest) {
             const summary =
               item.summary ?? (await generateLegalSummary(item.title, item.type, item.summary));
 
-            await supabase.from("legal_updates").insert({
+            await adminDb.from("legal_updates").insert({
               type: item.type,
               title: item.title,
               summary,
@@ -257,7 +249,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    await supabase.from("scraper_log").insert({
+    await adminDb.from("scraper_log").insert({
       source: `manual-${sourceId}`,
       items_found: itemsFound,
       items_new: itemsNew,

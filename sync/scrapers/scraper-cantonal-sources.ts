@@ -49,7 +49,7 @@ const CANTONAL_SOURCES: CantonConfig[] = [
   },
   {
     name: "Tuzlanski Kanton",
-    baseUrl: "https://www.vladatk.kim.ba",
+    baseUrl: "https://www.vladatk.gov.ba",
     grantsPath: "/",
     location: "Tuzlanski Kanton",
     linkPattern: /poziv|konkurs|grant|natječaj/i,
@@ -65,13 +65,31 @@ const CANTONAL_SOURCES: CantonConfig[] = [
   },
   {
     name: "Hercegovačko-neretvanski Kanton",
-    baseUrl: "https://www.hnk.ba",
+    baseUrl: "https://www.vladahnk.ba",
     grantsPath: "/",
     location: "Hercegovačko-neretvanski Kanton",
     linkPattern: /poziv|konkurs|grant|natječaj/i,
     issuer: "Vlada Hercegovačko-neretvanskog kantona",
   },
 ];
+
+/** Map registry sourceId → CANTONAL_SOURCES config name */
+const SOURCE_ID_MAP: Record<string, string> = {
+  "kanton-sarajevo": "Kanton Sarajevo",
+  "kanton-tuzla": "Tuzlanski Kanton",
+  "kanton-zenica": "Zeničko-dobojski Kanton",
+  "kanton-hnk": "Hercegovačko-neretvanski Kanton",
+};
+
+/** Scrape a SINGLE cantonal source by registry sourceId */
+export async function scrapeSingleCantonalSource(sourceId: string): Promise<ScraperResult> {
+  const configName = SOURCE_ID_MAP[sourceId];
+  const config = CANTONAL_SOURCES.find((s) => s.name === configName);
+  if (!config) {
+    return { source: sourceId, items: [], error: `Unknown cantonal sourceId: ${sourceId}` };
+  }
+  return scrapeCantonalSource(config);
+}
 
 export async function scrapeCantonalSources(): Promise<ScraperResult[]> {
   const results: ScraperResult[] = [];

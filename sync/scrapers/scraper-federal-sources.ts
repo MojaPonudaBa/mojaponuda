@@ -73,6 +73,26 @@ const FEDERAL_SOURCES: FederalSourceConfig[] = [
   },
 ];
 
+/** Map registry sourceId → FEDERAL_SOURCES config index */
+const SOURCE_ID_MAP: Record<string, string> = {
+  "fbih-vlada": "FBiH Vlada",
+  "undp-bih": "UNDP BiH",
+  "mcp-bih": "MCP BiH",
+  "fzzz": "FZZZ",
+  "fmpvs": "FMPVS",
+  "fmoit": "FMOIT",
+};
+
+/** Scrape a SINGLE federal source by registry sourceId */
+export async function scrapeSingleFederalSource(sourceId: string): Promise<ScraperResult> {
+  const configName = SOURCE_ID_MAP[sourceId];
+  const config = FEDERAL_SOURCES.find((s) => s.name === configName);
+  if (!config) {
+    return { source: sourceId, items: [], error: `Unknown federal sourceId: ${sourceId}` };
+  }
+  return scrapeFederalSource(config);
+}
+
 export async function scrapeFederalSources(): Promise<ScraperResult[]> {
   const results: ScraperResult[] = [];
 

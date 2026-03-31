@@ -34,6 +34,18 @@ const GLASNIK_BASE = "http://www.sluzbenenovine.ba";
 const PARLAMENT_BASE = "https://www.parlament.ba";
 const VIJECE_BASE = "https://www.vijeceministara.gov.ba";
 
+/** Scrape a SINGLE legal source by registry sourceId */
+export async function scrapeSingleLegalSource(sourceId: string): Promise<LegalScraperResult> {
+  switch (sourceId) {
+    case "ajn-news": return scrapeAjnNews();
+    case "ajn-laws": return scrapeAjnLaws();
+    case "glasnik-fbih": return scrapeSluzbenGlasnik();
+    case "parlament-bih": return scrapeParlament();
+    case "vijece-ministara": return scrapeVijeceMinistara();
+    default: return { source: sourceId, items: [], error: `Unknown legal sourceId: ${sourceId}` };
+  }
+}
+
 export async function scrapeLegalUpdates(): Promise<LegalScraperResult[]> {
   const results = await Promise.allSettled([
     scrapeAjnNews(),

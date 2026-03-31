@@ -77,6 +77,25 @@ const MUNICIPAL_SOURCES: MunicipalityConfig[] = [
   },
 ];
 
+/** Map registry sourceId → MUNICIPAL_SOURCES config name */
+const SOURCE_ID_MAP: Record<string, string> = {
+  "grad-sarajevo": "Grad Sarajevo",
+  "grad-tuzla": "Grad Tuzla",
+  "grad-zenica": "Grad Zenica",
+  "grad-mostar": "Grad Mostar",
+  "grad-banja-luka": "Grad Banja Luka",
+};
+
+/** Scrape a SINGLE municipal source by registry sourceId */
+export async function scrapeSingleMunicipalSource(sourceId: string): Promise<ScraperResult> {
+  const configName = SOURCE_ID_MAP[sourceId];
+  const config = MUNICIPAL_SOURCES.find((s) => s.name === configName);
+  if (!config) {
+    return { source: sourceId, items: [], error: `Unknown municipal sourceId: ${sourceId}` };
+  }
+  return scrapeMunicipalSource(config);
+}
+
 export async function scrapeMunicipalSources(): Promise<ScraperResult[]> {
   const results: ScraperResult[] = [];
 
