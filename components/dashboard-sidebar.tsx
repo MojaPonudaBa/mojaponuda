@@ -64,6 +64,7 @@ const adminItems: NavItem[] = [
   { href: "/dashboard/admin/leads", label: "Leads", icon: Target },
   { href: "/dashboard/admin/financials", label: "Financials", icon: CircleDollarSign },
   { href: "/dashboard/admin/prilike", label: "Prilike & Scraperi", icon: Sparkles },
+  { href: "/dashboard/admin/posts", label: "Postovi", icon: FileText },
   { href: "/dashboard/admin/system", label: "System", icon: Wrench },
 ];
 
