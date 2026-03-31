@@ -71,6 +71,62 @@ const CANTONAL_SOURCES: CantonConfig[] = [
     linkPattern: /poziv|konkurs|grant|natječaj/i,
     issuer: "Vlada Hercegovačko-neretvanskog kantona",
   },
+  {
+    name: "Unsko-sanski Kanton",
+    baseUrl: "https://www.vladausk.ba",
+    grantsPath: "/",
+    location: "Unsko-sanski Kanton",
+    linkPattern: /poziv|konkurs|grant|poticaj/i,
+    issuer: "Vlada Unsko-sanskog kantona",
+  },
+  {
+    name: "Posavski Kanton",
+    baseUrl: "https://www.pkanton.gov.ba",
+    grantsPath: "/",
+    location: "Posavski Kanton",
+    linkPattern: /poziv|konkurs|grant|poticaj/i,
+    issuer: "Vlada Posavskog kantona",
+  },
+  {
+    name: "Bosansko-podrinjski Kanton",
+    baseUrl: "https://www.bpkg.gov.ba",
+    grantsPath: "/",
+    location: "Bosansko-podrinjski Kanton",
+    linkPattern: /poziv|konkurs|grant|poticaj/i,
+    issuer: "Vlada Bosansko-podrinjskog kantona Goražde",
+  },
+  {
+    name: "Srednjobosanski Kanton",
+    baseUrl: "https://www.sbk-ksb.gov.ba",
+    grantsPath: "/",
+    location: "Srednjobosanski Kanton",
+    linkPattern: /poziv|konkurs|grant|poticaj/i,
+    issuer: "Vlada Srednjobosanskog kantona",
+  },
+  {
+    name: "Zapadnohercegovački Kanton",
+    baseUrl: "https://www.vladazhk.gov.ba",
+    grantsPath: "/",
+    location: "Zapadnohercegovački Kanton",
+    linkPattern: /poziv|konkurs|grant|poticaj/i,
+    issuer: "Vlada Zapadnohercegovačkog kantona",
+  },
+  {
+    name: "Livanjski Kanton",
+    baseUrl: "https://www.livanjskikanton.ba",
+    grantsPath: "/",
+    location: "Livanjski Kanton",
+    linkPattern: /poziv|konkurs|grant|poticaj/i,
+    issuer: "Vlada Livanjskog kantona (Kanton 10)",
+  },
+  {
+    name: "Brčko Distrikt",
+    baseUrl: "https://www.bdcentral.net",
+    grantsPath: "/",
+    location: "Brčko Distrikt BiH",
+    linkPattern: /poziv|konkurs|grant|poticaj/i,
+    issuer: "Vlada Brčko Distrikta BiH",
+  },
 ];
 
 /** Map registry sourceId → CANTONAL_SOURCES config name */
@@ -79,6 +135,13 @@ const SOURCE_ID_MAP: Record<string, string> = {
   "kanton-tuzla": "Tuzlanski Kanton",
   "kanton-zenica": "Zeničko-dobojski Kanton",
   "kanton-hnk": "Hercegovačko-neretvanski Kanton",
+  "kanton-usk": "Unsko-sanski Kanton",
+  "kanton-posavski": "Posavski Kanton",
+  "kanton-bpk": "Bosansko-podrinjski Kanton",
+  "kanton-sbk": "Srednjobosanski Kanton",
+  "kanton-zhk": "Zapadnohercegovački Kanton",
+  "kanton-10": "Livanjski Kanton",
+  "brcko": "Brčko Distrikt",
 };
 
 /** Scrape a SINGLE cantonal source by registry sourceId */

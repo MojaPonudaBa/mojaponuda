@@ -32,16 +32,61 @@ async function getOpportunityResults(sourceId: string): Promise<ScraperResult[]>
     case "fzzz":
     case "fmpvs":
     case "fmoit":
+    case "fmeri":
+    case "fmks":
+    case "fmrsp":
+    case "fipa":
+    case "mvteo":
+    case "vlada-rs":
+    case "rars":
+    case "mper-rs":
+    case "eu-fondovi":
       return [await scrapeSingleFederalSource(sourceId)];
     case "kanton-sarajevo":
     case "kanton-tuzla":
     case "kanton-zenica":
+    case "kanton-hnk":
+    case "kanton-usk":
+    case "kanton-posavski":
+    case "kanton-bpk":
+    case "kanton-sbk":
+    case "kanton-zhk":
+    case "kanton-10":
+    case "brcko":
       return [await scrapeSingleCantonalSource(sourceId)];
     case "grad-sarajevo":
     case "grad-tuzla":
     case "grad-zenica":
     case "grad-mostar":
     case "grad-banja-luka":
+    case "grad-bijeljina":
+    case "grad-doboj":
+    case "grad-prijedor":
+    case "grad-trebinje":
+    case "grad-istocno-sarajevo":
+    case "grad-bihac":
+    case "opcina-cazin":
+    case "grad-gorazde":
+    case "opcina-travnik":
+    case "grad-livno":
+    case "opcina-tomislavgrad":
+    case "opcina-visoko":
+    case "opcina-kakanj":
+    case "opcina-zavidovici":
+    case "opcina-tesanj":
+    case "opcina-gradacac":
+    case "opcina-lukavac":
+    case "opcina-jajce":
+    case "opcina-konjic":
+    case "opcina-bugojno":
+    case "opcina-siroki-brijeg":
+    case "opcina-capljina":
+    case "opcina-ljubuski":
+    case "opcina-stolac":
+    case "opcina-ilidza":
+    case "novi-grad-sarajevo":
+    case "opcina-vogosca":
+    case "opcina-ilijas":
       return [await scrapeSingleMunicipalSource(sourceId)];
     default:
       return [];
