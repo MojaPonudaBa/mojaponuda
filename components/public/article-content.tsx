@@ -11,10 +11,29 @@ interface Props {
  * No external dependencies.
  */
 export function ArticleContent({ content, className = "" }: Props) {
-  const blocks = content.split(/\n{2,}/);
+  // Normalise: split into atomic blocks, handling both single and double newlines after headings
+  const rawBlocks = content.split(/\n{2,}/);
+
+  // Expand blocks: if a block starts with ## or ### and has body lines, split them apart
+  const blocks: string[] = [];
+  for (const block of rawBlocks) {
+    const trimmed = block.trim();
+    if (!trimmed) continue;
+    const lines = trimmed.split("\n");
+    if (
+      (lines[0].startsWith("## ") || lines[0].startsWith("### ")) &&
+      lines.length > 1
+    ) {
+      blocks.push(lines[0].trim());
+      const rest = lines.slice(1).join("\n").trim();
+      if (rest) blocks.push(rest);
+    } else {
+      blocks.push(trimmed);
+    }
+  }
 
   return (
-    <div className={`space-y-4 text-sm leading-7 text-slate-700 ${className}`}>
+    <div className={`space-y-3 text-sm leading-7 text-slate-700 ${className}`}>
       {blocks.map((block, i) => {
         const trimmed = block.trim();
         if (!trimmed) return null;
@@ -22,7 +41,7 @@ export function ArticleContent({ content, className = "" }: Props) {
         // ## Heading
         if (trimmed.startsWith("## ")) {
           return (
-            <h3 key={i} className="font-heading text-base font-bold text-slate-900 mt-6 mb-1 first:mt-0">
+            <h3 key={i} className="font-heading text-base font-bold text-slate-900 mt-6 mb-0 first:mt-0">
               {trimmed.slice(3)}
             </h3>
           );
@@ -31,13 +50,13 @@ export function ArticleContent({ content, className = "" }: Props) {
         // ### Subheading
         if (trimmed.startsWith("### ")) {
           return (
-            <h4 key={i} className="font-semibold text-slate-800 mt-4 mb-1">
+            <h4 key={i} className="font-semibold text-slate-800 mt-4 mb-0">
               {trimmed.slice(4)}
             </h4>
           );
         }
 
-        // Bullet list block (lines starting with - or •)
+        // Bullet list block (all lines start with - or •)
         const lines = trimmed.split("\n");
         const isBulletBlock = lines.every((l) => l.trim().startsWith("- ") || l.trim().startsWith("• ") || !l.trim());
         if (isBulletBlock && lines.some((l) => l.trim().startsWith("- ") || l.trim().startsWith("• "))) {
@@ -73,6 +92,20 @@ export function ArticleContent({ content, className = "" }: Props) {
                 return <p key={j}>{renderInline(t)}</p>;
               })}
             </div>
+          );
+        }
+
+        // Paragraph that starts with **Bold heading** followed by space + body text
+        // e.g. "**O ovom pozivu** Tekst tekst..." → render as heading + paragraph
+        const inlineBoldHeading = /^\*\*([^*]+)\*\*\s+([\s\S]+)$/.exec(trimmed);
+        if (inlineBoldHeading) {
+          return (
+            <React.Fragment key={i}>
+              <h3 className="font-heading text-base font-bold text-slate-900 mt-6 mb-0 first:mt-0">
+                {inlineBoldHeading[1]}
+              </h3>
+              <p>{renderInline(inlineBoldHeading[2])}</p>
+            </React.Fragment>
           );
         }
 
