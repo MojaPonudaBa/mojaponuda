@@ -25,8 +25,27 @@ export default async function PrilikePage() {
     .order("deadline", { ascending: true, nullsFirst: false })
     .limit(30);
 
-  const tenders = (opportunities ?? []).filter((o) => o.type === "tender");
-  const poticaji = (opportunities ?? []).filter((o) => o.type === "poticaj");
+  const all = opportunities ?? [];
+
+  const soonIds = new Set(
+    all.filter((o) => {
+      if (!o.deadline) return false;
+      const d = Math.ceil((new Date(o.deadline).getTime() - Date.now()) / 86_400_000);
+      return d >= 0 && d <= 7;
+    }).map((o) => o.id)
+  );
+  const soon = all.filter((o) => soonIds.has(o.id));
+  const topIds = new Set(
+    all
+      .filter((o) => !soonIds.has(o.id) && o.value !== null)
+      .sort((a, b) => (b.value ?? 0) - (a.value ?? 0))
+      .slice(0, 4)
+      .map((o) => o.id)
+  );
+  const top = all.filter((o) => topIds.has(o.id));
+  const rest = all.filter((o) => !soonIds.has(o.id) && !topIds.has(o.id));
+  const tenders = rest.filter((o) => o.type === "tender");
+  const poticaji = rest.filter((o) => o.type === "poticaj");
 
   return (
     <main className="min-h-screen bg-slate-50">
@@ -67,36 +86,62 @@ export default async function PrilikePage() {
           </div>
         </section>
 
+        {all.length === 0 && (
+          <div className="text-center py-20 text-slate-500">
+            Prilike se ažuriraju svakodnevno. Provjerite ponovo uskoro.
+          </div>
+        )}
+
+        {/* Rok uskoro */}
+        {soon.length > 0 && (
+          <section className="mb-10">
+            <div className="flex items-center gap-2 mb-4">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-red-50 border border-red-100 px-3 py-1 text-xs font-semibold text-red-700">
+                ⏰ Rok uskoro
+              </span>
+              <span className="text-xs text-slate-400">Prijava ističe u 7 dana</span>
+            </div>
+            <div className="space-y-4">
+              {soon.map((o) => <OpportunityCard key={o.id} opportunity={o} />)}
+            </div>
+          </section>
+        )}
+
+        {/* Najvažnije */}
+        {top.length > 0 && (
+          <section className="mb-10">
+            <div className="flex items-center gap-2 mb-4">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 border border-amber-100 px-3 py-1 text-xs font-semibold text-amber-700">
+                ⭐ Najvažnije
+              </span>
+              <span className="text-xs text-slate-400">Najveća vrijednost</span>
+            </div>
+            <div className="space-y-4">
+              {top.map((o) => <OpportunityCard key={o.id} opportunity={o} />)}
+            </div>
+          </section>
+        )}
+
         {poticaji.length > 0 && (
-          <section className="mb-12">
+          <section className="mb-10">
             <h2 className="font-heading text-2xl font-bold text-slate-900 mb-6">
               Poticaji i grantovi
             </h2>
             <div className="space-y-4">
-              {poticaji.map((o) => (
-                <OpportunityCard key={o.id} opportunity={o} />
-              ))}
+              {poticaji.map((o) => <OpportunityCard key={o.id} opportunity={o} />)}
             </div>
           </section>
         )}
 
         {tenders.length > 0 && (
-          <section className="mb-12">
+          <section className="mb-10">
             <h2 className="font-heading text-2xl font-bold text-slate-900 mb-6">
               Javne nabavke
             </h2>
             <div className="space-y-4">
-              {tenders.map((o) => (
-                <OpportunityCard key={o.id} opportunity={o} />
-              ))}
+              {tenders.map((o) => <OpportunityCard key={o.id} opportunity={o} />)}
             </div>
           </section>
-        )}
-
-        {(opportunities ?? []).length === 0 && (
-          <div className="text-center py-20 text-slate-500">
-            Prilike se ažuriraju svakodnevno. Provjerite ponovo uskoro.
-          </div>
         )}
       </div>
     </main>

@@ -111,3 +111,9 @@ export function getCategoryBySlug(slug: string): OpportunityCategory | undefined
 export function getAllCategorySlugs(): string[] {
   return OPPORTUNITY_CATEGORIES.map((c) => c.slug);
 }
+
+/** Find the SEO category whose dbCategories array includes this raw DB value */
+export function getCategoryByDbName(dbCategory: string | null | undefined): OpportunityCategory | undefined {
+  if (!dbCategory) return undefined;
+  return OPPORTUNITY_CATEGORIES.find((c) => c.dbCategories.includes(dbCategory));
+}
