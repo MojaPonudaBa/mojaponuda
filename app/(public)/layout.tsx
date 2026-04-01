@@ -14,7 +14,7 @@ export default async function PublicLayout({ children }: { children: React.React
           </Link>
           <nav className="flex items-center gap-6">
             <Link href="/prilike" className="text-sm font-medium text-slate-600 hover:text-slate-900">
-              Prilike
+              Poticaji
             </Link>
             <Link href="/zakon" className="text-sm font-medium text-slate-600 hover:text-slate-900">
               Zakon

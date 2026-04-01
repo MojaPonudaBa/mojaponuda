@@ -223,7 +223,7 @@ export async function runPostSyncPipeline(layer: ExecutionLayer = "layer1"): Pro
         slug,
         title: item.title,
         issuer: item.issuer,
-        category: item.category,
+        category: aiContent?.category ?? item.category,
         description: item.description,
         requirements: item.requirements,
         value: item.value,

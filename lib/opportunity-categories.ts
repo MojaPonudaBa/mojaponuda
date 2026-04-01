@@ -1,6 +1,13 @@
 /**
- * Definicija SEO kategorija za prilike
- * Svaka kategorija ima slug, naslov, opis i listu DB kategorija koje pokriva
+ * Definicija SEO kategorija za poticaje i grantove.
+ * Samo poticaji — tenderi su isključeni iz javnih stranica.
+ * dbCategories NESMIJU se preklapati između kategorija.
+ *
+ * AI kategorije koje se dodjeljuju novim postovima:
+ *   "Poticaji i grantovi" | "EU grantovi" | "Poticaji za MSP" |
+ *   "Poticaji za poljoprivredu" | "Poticaji za izvoznike" |
+ *   "Digitalizacija" | "Energetika" | "Zapošljavanje" |
+ *   "Inovacije" | "Turizam"
  */
 
 export interface OpportunityCategory {
@@ -10,66 +17,61 @@ export interface OpportunityCategory {
   description: string;
   metaTitle: string;
   metaDescription: string;
-  /** DB category values that map to this SEO category */
+  /** DB category values that map to this SEO category — must not overlap across categories */
   dbCategories: string[];
-  /** DB type filter (optional) */
-  type?: "tender" | "poticaj";
-  /** Eligibility signal filter (optional) */
-  eligibilitySignal?: string;
+  type?: "poticaj";
 }
 
 export const OPPORTUNITY_CATEGORIES: OpportunityCategory[] = [
   {
-    slug: "it-tenderi",
-    title: "IT tenderi",
-    h1: "IT tenderi i javne nabavke u BiH",
-    description: "Aktivne javne nabavke za IT usluge, softver i hardver u Bosni i Hercegovini.",
-    metaTitle: "IT tenderi BiH 2026 — Javne nabavke za IT usluge | MojaPonuda.ba",
-    metaDescription: "Pronađite aktivne IT tendere u BiH. Softver, hardver, IT usluge i digitalizacija. Svakodnevno ažurirano.",
-    dbCategories: ["IT", "Informacione tehnologije", "Softver", "Hardver", "Digitalizacija"],
-    type: "tender",
+    slug: "svi-poticaji",
+    title: "Svi poticaji",
+    h1: "Svi poticaji i grantovi u BiH",
+    description: "Kompletna lista aktivnih poticaja, grantova i subvencija za firme u Bosni i Hercegovini. Federalni, kantonalni i EU programi.",
+    metaTitle: "Svi poticaji BiH 2026 — Grantovi i subvencije za firme | MojaPonuda.ba",
+    metaDescription: "Pronađite sve aktivne poticaje i grantove u BiH. Federalni, kantonalni i EU programi podrške za firme. Svakodnevno ažurirano.",
+    dbCategories: ["Poticaji i grantovi", "Ostali poticaji", "Subvencije", "Lokalni poticaji"],
+    type: "poticaj",
   },
   {
-    slug: "gradevinski-tenderi",
-    title: "Građevinski tenderi",
-    h1: "Građevinski tenderi i javne nabavke u BiH",
-    description: "Aktivne javne nabavke za građevinske radove, infrastrukturu i rekonstrukciju u BiH.",
-    metaTitle: "Građevinski tenderi BiH 2026 — Radovi i infrastruktura | MojaPonuda.ba",
-    metaDescription: "Pronađite aktivne građevinske tendere u BiH. Radovi, infrastruktura, rekonstrukcija. Svakodnevno ažurirano.",
-    dbCategories: ["Građevinarstvo", "Radovi", "Infrastruktura", "Rekonstrukcija", "Izgradnja"],
-    type: "tender",
-  },
-  {
-    slug: "konsultantske-usluge",
-    title: "Konsultantske usluge",
-    h1: "Tenderi za konsultantske usluge u BiH",
-    description: "Javne nabavke za konsultantske, savjetodavne i stručne usluge u Bosni i Hercegovini.",
-    metaTitle: "Konsultantski tenderi BiH 2026 — Savjetodavne usluge | MojaPonuda.ba",
-    metaDescription: "Pronađite tendere za konsultantske usluge u BiH. Savjetovanje, studije, ekspertize. Svakodnevno ažurirano.",
-    dbCategories: ["Konsultantske usluge", "Savjetodavne usluge", "Stručne usluge", "Studije"],
-    type: "tender",
+    slug: "eu-grantovi",
+    title: "EU grantovi",
+    h1: "EU grantovi i fondovi za firme u BiH",
+    description: "Europski grantovi, IPA fondovi i EU programi dostupni firmama u Bosni i Hercegovini.",
+    metaTitle: "EU grantovi BiH 2026 — Europski fondovi za firme | MojaPonuda.ba",
+    metaDescription: "Pronađite EU grantove i fondove dostupne firmama u BiH. IPA, Horizon, UNDP i drugi programi.",
+    dbCategories: ["EU grantovi", "Europski fondovi", "IPA", "UNDP", "EU fondovi"],
+    type: "poticaj",
   },
   {
     slug: "poticaji-za-msp",
     title: "Poticaji za MSP",
     h1: "Poticaji i grantovi za mala i srednja preduzeća u BiH",
-    description: "Aktivni grantovi, subvencije i poticaji za mala i srednja preduzeća (MSP) u Bosni i Hercegovini.",
+    description: "Aktivni grantovi, subvencije i poticaji za mala i srednja preduzeća u Bosni i Hercegovini.",
     metaTitle: "Poticaji za MSP BiH 2026 — Grantovi za mala preduzeća | MojaPonuda.ba",
     metaDescription: "Pronađite aktivne poticaje i grantove za MSP u BiH. Subvencije, bespovratna sredstva, programi podrške.",
-    dbCategories: ["Poticaji i grantovi", "MSP", "Mala preduzeća"],
+    dbCategories: ["Poticaji za MSP", "MSP", "Mala preduzeća", "Srednja preduzeća"],
     type: "poticaj",
-    eligibilitySignal: "MSP",
+  },
+  {
+    slug: "poticaji-za-zaposlavanje",
+    title: "Zapošljavanje",
+    h1: "Poticaji za zapošljavanje u BiH",
+    description: "Subvencije, grantovi i programi podrške za zapošljavanje novih radnika i stručno osposobljavanje u BiH.",
+    metaTitle: "Poticaji za zapošljavanje BiH 2026 — Subvencije za radna mjesta | MojaPonuda.ba",
+    metaDescription: "Pronađite poticaje za zapošljavanje u BiH. Subvencije za nova radna mjesta, obuke i stručno osposobljavanje.",
+    dbCategories: ["Zapošljavanje", "HR", "Stručno osposobljavanje", "Obrazovanje i zapošljavanje"],
+    type: "poticaj",
   },
   {
     slug: "poticaji-za-poljoprivredu",
     title: "Poticaji za poljoprivredu",
     h1: "Poticaji i grantovi za poljoprivredu u BiH",
-    description: "Aktivni grantovi, subvencije i poticaji za poljoprivrednike i agrarne firme u Bosni i Hercegovini.",
+    description: "Aktivni grantovi, subvencije i poticaji za poljoprivrednike, agrarne firme i ruralni razvoj u BiH.",
     metaTitle: "Poticaji za poljoprivredu BiH 2026 — Grantovi za farmere | MojaPonuda.ba",
     metaDescription: "Pronađite aktivne poticaje za poljoprivredu u BiH. Subvencije za farmere, ruralni razvoj, agrar.",
-    dbCategories: ["Poticaji i grantovi", "Poljoprivreda", "Ruralni razvoj"],
+    dbCategories: ["Poticaji za poljoprivredu", "Poljoprivreda", "Ruralni razvoj", "Agrar", "Šumarstvo"],
     type: "poticaj",
-    eligibilitySignal: "poljoprivrednici",
   },
   {
     slug: "poticaji-za-izvoznike",
@@ -78,29 +80,48 @@ export const OPPORTUNITY_CATEGORIES: OpportunityCategory[] = [
     description: "Aktivni grantovi i poticaji za firme koje se bave izvozom iz Bosne i Hercegovine.",
     metaTitle: "Poticaji za izvoznike BiH 2026 — Grantovi za izvoz | MojaPonuda.ba",
     metaDescription: "Pronađite aktivne poticaje za izvoznike u BiH. Subvencije za izvoz, internacionalizacija, EU tržište.",
-    dbCategories: ["Poticaji i grantovi", "Izvoz", "Internacionalizacija"],
-    type: "poticaj",
-    eligibilitySignal: "izvoznici",
-  },
-  {
-    slug: "eu-grantovi",
-    title: "EU grantovi",
-    h1: "EU grantovi i fondovi za firme u BiH",
-    description: "Europski grantovi, IPA fondovi i EU programi dostupni firmama u Bosni i Hercegovini.",
-    metaTitle: "EU grantovi BiH 2026 — Europski fondovi za firme | MojaPonuda.ba",
-    metaDescription: "Pronađite EU grantove i fondove dostupne firmama u BiH. IPA, Horizon, COSME i drugi EU programi.",
-    dbCategories: ["EU grantovi", "Europski fondovi", "IPA", "UNDP"],
+    dbCategories: ["Poticaji za izvoznike", "Izvoz", "Internacionalizacija"],
     type: "poticaj",
   },
   {
-    slug: "zdravstvo-i-socijala",
-    title: "Zdravstvo i socijala",
-    h1: "Tenderi za zdravstvo i socijalne usluge u BiH",
-    description: "Javne nabavke za zdravstvene usluge, medicinsku opremu i socijalne programe u BiH.",
-    metaTitle: "Zdravstveni tenderi BiH 2026 — Medicinska oprema i usluge | MojaPonuda.ba",
-    metaDescription: "Pronađite tendere za zdravstvo u BiH. Medicinska oprema, zdravstvene usluge, socijalni programi.",
-    dbCategories: ["Zdravstvo", "Medicinska oprema", "Socijalne usluge", "Farmaceutika"],
-    type: "tender",
+    slug: "digitalizacija-i-it",
+    title: "Digitalizacija i IT",
+    h1: "Poticaji za digitalizaciju i IT u BiH",
+    description: "Grantovi i subvencije za digitalizaciju poslovanja, IT razvoj i tehnološke inovacije u BiH.",
+    metaTitle: "Poticaji za digitalizaciju BiH 2026 — IT grantovi za firme | MojaPonuda.ba",
+    metaDescription: "Pronađite poticaje za digitalizaciju u BiH. Grantovi za IT, softver, digitalnu transformaciju.",
+    dbCategories: ["Digitalizacija", "IT poticaji", "Informacione tehnologije poticaj", "Tehnologija"],
+    type: "poticaj",
+  },
+  {
+    slug: "energetika-i-okolis",
+    title: "Energetika i ekologija",
+    h1: "Poticaji za energetiku i ekologiju u BiH",
+    description: "Grantovi za energetsku efikasnost, obnovljive izvore energije i ekološke projekte u BiH.",
+    metaTitle: "Poticaji za energetiku BiH 2026 — Grantovi za energetsku efikasnost | MojaPonuda.ba",
+    metaDescription: "Pronađite poticaje za energetiku u BiH. Grantovi za energetsku efikasnost, obnovljiva energija, ekologija.",
+    dbCategories: ["Energetika", "Energetska efikasnost", "Obnovljiva energija", "Ekologija", "Zelena ekonomija"],
+    type: "poticaj",
+  },
+  {
+    slug: "startupi-i-inovacije",
+    title: "Startupi i inovacije",
+    h1: "Poticaji za startuppe i inovacije u BiH",
+    description: "Grantovi, akceleratori i programi podrške za startupe, inovativne projekte i R&D u BiH.",
+    metaTitle: "Poticaji za startupe BiH 2026 — Grantovi za inovacije | MojaPonuda.ba",
+    metaDescription: "Pronađite poticaje za startupe i inovacije u BiH. Grantovi za R&D, preduzetništvo, tehnološki razvoj.",
+    dbCategories: ["Inovacije", "Startupi", "Preduzetništvo", "R&D", "Istraživanje i razvoj"],
+    type: "poticaj",
+  },
+  {
+    slug: "turizam",
+    title: "Turizam",
+    h1: "Poticaji za turizam u BiH",
+    description: "Grantovi i subvencije za turistička preduzeća, ugostiteljstvo i razvoj turizma u BiH.",
+    metaTitle: "Poticaji za turizam BiH 2026 — Grantovi za turistički sektor | MojaPonuda.ba",
+    metaDescription: "Pronađite poticaje za turizam u BiH. Grantovi za hotele, ugostiteljstvo, turistički razvoj.",
+    dbCategories: ["Turizam", "Ugostiteljstvo", "Turistički sektor"],
+    type: "poticaj",
   },
 ];
 
@@ -117,3 +138,20 @@ export function getCategoryByDbName(dbCategory: string | null | undefined): Oppo
   if (!dbCategory) return undefined;
   return OPPORTUNITY_CATEGORIES.find((c) => c.dbCategories.includes(dbCategory));
 }
+
+/**
+ * Canonical list of DB category values the AI should use.
+ * Used in the AI prompt to ensure consistent categorisation.
+ */
+export const AI_CATEGORY_VALUES = [
+  "Poticaji i grantovi",
+  "EU grantovi",
+  "Poticaji za MSP",
+  "Zapošljavanje",
+  "Poticaji za poljoprivredu",
+  "Poticaji za izvoznike",
+  "Digitalizacija",
+  "Energetika",
+  "Inovacije",
+  "Turizam",
+] as const;

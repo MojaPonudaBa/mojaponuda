@@ -148,7 +148,7 @@ export default async function OpportunityPage({ params }: PageProps) {
         <nav aria-label="breadcrumb" className="mb-6 flex items-center gap-1.5 text-xs text-slate-400 flex-wrap">
           <Link href="/" className="hover:text-slate-700 transition-colors">Početna</Link>
           <ChevronRight className="size-3 shrink-0" />
-          <Link href="/prilike" className="hover:text-slate-700 transition-colors">Prilike</Link>
+          <Link href="/prilike" className="hover:text-slate-700 transition-colors">Poticaji</Link>
           {seoCategory && (
             <>
               <ChevronRight className="size-3 shrink-0" />

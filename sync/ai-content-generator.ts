@@ -1,5 +1,6 @@
 import "server-only";
 import { getOpenAIClient } from "@/lib/openai";
+import { AI_CATEGORY_VALUES } from "@/lib/opportunity-categories";
 
 export interface OpportunityAiContent {
   seo_title: string;
@@ -10,6 +11,7 @@ export interface OpportunityAiContent {
   ai_risks: string;
   ai_competition: string;
   ai_content: string;
+  category?: string;
 }
 
 const SYSTEM_PROMPT = `Ti si stručnjak za javne nabavke i poslovne prilike u Bosni i Hercegovini.
@@ -138,7 +140,8 @@ JSON format — sva polja obavezna:
   "ai_difficulty": "lako|srednje|tesko",
   "ai_risks": "Glavni rizici i izazovi prijave — max 2 rečenice",
   "ai_competition": "Procjena konkurencije i tržišta — max 2 rečenice",
-  "ai_content": "VAŽNO — FORMAT PRAVILA (obavezno poštovati):\\n1. Svaki heading (## Naslov) mora biti na SVOJOJ LINIJI, odvojen praznom linijom od teksta ispod.\\n2. NIKAD ne stavljaj heading i paragraf na istu liniju.\\n3. Ispravno:\\n## O ovom pozivu\\n\\nTekst paragraf ovdje.\\n\\n## Ko može aplicirati?\\n\\nTekst paragraf ovdje.\\n\\nNeispravno (zabranjeno): ## O ovom pozivu Tekst paragraf ovdje.\\n\\nStruktura članka (300-600 riječi):\\n\\n## O ovom pozivu\\n\\n[2-3 rečenice o svrsi poziva i instituciji koja ga objavljuje]\\n\\n## Ko može aplicirati?\\n\\n[Konkretni uvjeti prihvatljivosti. Ako nisu dostupni: napiši da su uvjeti navedeni u originalnoj dokumentaciji.]\\n\\n## Iznos i rok\\n\\n[Finansijske informacije i rok. Ako vrijednost nije poznata: napiši da će biti navedena u dokumentaciji.]\\n\\n## Kako aplicirati?\\n\\n[Upute ili: Kompletna dokumentacija dostupna je na web stranici ${issuer}.]\\n\\nZavrši s: Pratite ovu i slične prilike na MojaPonuda.ba\\n\\nSEO ključne riječi: javni poziv BiH, ${typeLabel}, ${locationStr}. Piši samo na osnovu dostavljenih podataka — bez izmišljenih detalja."
+  "ai_content": "VAŽNO — FORMAT PRAVILA (obavezno poštovati):\\n1. Svaki heading (## Naslov) mora biti na SVOJOJ LINIJI, odvojen praznom linijom od teksta ispod.\\n2. NIKAD ne stavljaj heading i paragraf na istu liniju.\\n3. Ispravno:\\n## O ovom pozivu\\n\\nTekst paragraf ovdje.\\n\\n## Ko može aplicirati?\\n\\nTekst paragraf ovdje.\\n\\nNeispravno (zabranjeno): ## O ovom pozivu Tekst paragraf ovdje.\\n\\nStruktura članka (300-600 riječi):\\n\\n## O ovom pozivu\\n\\n[2-3 rečenice o svrsi poziva i instituciji koja ga objavljuje]\\n\\n## Ko može aplicirati?\\n\\n[Konkretni uvjeti prihvatljivosti. Ako nisu dostupni: napiši da su uvjeti navedeni u originalnoj dokumentaciji.]\\n\\n## Iznos i rok\\n\\n[Finansijske informacije i rok. Ako vrijednost nije poznata: napiši da će biti navedena u dokumentaciji.]\\n\\n## Kako aplicirati?\\n\\n[Upute ili: Kompletna dokumentacija dostupna je na web stranici ${issuer}.]\\n\\nZavrši s: Pratite ovu i slične prilike na MojaPonuda.ba\\n\\nSEO ključne riječi: javni poziv BiH, ${typeLabel}, ${locationStr}. Piši samo na osnovu dostavljenih podataka — bez izmišljenih detalja.",
+  "category": "Odaberi JEDNU kategoriju iz liste: ${AI_CATEGORY_VALUES.join(' | ')}"
 }`;
 
     const completion = await openai.chat.completions.create({

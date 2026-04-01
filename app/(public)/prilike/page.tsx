@@ -7,8 +7,8 @@ import { OPPORTUNITY_CATEGORIES } from "@/lib/opportunity-categories";
 import { ArrowRight } from "lucide-react";
 
 export const metadata: Metadata = {
-  title: "Javne prilike u BiH — Tenderi i poticaji | MojaPonuda.ba",
-  description: "Pregledajte aktivne javne nabavke, grantove i poticaje u Bosni i Hercegovini. Filtrirajte po kategoriji, roku i vrijednosti.",
+  title: "Poticaji i grantovi za firme u BiH | MojaPonuda.ba",
+  description: "Aktivni grantovi i poticaji za firme u Bosni i Hercegovini. Federalni, kantonalni i EU programi. Svakodnevno ažurirano.",
   alternates: { canonical: "https://mojaponuda.ba/prilike" },
 };
 
@@ -22,8 +22,9 @@ export default async function PrilikePage() {
     .select("id, slug, type, title, issuer, category, value, deadline, location, ai_summary, ai_difficulty")
     .eq("published", true)
     .eq("status", "active")
+    .eq("type", "poticaj")
     .order("deadline", { ascending: true, nullsFirst: false })
-    .limit(30);
+    .limit(40);
 
   const all = opportunities ?? [];
 
@@ -43,19 +44,17 @@ export default async function PrilikePage() {
       .map((o) => o.id)
   );
   const top = all.filter((o) => topIds.has(o.id));
-  const rest = all.filter((o) => !soonIds.has(o.id) && !topIds.has(o.id));
-  const tenders = rest.filter((o) => o.type === "tender");
-  const poticaji = rest.filter((o) => o.type === "poticaj");
+  const poticaji = all.filter((o) => !soonIds.has(o.id) && !topIds.has(o.id));
 
   return (
     <main className="min-h-screen bg-slate-50">
       <div className="mx-auto max-w-5xl px-4 py-16 sm:px-6">
         <div className="mb-12 text-center">
           <h1 className="font-heading text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl">
-            Javne prilike u BiH
+            Poticaji i grantovi za firme u BiH
           </h1>
           <p className="mt-4 text-lg text-slate-600 max-w-2xl mx-auto">
-            Aktivni tenderi, grantovi i poticaji za firme u Bosni i Hercegovini.
+            Aktivni grantovi i poticaji za firme u Bosni i Hercegovini.
             Svakodnevno ažurirano.
           </p>
           <PublicCta
@@ -129,17 +128,6 @@ export default async function PrilikePage() {
             </h2>
             <div className="space-y-4">
               {poticaji.map((o) => <OpportunityCard key={o.id} opportunity={o} />)}
-            </div>
-          </section>
-        )}
-
-        {tenders.length > 0 && (
-          <section className="mb-10">
-            <h2 className="font-heading text-2xl font-bold text-slate-900 mb-6">
-              Javne nabavke
-            </h2>
-            <div className="space-y-4">
-              {tenders.map((o) => <OpportunityCard key={o.id} opportunity={o} />)}
             </div>
           </section>
         )}

@@ -41,34 +41,22 @@ export default async function KategorijaPage({ params }: PageProps) {
 
   const supabase = await createClient();
 
-  // Build query based on category config
+  // All public category pages are poticaji-only
   let query = supabase
     .from("opportunities")
-    .select("id, slug, type, title, issuer, category, value, deadline, location, ai_summary, ai_difficulty, eligibility_signals")
+    .select("id, slug, type, title, issuer, category, value, deadline, location, ai_summary, ai_difficulty")
     .eq("published", true)
     .eq("status", "active")
+    .eq("type", "poticaj")
     .order("deadline", { ascending: true, nullsFirst: false })
-    .limit(30);
+    .limit(40);
 
-  // Filter by type if specified
-  if (category.type) {
-    query = query.eq("type", category.type);
-  }
-
-  // Filter by DB categories
   if (category.dbCategories.length > 0) {
     query = query.in("category", category.dbCategories);
   }
 
   const { data: opportunities } = await query;
-
-  // Further filter by eligibility signal if specified
-  const filtered = category.eligibilitySignal
-    ? (opportunities ?? []).filter((o) =>
-        Array.isArray(o.eligibility_signals) &&
-        o.eligibility_signals.includes(category.eligibilitySignal!)
-      )
-    : (opportunities ?? []);
+  const filtered = opportunities ?? [];
 
   // Related categories (exclude current)
   const relatedCategories = OPPORTUNITY_CATEGORIES.filter((c) => c.slug !== slug).slice(0, 4);
@@ -80,7 +68,7 @@ export default async function KategorijaPage({ params }: PageProps) {
         <nav className="mb-8 flex items-center gap-2 text-sm text-slate-500">
           <Link href="/prilike" className="hover:text-slate-900 flex items-center gap-1">
             <ArrowLeft className="size-3.5" />
-            Sve prilike
+            Poticaji
           </Link>
           <span>/</span>
           <span className="text-slate-900 font-medium">{category.title}</span>
