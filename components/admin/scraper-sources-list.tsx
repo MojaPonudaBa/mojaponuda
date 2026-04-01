@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Play, Loader2, CheckCircle2, XCircle, Clock, ExternalLink, PlayCircle } from "lucide-react";
+import { Play, Loader2, CheckCircle2, XCircle, Clock, ExternalLink, PlayCircle, RefreshCw } from "lucide-react";
 import { SCRAPER_SOURCES, type ScraperSource } from "@/sync/scrapers/scraper-registry";
 
 interface ScraperLog {
@@ -41,6 +41,22 @@ export function ScraperSourcesList({ initialLogs }: ScraperSourcesListProps) {
   const [selectedCategory, setSelectedCategory] = useState<"all" | "opportunities" | "legal">("all");
   const [runningAll, setRunningAll] = useState(false);
   const [runAllProgress, setRunAllProgress] = useState({ done: 0, total: 0 });
+  const [regenStatus, setRegenStatus] = useState<{ loading: boolean; message?: string } | null>(null);
+
+  const handleRegenContent = async (limit = 20) => {
+    setRegenStatus({ loading: true });
+    try {
+      const res = await fetch("/api/admin/regen-content", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ limit }),
+      });
+      const data = await res.json();
+      setRegenStatus({ loading: false, message: data.message ?? data.error });
+    } catch (err) {
+      setRegenStatus({ loading: false, message: String(err) });
+    }
+  };
 
   const filteredSources = SCRAPER_SOURCES.filter((source) => {
     if (selectedLayer !== "all" && source.layer !== selectedLayer) return false;
@@ -177,8 +193,8 @@ export function ScraperSourcesList({ initialLogs }: ScraperSourcesListProps) {
 
   return (
     <div className="space-y-6">
-      {/* Run All + Filters */}
-      <div className="flex items-center justify-between gap-4 flex-wrap">
+      {/* Run All + Regen */}
+      <div className="flex items-center gap-3 flex-wrap">
         <button
           onClick={handleRunAll}
           disabled={runningAll}
@@ -196,6 +212,26 @@ export function ScraperSourcesList({ initialLogs }: ScraperSourcesListProps) {
             </>
           )}
         </button>
+
+        <button
+          onClick={() => handleRegenContent(30)}
+          disabled={regenStatus?.loading}
+          className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-slate-300 disabled:cursor-not-allowed transition-colors text-sm font-semibold shadow-sm"
+          title="Regeneriraj AI sadržaj (ai_content) za postojeće postove koji ga nemaju"
+        >
+          {regenStatus?.loading ? (
+            <><Loader2 className="w-4 h-4 animate-spin" />Regeneriram...</>
+          ) : (
+            <><RefreshCw className="w-4 h-4" />Regen AI sadržaj (30)
+            </>
+          )}
+        </button>
+
+        {regenStatus?.message && !regenStatus.loading && (
+          <span className="text-xs text-slate-600 bg-slate-100 rounded-lg px-3 py-1.5">
+            {regenStatus.message}
+          </span>
+        )}
       </div>
 
       {/* Filters */}

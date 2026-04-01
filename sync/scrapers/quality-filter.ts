@@ -102,6 +102,8 @@ const GARBAGE_TITLE_PATTERNS = [
   /^<[a-z]/i,
   // Just a site/ministry name with no specific call
   /^ministarstvo\s+\w+\s+kantons?k?o?g?a?\s+\w+$/i,
+  // Spaced-letter titles: "J A V N I P O Z I V"
+  /^([A-ZČĆŠĐŽ]\s+){3,}[A-ZČĆŠĐŽ]\s*$/,
 ];
 
 /**
@@ -189,6 +191,15 @@ export function applyQualityFilter(item: ScrapedOpportunity): QualityFilterResul
   for (const pattern of GARBAGE_TITLE_PATTERNS) {
     if (pattern.test(item.title.trim())) {
       return { passed: false, reason: `Garbage title: '${item.title}' (HTML artifact or navigation element)` };
+    }
+  }
+
+  // Rule 4b: Reject spaced-letter titles ("J A V N I P O Z I V" pattern)
+  {
+    const words = item.title.trim().split(/\s+/);
+    const singleCharWords = words.filter((w) => w.length === 1).length;
+    if (words.length >= 4 && singleCharWords / words.length >= 0.6) {
+      return { passed: false, reason: `Garbage title: '${item.title}' (spaced letter formatting)` };
     }
   }
 

@@ -240,7 +240,7 @@ export async function runPostSyncPipeline(layer: ExecutionLayer = "layer1"): Pro
         ai_difficulty: aiContent?.ai_difficulty ?? null,
         ai_risks: aiContent?.ai_risks ?? null,
         ai_competition: aiContent?.ai_competition ?? null,
-        ai_content: aiContent?.ai_content ?? null,
+        ...(aiContent?.ai_content ? { ai_content: aiContent.ai_content } : {}),
         ai_generated_at: aiContent ? new Date().toISOString() : null,
       });
 

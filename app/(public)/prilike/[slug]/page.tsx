@@ -177,15 +177,11 @@ export default async function OpportunityPage({ params }: PageProps) {
         )}
 
         {/* Main article content (AI-generated SEO post) */}
-        {(opportunity as OpportunityRow & { ai_content?: string | null }).ai_content ? (
+        {(opportunity as OpportunityRow & { ai_content?: string | null }).ai_content && (
           <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm mb-6">
             <ArticleContent content={(opportunity as OpportunityRow & { ai_content?: string | null }).ai_content!} />
           </div>
-        ) : opportunity.description ? (
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm mb-6">
-            <p className="text-sm leading-7 text-slate-700 whitespace-pre-line">{opportunity.description}</p>
-          </div>
-        ) : null}
+        )}
 
         {/* Mid-content CTA */}
         <div className="rounded-2xl border border-blue-100 bg-blue-50 p-6 mb-6">
