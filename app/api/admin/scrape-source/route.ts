@@ -263,12 +263,22 @@ export async function POST(request: NextRequest) {
             ai_difficulty: aiContent?.ai_difficulty ?? null,
             ai_risks: aiContent?.ai_risks ?? null,
             ai_competition: aiContent?.ai_competition ?? null,
-            ...(aiContent?.ai_content ? { ai_content: aiContent.ai_content } : {}),
             ai_generated_at: aiContent ? new Date().toISOString() : null,
           });
 
           if (!insertError) {
             itemsNew++;
+            // Try to save ai_content separately (requires migration to be applied)
+            if (aiContent?.ai_content) {
+              try {
+                await adminDb
+                  .from("opportunities")
+                  .update({ ai_content: aiContent.ai_content })
+                  .eq("id", id);
+              } catch {
+                // migration not yet applied — regen will backfill it
+              }
+            }
           } else {
             errors.push(`Insert error: ${insertError.message}`);
           }

@@ -242,13 +242,22 @@ export async function runPostSyncPipeline(layer: ExecutionLayer = "layer1"): Pro
         ai_difficulty: aiContent?.ai_difficulty ?? null,
         ai_risks: aiContent?.ai_risks ?? null,
         ai_competition: aiContent?.ai_competition ?? null,
-        ...(aiContent?.ai_content ? { ai_content: aiContent.ai_content } : {}),
         ai_generated_at: aiContent ? new Date().toISOString() : null,
       });
 
       if (!insertError) {
         opPublished++;
         console.log(`[PostSync] Published NEW: ${item.title.slice(0, 50)}...`);
+        // Try to save ai_content separately (requires DB migration; regen backfills if this fails)
+        if (aiContent?.ai_content) {
+          await supabase
+            .from("opportunities")
+            .update({ ai_content: aiContent.ai_content })
+            .eq("id", id)
+            .then(({ error }) => {
+              if (error) console.warn(`[PostSync] ai_content update skipped for ${id}: ${error.message}`);
+            });
+        }
       }
     } catch (err) {
       errors.push(`opportunity ${item.external_id}: ${String(err)}`);

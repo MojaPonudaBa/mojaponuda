@@ -45,8 +45,27 @@ export async function POST(request: NextRequest) {
   }
 
   const { data: rows, error: fetchError } = await query;
-  if (fetchError) return NextResponse.json({ error: fetchError.message }, { status: 500 });
-  if (!rows?.length) return NextResponse.json({ message: "No rows to regenerate", processed: 0 });
+
+  if (fetchError) {
+    if (fetchError.message?.includes("ai_content")) {
+      return NextResponse.json({
+        error: "Migration nije primijenjena. Pokreni SQL u Supabase: ALTER TABLE opportunities ADD COLUMN IF NOT EXISTS ai_content text;",
+      }, { status: 400 });
+    }
+    return NextResponse.json({ error: fetchError.message }, { status: 500 });
+  }
+
+  if (!rows?.length) {
+    // Count total published posts to give context
+    const { count } = await adminDb
+      .from("opportunities")
+      .select("*", { count: "exact", head: true })
+      .eq("published", true);
+    return NextResponse.json({
+      message: `Svi postovi već imaju AI sadržaj. Ukupno objavljenih: ${count ?? 0}.`,
+      processed: 0,
+    });
+  }
 
   let processed = 0;
   let failed = 0;
