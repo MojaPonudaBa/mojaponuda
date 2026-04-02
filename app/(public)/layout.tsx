@@ -13,12 +13,6 @@ export default async function PublicLayout({ children }: { children: React.React
             MojaPonuda<span className="text-blue-600">.ba</span>
           </Link>
           <nav className="flex items-center gap-6">
-            <Link href="/prilike" className="text-sm font-medium text-slate-600 hover:text-slate-900">
-              Poticaji
-            </Link>
-            <Link href="/zakon" className="text-sm font-medium text-slate-600 hover:text-slate-900">
-              Zakon
-            </Link>
             {user ? (
               <Link
                 href="/dashboard"
@@ -42,6 +36,8 @@ export default async function PublicLayout({ children }: { children: React.React
         <div className="mx-auto max-w-5xl px-4 sm:px-6 text-center text-xs text-slate-400">
           <p>© {new Date().getFullYear()} MojaPonuda.ba — Informativni sadržaj. Uvijek provjerite originalne izvore.</p>
           <div className="mt-2 flex justify-center gap-4">
+            <Link href="/prilike" className="hover:text-slate-600">Poticaji i grantovi</Link>
+            <Link href="/zakon" className="hover:text-slate-600">Zakon o nabavkama</Link>
             <Link href="/privacy" className="hover:text-slate-600">Privatnost</Link>
             <Link href="/terms" className="hover:text-slate-600">Uvjeti</Link>
           </div>

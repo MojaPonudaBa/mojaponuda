@@ -129,8 +129,6 @@ function NavBar({ isLoggedIn }: { isLoggedIn?: boolean }) {
           <a href="#kako-radi" className="text-base font-semibold text-slate-600 transition-colors hover:text-primary">Kako radi</a>
           <a href="#usporedba" className="text-base font-semibold text-slate-600 transition-colors hover:text-primary">Poređenje</a>
           <a href="#cijene" className="text-base font-semibold text-slate-600 transition-colors hover:text-primary">Cijene</a>
-          <Link href="/prilike" className="text-base font-semibold text-slate-600 transition-colors hover:text-primary">Prilike</Link>
-          <Link href="/zakon" className="text-base font-semibold text-slate-600 transition-colors hover:text-primary">Zakon</Link>
         </div>
 
         <div className="flex items-center gap-3">
@@ -1016,10 +1014,6 @@ export function LandingPage({ isLoggedIn, recentOpportunities, recentLegalUpdate
       <NavBar isLoggedIn={isLoggedIn} />
       <HeroSection isLoggedIn={isLoggedIn} />
       <HowItWorksSection />
-      <OpportunitiesPreviewSection 
-        recentOpportunities={recentOpportunities} 
-        recentLegalUpdates={recentLegalUpdates} 
-      />
       <BeforeAfterSection isLoggedIn={isLoggedIn} />
       <MoneySection isLoggedIn={isLoggedIn} />
       <PricingSection isLoggedIn={isLoggedIn} />

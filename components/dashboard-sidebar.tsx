@@ -26,8 +26,6 @@ import {
   ChevronsUpDown,
   ArrowLeft,
   Sparkles,
-  Database,
-  TrendingUp,
   Scale,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -46,7 +44,6 @@ const coreItems: NavItem[] = [
   { href: "/dashboard/bids", label: "Moje ponude", icon: Briefcase },
   { href: "/dashboard/vault", label: "Dokumenti", icon: FileText },
   { href: "/dashboard/prilike", label: "Poticaji", icon: Sparkles, pro: true },
-  { href: "/dashboard/tenderi-novi", label: "Novi tenderi", icon: TrendingUp, pro: true },
 ];
 
 const intelligenceItems: NavItem[] = [
@@ -102,7 +99,7 @@ export function DashboardSidebar({ userEmail, companyName, isAdmin = false, isAg
         { href: `/dashboard/agency/clients/${activeClient.id}/tenders`, label: "Tenderi", icon: Search },
         { href: `/dashboard/agency/clients/${activeClient.id}/bids`, label: "Ponude", icon: Briefcase },
         { href: `/dashboard/agency/clients/${activeClient.id}/documents`, label: "Dokumenti", icon: FileText },
-        { href: `/dashboard/agency/clients/${activeClient.id}/prilike`, label: "Prilike", icon: Sparkles },
+        { href: `/dashboard/agency/clients/${activeClient.id}/prilike`, label: "Poticaji", icon: Sparkles },
       ]
     : [];
 

@@ -4,8 +4,8 @@ import { getSubscriptionStatus } from "@/lib/subscription";
 import { ProGate } from "@/components/subscription/pro-gate";
 import { OpportunityDashboardCard } from "@/components/dashboard/opportunity-dashboard-card";
 import { TrackedOpportunityCard } from "@/components/dashboard/tracked-opportunity-card";
-import { LegalUpdateCard } from "@/components/dashboard/legal-update-card";
-import { Sparkles, Scale, Heart } from "lucide-react";
+import { Sparkles, Heart, Star } from "lucide-react";
+import { scoreOpportunityForCompany, GRANT_MATCH_THRESHOLD } from "@/lib/opportunity-matcher";
 
 export default async function PrilikeDashboardPage() {
   const supabase = await createClient();
@@ -15,23 +15,23 @@ export default async function PrilikeDashboardPage() {
   const { isSubscribed } = await getSubscriptionStatus(user.id, user.email, supabase);
   if (!isSubscribed) return <ProGate />;
 
-  const [{ data: opportunities }, { data: legalUpdates }, { data: followsRaw }] = await Promise.all([
+  const [{ data: opportunities }, { data: followsRaw }, { data: company }] = await Promise.all([
     supabase
       .from("opportunities")
       .select("id, slug, type, title, issuer, category, value, deadline, location, ai_summary, ai_difficulty")
       .eq("published", true)
       .order("created_at", { ascending: false })
-      .limit(30),
-    supabase
-      .from("legal_updates")
-      .select("id, type, title, summary, source, source_url, published_date")
-      .order("published_date", { ascending: false, nullsFirst: false })
-      .limit(5),
+      .limit(60),
     supabase
       .from("opportunity_follows")
       .select("id, outcome, created_at, opportunity_id, opportunities(id, slug, type, title, issuer, deadline, value, location, ai_summary, ai_difficulty)")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false }),
+    supabase
+      .from("companies")
+      .select("id, keywords, operating_regions")
+      .eq("user_id", user.id)
+      .maybeSingle(),
   ]);
 
   type FollowRow = {
@@ -56,7 +56,15 @@ export default async function PrilikeDashboardPage() {
     category: string | null; value: number | null; deadline: string | null;
     location: string | null; ai_summary: string | null; ai_difficulty: string | null;
   }[];
-  const poticaji = allOpportunities.filter((o) => o.type === "poticaj" && !followedIds.has(o.id));
+  const allPoticaji = allOpportunities.filter((o) => o.type === "poticaj" && !followedIds.has(o.id));
+
+  // Personalised matching
+  const hasProfile = (company?.keywords?.length ?? 0) > 0 || (company?.operating_regions?.length ?? 0) > 0;
+  const forYou = hasProfile
+    ? allPoticaji.filter((o) => scoreOpportunityForCompany(o, company!) >= GRANT_MATCH_THRESHOLD)
+    : [];
+  const forYouIds = new Set(forYou.map((o) => o.id));
+  const poticaji = allPoticaji.filter((o) => !forYouIds.has(o.id));
 
   return (
     <div className="space-y-8 max-w-[1200px] mx-auto">
@@ -120,11 +128,34 @@ export default async function PrilikeDashboardPage() {
         </section>
       )}
 
-      {/* All poticaji */}
+      {/* Personalised — Poticaji za Vas */}
+      {forYou.length > 0 && (
+        <section>
+          <div className="flex items-center gap-2 mb-2">
+            <Star className="size-5 text-amber-500 fill-amber-400" />
+            <h2 className="font-heading text-xl font-bold text-slate-900">Poticaji za Vas</h2>
+            <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-700">
+              {forYou.length}
+            </span>
+          </div>
+          <p className="text-xs text-slate-500 mb-4">
+            Odabrano na osnovu ključnih riječi i lokacija iz vašeg profila.
+          </p>
+          <div className="space-y-3">
+            {forYou.map((o) => (
+              <OpportunityDashboardCard key={o.id} opportunity={o} />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* All other poticaji */}
       <section>
         <div className="flex items-center gap-2 mb-5">
           <Sparkles className="size-5 text-blue-600" />
-          <h2 className="font-heading text-xl font-bold text-slate-900">Poticaji i grantovi</h2>
+          <h2 className="font-heading text-xl font-bold text-slate-900">
+            {forYou.length > 0 ? "Ostali poticaji" : "Svi poticaji"}
+          </h2>
         </div>
         {poticaji.length > 0 ? (
           <div className="space-y-3">
@@ -138,21 +169,6 @@ export default async function PrilikeDashboardPage() {
           </div>
         )}
       </section>
-
-      {/* Legal updates */}
-      {(legalUpdates ?? []).length > 0 && (
-        <section>
-          <div className="flex items-center gap-2 mb-5">
-            <Scale className="size-5 text-slate-600" />
-            <h2 className="font-heading text-xl font-bold text-slate-900">Zakon i izmjene</h2>
-          </div>
-          <div className="space-y-3">
-            {(legalUpdates ?? []).map((u) => (
-              <LegalUpdateCard key={u.id} update={u} />
-            ))}
-          </div>
-        </section>
-      )}
     </div>
   );
 }

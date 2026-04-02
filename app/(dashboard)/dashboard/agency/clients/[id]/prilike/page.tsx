@@ -2,8 +2,8 @@ import { redirect, notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getSubscriptionStatus } from "@/lib/subscription";
 import { OpportunityDashboardCard } from "@/components/dashboard/opportunity-dashboard-card";
-import { LegalUpdateCard } from "@/components/dashboard/legal-update-card";
-import { Sparkles, Scale } from "lucide-react";
+import { Sparkles, Star } from "lucide-react";
+import { scoreOpportunityForCompany, GRANT_MATCH_THRESHOLD } from "@/lib/opportunity-matcher";
 
 export default async function AgencyClientPrilikePage({
   params,
@@ -21,34 +21,36 @@ export default async function AgencyClientPrilikePage({
   // Verify agency client belongs to this user
   const { data: agencyClient } = await supabase
     .from("agency_clients")
-    .select("id, company_id, companies(name)")
+    .select("id, company_id, companies(name, keywords, operating_regions)")
     .eq("id", agencyClientId)
     .eq("agency_user_id", user.id)
     .maybeSingle();
 
   if (!agencyClient) notFound();
 
-  const companyName = (agencyClient.companies as { name: string } | null)?.name ?? "Klijent";
+  type AgencyCompany = { name: string; keywords: string[] | null; operating_regions: string[] | null } | null;
+  const clientCompany = agencyClient.companies as AgencyCompany;
+  const companyName = clientCompany?.name ?? "Klijent";
 
-  const [{ data: opportunities }, { data: legalUpdates }] = await Promise.all([
-    supabase
-      .from("opportunities")
-      .select("id, slug, type, title, issuer, category, value, deadline, location, ai_summary, ai_difficulty")
-      .eq("published", true)
-      .order("created_at", { ascending: false })
-      .limit(30),
-    supabase
-      .from("legal_updates")
-      .select("id, type, title, summary, source, source_url, published_date")
-      .order("published_date", { ascending: false, nullsFirst: false })
-      .limit(5),
-  ]);
+  const { data: opportunities } = await supabase
+    .from("opportunities")
+    .select("id, slug, type, title, issuer, category, value, deadline, location, ai_summary, ai_difficulty")
+    .eq("published", true)
+    .order("created_at", { ascending: false })
+    .limit(60);
 
-  const poticaji = ((opportunities ?? []) as {
+  const allPoticaji = ((opportunities ?? []) as {
     id: string; slug: string; type: string; title: string; issuer: string;
     category: string | null; value: number | null; deadline: string | null;
     location: string | null; ai_summary: string | null; ai_difficulty: string | null;
   }[]).filter((o) => o.type === "poticaj");
+
+  const hasProfile = (clientCompany?.keywords?.length ?? 0) > 0 || (clientCompany?.operating_regions?.length ?? 0) > 0;
+  const forYou = hasProfile && clientCompany
+    ? allPoticaji.filter((o) => scoreOpportunityForCompany(o, clientCompany) >= GRANT_MATCH_THRESHOLD)
+    : [];
+  const forYouIds = new Set(forYou.map((o) => o.id));
+  const poticaji = allPoticaji.filter((o) => !forYouIds.has(o.id));
 
   return (
     <div className="space-y-8 max-w-[1200px] mx-auto">
@@ -61,10 +63,34 @@ export default async function AgencyClientPrilikePage({
         </p>
       </div>
 
+      {/* Personalised — Poticaji za Vas */}
+      {forYou.length > 0 && (
+        <section>
+          <div className="flex items-center gap-2 mb-2">
+            <Star className="size-5 text-amber-500 fill-amber-400" />
+            <h2 className="font-heading text-xl font-bold text-slate-900">Poticaji za Vas</h2>
+            <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-700">
+              {forYou.length}
+            </span>
+          </div>
+          <p className="text-xs text-slate-500 mb-4">
+            Odabrano na osnovu ključnih riječi i lokacija iz profila kompanije {companyName}.
+          </p>
+          <div className="space-y-3">
+            {forYou.map((o) => (
+              <OpportunityDashboardCard key={o.id} opportunity={o} />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* All other poticaji */}
       <section>
         <div className="flex items-center gap-2 mb-5">
           <Sparkles className="size-5 text-blue-600" />
-          <h2 className="font-heading text-xl font-bold text-slate-900">Poticaji i grantovi</h2>
+          <h2 className="font-heading text-xl font-bold text-slate-900">
+            {forYou.length > 0 ? "Ostali poticaji" : "Svi poticaji"}
+          </h2>
         </div>
         {poticaji.length > 0 ? (
           <div className="space-y-3">
@@ -78,20 +104,6 @@ export default async function AgencyClientPrilikePage({
           </div>
         )}
       </section>
-
-      {(legalUpdates ?? []).length > 0 && (
-        <section>
-          <div className="flex items-center gap-2 mb-5">
-            <Scale className="size-5 text-slate-600" />
-            <h2 className="font-heading text-xl font-bold text-slate-900">Zakon i izmjene</h2>
-          </div>
-          <div className="space-y-3">
-            {(legalUpdates ?? []).map((u) => (
-              <LegalUpdateCard key={u.id} update={u} />
-            ))}
-          </div>
-        </section>
-      )}
     </div>
   );
 }
