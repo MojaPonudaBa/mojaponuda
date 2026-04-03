@@ -21,9 +21,11 @@ User → Upload PDF/DOC/DOCX → Supabase Storage (tender-documents bucket)
 ```
 
 ### 2. Text Extraction
-- **PDF**: `pdfjs-dist` - ekstraktuje tekst po stranicama
+- **PDF**: `pdf-parse` - ekstraktuje tekst (page approximation)
 - **DOCX**: `mammoth` - ekstraktuje tekst iz Word dokumenata
 - **DOC**: `mammoth` - podržava i starije .doc formate
+
+**Note**: Koristimo `pdf-parse` umjesto `pdfjs-dist` zbog Vercel deployment ograničenja. Page references su aproksimativni (tekst se dijeli na jednake dijelove).
 
 ### 3. AI Analysis
 - **Model**: GPT-4o-mini
