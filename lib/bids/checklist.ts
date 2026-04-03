@@ -207,40 +207,29 @@ export async function ensureBidChecklist({
     throw new Error(`Čitanje postojeće checkliste nije uspjelo: ${existingChecklistError.message}`);
   }
 
-  let baseAnalysis: AnalysisResult | null = null;
+  // Check if tender has document analysis
+  const aiAnalysis = tender.ai_analysis as any;
+  const documentAnalysis = aiAnalysis?.document_analysis;
 
-  if (allowAI) {
-    try {
-      baseAnalysis = await analyzeTender(tender);
-    } catch (error) {
-      console.error("Bid checklist AI generation error:", error);
-    }
+  if (!documentAnalysis || !documentAnalysis.requirements?.length) {
+    throw new Error(
+      "Tendenska dokumentacija nije analizirana. Molimo uploadujte tendersku dokumentaciju prije kreiranja ponude."
+    );
   }
 
-  let source: ChecklistSource = allowAI && (baseAnalysis?.checklist_items?.length ?? 0) > 0 ? "ai" : "default";
-  let checklistItems = baseAnalysis?.checklist_items ?? [];
+  // Use document analysis requirements
+  const checklistItems: AnalysisChecklistItem[] = documentAnalysis.requirements.map(
+    (req: any) => ({
+      name: req.name,
+      description: req.description,
+      document_type: req.document_type,
+      is_required: req.is_required,
+      risk_note: req.risk_note,
+    })
+  );
 
-  if (!checklistItems.length) {
-    const { data: patterns, error: patternsError } = await supabase
-      .from("authority_requirement_patterns")
-      .select("document_type, is_required")
-      .eq("contracting_authority_jib", tender.contracting_authority_jib ?? "");
-
-    if (patternsError) {
-      console.error("Authority patterns read error:", patternsError.message);
-    }
-
-    const fallbackItems = buildFallbackFromPatterns(patterns ?? []);
-    if (fallbackItems.length > 0) {
-      checklistItems = fallbackItems;
-      source = "authority_patterns";
-    } else {
-      checklistItems = DEFAULT_STARTER_ITEMS;
-      source = "default";
-    }
-  }
-
-  const analysis = buildAnalysisResult(tender, checklistItems, baseAnalysis, source);
+  const source: ChecklistSource = "ai";
+  const analysis = buildAnalysisResult(tender, checklistItems, documentAnalysis, source);
 
   const { error: bidUpdateError } = await supabase
     .from("bids")
@@ -293,6 +282,9 @@ export async function ensureBidChecklist({
       }
     }
 
+    // Get page references and quote from document analysis
+    const docReq = documentAnalysis.requirements.find((r: any) => r.name === item.name);
+
     return {
       bid_id: bidId,
       title: item.name,
@@ -302,6 +294,8 @@ export async function ensureBidChecklist({
       document_type: item.document_type,
       risk_note: item.risk_note || null,
       sort_order: idx,
+      page_references: docReq?.page_references || null,
+      source_quote: docReq?.source_quote || null,
     };
   });
 

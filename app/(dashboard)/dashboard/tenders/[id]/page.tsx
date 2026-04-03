@@ -250,6 +250,7 @@ export default async function TenderDetailPage({
             <div className="flex-shrink-0 sm:pl-8">
               <StartBidButton
                 tenderId={id}
+                tenderTitle={tender.title}
                 existingBidId={existingBidId}
                 isSubscribed={isSubscribed}
                 className="h-14 w-full sm:w-auto rounded-2xl bg-blue-500 px-8 text-base font-bold text-white shadow-xl shadow-blue-500/20 hover:bg-blue-400 hover:shadow-blue-500/30 transition-all hover:-translate-y-0.5"

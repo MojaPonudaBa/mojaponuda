@@ -297,6 +297,30 @@ function findSuggestedDocument(item: BidChecklistItem): Document | undefined {
                       </p>
                     )}
 
+                    {item.page_references && item.page_references.length > 0 && (
+                      <div className="mb-2 flex items-center gap-2 text-xs">
+                        <span className="text-slate-400">Dokumentacija:</span>
+                        <div className="flex gap-1">
+                          {item.page_references.map((page) => (
+                            <span
+                              key={page}
+                              className="inline-flex items-center rounded-md bg-blue-50 px-2 py-0.5 text-blue-700 font-medium border border-blue-100"
+                            >
+                              str. {page}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {item.source_quote && (
+                      <div className="mb-2 rounded-lg bg-slate-50 border border-slate-100 p-2">
+                        <p className="text-xs text-slate-600 italic">
+                          "{item.source_quote}"
+                        </p>
+                      </div>
+                    )}
+
                     {item.risk_note && (
                       <p className="mb-2 text-xs font-medium text-red-500 bg-red-50 p-2 rounded-lg border border-red-100">
                         {item.risk_note}

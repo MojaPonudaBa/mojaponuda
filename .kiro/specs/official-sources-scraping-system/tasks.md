@@ -1,6 +1,6 @@
 # Implementation Plan
 
-- [~] 1. Write bug condition exploration test
+- [ ] 1. Write bug condition exploration test
   - **Property 1: Bug Condition** - Incomplete Official Source Coverage
   - **CRITICAL**: This test MUST FAIL on unfixed code - failure confirms the bug exists
   - **DO NOT attempt to fix the test or the code when it fails**
@@ -30,7 +30,7 @@
   - Mark task complete when test is written, run, and failure is documented
   - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.11, 2.12_
 
-- [~] 2. Write preservation property tests (BEFORE implementing fix)
+- [ ] 2. Write preservation property tests (BEFORE implementing fix)
   - **Property 2: Preservation** - Existing Pipeline Infrastructure
   - **IMPORTANT**: Follow observation-first methodology
   - Observe behavior on UNFIXED code for existing scrapers (FMRPO, SERDA, REDAH, AJN):
@@ -230,7 +230,7 @@
     - _Preservation: Keep existing orchestration, same Promise.allSettled pattern, same scoreOpportunity, same generateOpportunityContent, same scraper_log logging_
     - _Requirements: 2.1, 2.8, 2.9, 2.10, 2.11, 2.13, 3.2, 3.3, 3.5, 3.9, 3.10_
 
-  - [~] 3.9 Verify bug condition exploration test now passes
+  - [ ] 3.9 Verify bug condition exploration test now passes
     - **Property 1: Expected Behavior** - Comprehensive Official Source Coverage
     - **IMPORTANT**: Re-run the SAME test from task 1 - do NOT write a new test
     - The test from task 1 encodes the expected behavior
@@ -246,7 +246,7 @@
       - Quality filtering works correctly
     - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8, 2.9, 2.10, 2.11, 2.12, 2.13_
 
-  - [~] 3.10 Verify preservation tests still pass
+  - [ ] 3.10 Verify preservation tests still pass
     - **Property 2: Preservation** - Existing Pipeline Infrastructure
     - **IMPORTANT**: Re-run the SAME tests from task 2 - do NOT write new tests
     - Run preservation property tests from step 2
