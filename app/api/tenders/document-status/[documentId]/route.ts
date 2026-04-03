@@ -17,7 +17,7 @@ export async function GET(
   }
 
   const { data: document } = await supabase
-    .from("tender_source_documents")
+    .from("tender_source_documents" as any)
     .select("processing_status, page_count, processing_error, tender_id")
     .eq("id", documentId)
     .single();

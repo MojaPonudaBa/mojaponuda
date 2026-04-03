@@ -103,7 +103,7 @@ export async function POST(request: NextRequest) {
     // Create document record
     const supabaseAdmin = createAdminClient();
     const { data: document, error: docError } = await supabaseAdmin
-      .from("tender_source_documents")
+      .from("tender_source_documents" as any)
       .insert({
         tender_id: tenderId,
         company_id: company.id,
@@ -164,7 +164,7 @@ async function processDocumentAsync(
 
     // Update document with extracted text
     await supabaseAdmin
-      .from("tender_source_documents")
+      .from("tender_source_documents" as any)
       .update({
         extracted_text: extraction.text,
         page_count: extraction.pageCount || null,
@@ -180,7 +180,7 @@ async function processDocumentAsync(
         text_content: page.text,
       }));
 
-      await supabaseAdmin.from("tender_document_pages").insert(pageRecords);
+      await supabaseAdmin.from("tender_document_pages" as any).insert(pageRecords);
     }
 
     // Analyze with AI
@@ -209,7 +209,7 @@ async function processDocumentAsync(
 
     // Mark as complete
     await supabaseAdmin
-      .from("tender_source_documents")
+      .from("tender_source_documents" as any)
       .update({
         processing_status: "complete",
         processed_at: new Date().toISOString(),
@@ -218,7 +218,7 @@ async function processDocumentAsync(
   } catch (error) {
     console.error("Document processing error:", error);
     await supabaseAdmin
-      .from("tender_source_documents")
+      .from("tender_source_documents" as any)
       .update({
         processing_status: "error",
         processing_error:

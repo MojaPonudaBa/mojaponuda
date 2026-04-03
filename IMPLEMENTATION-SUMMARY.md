@@ -129,15 +129,14 @@ Za deployment:
 
 ## 🐛 Known Issues
 
-1. **PDF Page Approximation**: `pdf-parse` ne daje page-by-page text, već puni tekst. Sistem aproksimira stranice dijeljenjem teksta. Za tačnije page references, trebalo bi koristiti `pdfjs-dist` sa canvas polyfill-om ili serverless funkciju.
+None currently. System koristi `pdfjs-dist` sa tačnim page-by-page extraction-om!
 
 ## 📚 Documentation
 
 - `DOCUMENT-ANALYSIS-SYSTEM.md` - Detaljna tehnička dokumentacija
 - `supabase/migrations/20260403_tender_documentation_system.sql` - Database schema
+- `next.config.ts` - Webpack config za pdfjs-dist
 - Inline comments u kodu
-
-**Note**: Trenutno koristimo `pdf-parse` umjesto `pdfjs-dist` zbog Vercel deployment ograničenja (native dependencies). Page references su aproksimativni.
 
 ## 🚀 Deployment Status
 

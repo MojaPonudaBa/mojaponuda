@@ -1,9 +1,12 @@
 // ============================================================
-// PDF Text Extraction using pdf-parse
-// Extracts text content from PDF documents
+// PDF Text Extraction using pdfjs-dist
+// Extracts text content page-by-page from PDF documents
 // ============================================================
 
-import pdf from "pdf-parse";
+import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf";
+
+// Disable worker for serverless environment
+pdfjsLib.GlobalWorkerOptions.workerSrc = "";
 
 export interface ExtractedPage {
   pageNumber: number;
@@ -27,40 +30,56 @@ export async function extractTextFromPdf(
   buffer: Buffer
 ): Promise<PdfExtractionResult> {
   try {
-    const data = await pdf(buffer);
+    const loadingTask = pdfjsLib.getDocument({
+      data: new Uint8Array(buffer),
+      useSystemFonts: true,
+      disableWorker: true, // Disable worker for serverless
+    });
 
-    // pdf-parse doesn't give us page-by-page text, so we approximate
-    const totalPages = data.numpages;
-    const fullText = data.text;
-    const avgCharsPerPage = Math.ceil(fullText.length / totalPages);
-
+    const pdf = await loadingTask.promise;
     const pages: ExtractedPage[] = [];
     let totalChars = 0;
 
-    // Split text into approximate pages
-    for (let i = 0; i < totalPages; i++) {
-      const start = i * avgCharsPerPage;
-      const end = Math.min((i + 1) * avgCharsPerPage, fullText.length);
-      const pageText = fullText.slice(start, end).trim();
+    // Extract text from each page
+    for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+      const page = await pdf.getPage(pageNum);
+      const textContent = await page.getTextContent();
+
+      // Combine text items with spaces
+      const pageText = textContent.items
+        .map((item: any) => {
+          if ("str" in item) {
+            return item.str;
+          }
+          return "";
+        })
+        .join(" ")
+        .replace(/\s+/g, " ")
+        .trim();
+
       const charCount = pageText.length;
       totalChars += charCount;
 
       pages.push({
-        pageNumber: i + 1,
+        pageNumber: pageNum,
         text: pageText,
         charCount,
       });
     }
 
+    // Extract metadata
+    const metadata = await pdf.getMetadata();
+    const info = metadata.info as any;
+
     return {
       pages,
-      totalPages,
+      totalPages: pdf.numPages,
       totalChars,
       metadata: {
-        title: data.info?.Title || undefined,
-        author: data.info?.Author || undefined,
-        subject: data.info?.Subject || undefined,
-        creator: data.info?.Creator || undefined,
+        title: info?.Title || undefined,
+        author: info?.Author || undefined,
+        subject: info?.Subject || undefined,
+        creator: info?.Creator || undefined,
       },
     };
   } catch (error) {

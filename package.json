@@ -34,7 +34,7 @@
     "mammoth": "^1.8.0",
     "next": "16.1.6",
     "openai": "^6.27.0",
-    "pdf-parse": "^1.1.1",
+    "pdfjs-dist": "^3.11.174",
     "radix-ui": "^1.4.3",
     "react": "19.2.3",
     "react-dom": "19.2.3",
