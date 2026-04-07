@@ -12,7 +12,7 @@ import type {
   Subscription,
 } from "@/types/database";
 import { TopBar } from "@/components/bids/workspace/top-bar";
-import { ChecklistPanel } from "@/components/bids/workspace/checklist-panel";
+import { BidWorkspaceChecklist } from "@/components/bids/workspace/bid-workspace-client";
 import { DocumentsPanel } from "@/components/bids/workspace/documents-panel";
 import { NotesSection } from "@/components/bids/workspace/notes-section";
 import { TenderDocUpload } from "@/components/bids/workspace/tender-doc-upload";
@@ -168,10 +168,15 @@ export default async function BidWorkspacePage({
                 } : null}
               />
 
-              <ChecklistPanel
+              <BidWorkspaceChecklist
                 bidId={id}
-                items={checklistItems}
+                checklistItems={checklistItems}
                 vaultDocuments={vaultDocuments}
+                tenderDocUpload={tenderDocUpload ? {
+                  file_name: tenderDocUpload.file_name,
+                  content_type: tenderDocUpload.content_type ?? null,
+                  status: tenderDocUpload.status,
+                } : null}
               />
               <NotesSection bidId={id} initialNotes={bid.notes || ""} />
             </div>

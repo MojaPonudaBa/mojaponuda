@@ -45,9 +45,10 @@ interface ChecklistPanelProps {
   bidId: string;
   items: BidChecklistItem[];
   vaultDocuments: Document[];
+  onViewPage?: (pageNumber: number, highlightText?: string) => void;
 }
 
-export function ChecklistPanel({ bidId, items, vaultDocuments }: ChecklistPanelProps) {
+export function ChecklistPanel({ bidId, items, vaultDocuments, onViewPage }: ChecklistPanelProps) {
   const router = useRouter();
   const [addOpen, setAddOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -291,34 +292,28 @@ function findSuggestedDocument(item: BidChecklistItem): Document | undefined {
                       )}
                     </div>
 
-                    {item.description && (
+                    {(item.page_reference || item.description || item.source_text) && (
                       <div className="mb-2 space-y-1.5">
-                        {item.description.split("\n").map((line, lineIdx) => {
-                          if (line.startsWith("📄 ")) {
-                            return (
-                              <div key={lineIdx} className="inline-flex items-center gap-1.5 rounded-md bg-blue-50 px-2 py-1 text-[11px] font-bold text-blue-700 border border-blue-100">
-                                <FileText className="size-3" />
-                                {line.replace("📄 ", "")}
-                              </div>
-                            );
-                          }
-                          if (line.startsWith("📝 Iz dokumentacije: ")) {
-                            const quote = line.replace("📝 Iz dokumentacije: ", "").replace(/^"|"$/g, "");
-                            return (
-                              <blockquote key={lineIdx} className="border-l-2 border-slate-200 pl-3 text-xs text-slate-400 italic leading-relaxed">
-                                {quote}
-                              </blockquote>
-                            );
-                          }
-                          if (line.trim()) {
-                            return (
-                              <p key={lineIdx} className="text-sm text-slate-500 leading-relaxed">
-                                {line}
-                              </p>
-                            );
-                          }
-                          return null;
-                        })}
+                        {item.page_reference && (
+                          <button
+                            onClick={() => onViewPage?.(item.page_number ?? 1, item.source_text ?? undefined)}
+                            className="inline-flex items-center gap-1.5 rounded-md bg-blue-50 px-2 py-1 text-[11px] font-bold text-blue-700 border border-blue-100 hover:bg-blue-100 hover:border-blue-200 transition-colors cursor-pointer"
+                          >
+                            <FileText className="size-3" />
+                            {item.page_reference}
+                            <span className="text-blue-400 ml-1">→ Pogledaj</span>
+                          </button>
+                        )}
+                        {item.description && (
+                          <p className="text-sm text-slate-500 leading-relaxed">
+                            {item.description}
+                          </p>
+                        )}
+                        {item.source_text && (
+                          <blockquote className="border-l-2 border-slate-200 pl-3 text-xs text-slate-400 italic leading-relaxed">
+                            {item.source_text}
+                          </blockquote>
+                        )}
                       </div>
                     )}
 

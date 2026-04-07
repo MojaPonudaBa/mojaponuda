@@ -207,6 +207,9 @@ export interface Database {
           document_id: string | null;
           document_type: string | null;
           risk_note: string | null;
+          page_reference: string | null;
+          source_text: string | null;
+          page_number: number | null;
           sort_order: number;
           created_at: string;
         };
@@ -219,6 +222,9 @@ export interface Database {
           document_id?: string | null;
           document_type?: string | null;
           risk_note?: string | null;
+          page_reference?: string | null;
+          source_text?: string | null;
+          page_number?: number | null;
           sort_order?: number;
           created_at?: string;
         };
@@ -231,6 +237,9 @@ export interface Database {
           document_id?: string | null;
           document_type?: string | null;
           risk_note?: string | null;
+          page_reference?: string | null;
+          source_text?: string | null;
+          page_number?: number | null;
           sort_order?: number;
           created_at?: string;
         };

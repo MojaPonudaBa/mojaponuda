@@ -16,6 +16,7 @@ const CHECKLIST_DOCUMENT_TYPES = [
   "staff",
   "license",
   "declaration",
+  "form",
   "other",
 ] as const;
 
@@ -29,6 +30,7 @@ const DOCUMENT_TYPE_LABELS: Record<AnalysisChecklistItem["document_type"], strin
   staff: "Ključno osoblje",
   license: "Dozvole i licence",
   declaration: "Izjave ponuđača",
+  form: "Obrazac/Aneks",
   other: "Ostala dokumentacija",
 };
 
@@ -42,6 +44,7 @@ const DOCUMENT_TYPE_DESCRIPTIONS: Record<AnalysisChecklistItem["document_type"],
   staff: "Prikupite CV-eve, diplome i certifikate ključnog osoblja relevantnog za predmet nabavke.",
   license: "Provjerite posebne dozvole, licence ili odobrenja potrebna za izvršenje ugovora.",
   declaration: "Pripremite potpisane i ovjerene izjave koje tender zahtijeva od ponuđača.",
+  form: "Popunite obrazac/aneks iz tenderske dokumentacije, potpišite i ovjerite ga.",
   other: "Dodajte dodatnu dokumentaciju koja se pojavljuje u tehničkim i administrativnim zahtjevima.",
 };
 

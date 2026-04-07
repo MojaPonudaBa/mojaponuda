@@ -138,3 +138,11 @@
     @apply transition-all duration-200 hover:-translate-y-[1px] hover:shadow-md;
   }
 }
+
+/* Tender document viewer - text highlight */
+.td-highlight {
+  background-color: rgba(251, 191, 36, 0.4) !important;
+  border-radius: 2px;
+  padding: 1px 0;
+  box-shadow: 0 0 0 2px rgba(251, 191, 36, 0.3);
+}

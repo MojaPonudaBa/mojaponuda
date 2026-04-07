@@ -37,7 +37,16 @@ Tipovi dokumenata:
 - staff: CV-ovi, diplome, certifikati osoblja
 - license: dozvole, licence, odobrenja
 - declaration: izjave ponuđača (nekažnjavanje, sposobnost itd.)
+- form: obrasci i aneksi iz tenderske dokumentacije koje ponuđač mora popuniti i priložiti (Aneks 1, Aneks 2, Obrazac za cijenu ponude, Obrazac ponude, Obrazac izjave, tabelarni pregledi itd.)
 - other: sve ostalo
+
+KRITIČNO VAŽNO — ANEKSI I OBRASCI:
+Tenderska dokumentacija SKORO UVIJEK sadrži anekse/obrasce na kraju dokumenta. Ovo su predlošci/formulari koje ponuđač MORA popuniti, potpisati i priložiti uz ponudu. Traži sljedeće:
+- Riječi: "Aneks", "Obrazac", "Prilog", "Formular", "Tabela za popunjavanje"
+- Prepoznaj ih po karakterističnom formatu: prazan prostor za upis, linije za potpis, pečat
+- Svaki aneks/obrazac MORA biti zasebna stavka u listi sa tipom "form"
+- Navedi tačan naziv (npr. "Aneks 1 - Obrazac za cijenu ponude") i stranicu
+- Ako aneks sadrži više pod-obrazaca, navedi svaki posebno
 
 Odgovori ISKLJUČIVO u traženom JSON formatu. Ne dodaj ništa izvan JSON-a.`;
 
@@ -71,6 +80,7 @@ const RESPONSE_SCHEMA = {
                   "staff",
                   "license",
                   "declaration",
+                  "form",
                   "other",
                 ],
               },

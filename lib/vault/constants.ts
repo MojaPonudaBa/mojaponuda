@@ -8,6 +8,7 @@ export const DOCUMENT_TYPES = [
   "CV ključnog osoblja",
   "Licenca",
   "Izjava",
+  "Obrazac/Aneks",
   "Ostalo",
 ] as const;
 
@@ -23,6 +24,7 @@ export const AI_TO_VAULT_TYPE_MAP: Record<string, DocumentType> = {
   staff: "CV ključnog osoblja",
   license: "Licenca",
   declaration: "Izjava",
+  form: "Obrazac/Aneks",
   other: "Ostalo",
 };
 

@@ -21,7 +21,10 @@ Za svaki dokumentacijski zahtjev, klasificiraj ga u jedan od sljedećih tipova:
 - staff: CV-ovi ključnog osoblja, diplome, certifikati
 - license: dozvole za obavljanje djelatnosti, posebne licence
 - declaration: izjave (npr. o nekažnjavanju, o ekonomskoj i finansijskoj sposobnosti)
+- form: obrasci i aneksi iz tenderske dokumentacije koje ponuđač mora popuniti i priložiti (npr. Aneks 1, Obrazac za cijenu, Obrazac ponude, Obrazac izjave, tabelarni pregledi za popunjavanje)
 - other: ostali dokumenti koji ne spadaju u gornje kategorije
+
+VAŽNO: Obrati posebnu pažnju na ANEKSE i OBRASCE koji su sastavni dio tenderske dokumentacije. Ovi dokumenti se obično nalaze na kraju TD i ponuđač ih mora popuniti, potpisati i ovjeriti. Svaki aneks/obrazac treba biti zasebna stavka u listi.
 
 Budi precizan i detaljan. Ako tekst tendera ne sadrži dovoljno informacija za određeni zahtjev, označi ga kao rizik. Uvijek pretpostavi najstroži mogući zahtjev prema Zakonu o javnim nabavkama BiH.
 
@@ -40,6 +43,7 @@ export interface AnalysisChecklistItem {
     | "staff"
     | "license"
     | "declaration"
+    | "form"
     | "other";
   is_required: boolean;
   risk_note: string | null;
@@ -87,6 +91,7 @@ const RESPONSE_SCHEMA = {
                   "staff",
                   "license",
                   "declaration",
+                  "form",
                   "other",
                 ],
               },
