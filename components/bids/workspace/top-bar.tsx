@@ -12,7 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Brain, Download, ArrowLeft, Loader2, AlertTriangle, X, Building2, FileText, Trash2 } from "lucide-react";
+import { Download, ArrowLeft, Loader2, AlertTriangle, X, Building2, Trash2 } from "lucide-react";
 import Link from "next/link";
 
 interface TopBarProps {
@@ -43,11 +43,9 @@ export function TopBar({
   hasMissingItems = false,
 }: TopBarProps) {
   const router = useRouter();
-  const [analyzing, setAnalyzing] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [riskFlags, setRiskFlags] = useState<string[]>(initialRiskFlags);
   const [riskDismissed, setRiskDismissed] = useState(false);
-  const [analyzeError, setAnalyzeError] = useState<string | null>(null);
 
   async function handleStatusChange(newStatus: string) {
     await fetch(`/api/bids/${bidId}`, {
@@ -73,49 +71,13 @@ export function TopBar({
         router.push("/dashboard/bids");
         router.refresh();
       } else {
-        const data = await res.json();
-        setAnalyzeError(data.error || "Greška pri brisanju ponude.");
+        alert("Greška pri brisanju ponude.");
         setDeleting(false);
       }
     } catch (err) {
-      setAnalyzeError("Greška pri komunikaciji sa serverom.");
+      alert("Greška pri komunikaciji sa serverom.");
       console.error("Delete error:", err);
       setDeleting(false);
-    }
-  }
-
-  async function handleAnalyze() {
-    if (!isSubscribed) {
-      router.push("/dashboard/subscription");
-      return;
-    }
-
-    setAnalyzing(true);
-    setAnalyzeError(null);
-    try {
-      const res = await fetch("/api/bids/analyze", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ bid_id: bidId }),
-      });
-      const data = await res.json();
-
-      if (!res.ok) {
-        setAnalyzeError(data.error || "Analiza nije uspjela.");
-        return;
-      }
-
-      if (data.analysis?.risk_flags?.length > 0) {
-        setRiskFlags(data.analysis.risk_flags);
-        setRiskDismissed(false);
-      }
-
-      router.refresh();
-    } catch (err) {
-      setAnalyzeError("Greška pri komunikaciji sa serverom.");
-      console.error("Analyze error:", err);
-    } finally {
-      setAnalyzing(false);
     }
   }
 
@@ -157,14 +119,6 @@ export function TopBar({
               </ul>
             </div>
           </div>
-        </div>
-      )}
-
-      {/* Analyze error */}
-      {analyzeError && (
-        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-800 shadow-sm flex items-center gap-2">
-          <AlertTriangle className="size-4 text-red-600" />
-          {analyzeError}
         </div>
       )}
 
@@ -214,38 +168,8 @@ export function TopBar({
 
           <div className="flex items-center gap-2">
             <Button
-              variant="outline"
               size="sm"
-              onClick={handleAnalyze}
-              disabled={analyzing || deleting}
-              className="h-10 rounded-xl border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-primary font-bold flex-1 sm:flex-none"
-            >
-              {analyzing ? (
-                <Loader2 className="mr-2 size-4 animate-spin" />
-              ) : (
-                <Brain className="mr-2 size-4 text-purple-500" />
-              )}
-              {analyzing ? "Analizira..." : "Analiza"}
-            </Button>
-
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                window.open(`/api/bids/export?bid_id=${bidId}`, "_blank");
-              }}
-              disabled={deleting}
-              className="h-10 rounded-xl border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-primary font-bold flex-1 sm:flex-none"
-            >
-              <FileText className="mr-2 size-4 text-slate-500" />
-              PDF
-            </Button>
-
-            <Button
-              size="sm"
-              onClick={() => {
-                window.open(`/api/bids/package?bid_id=${bidId}`, "_blank");
-              }}
+              onClick={handleDownload}
               disabled={deleting}
               className="h-10 rounded-xl bg-blue-600 text-white hover:bg-blue-700 shadow-md shadow-blue-500/20 font-bold flex-1 sm:flex-none"
             >
@@ -257,7 +181,7 @@ export function TopBar({
               variant="outline"
               size="sm"
               onClick={handleDelete}
-              disabled={deleting || analyzing}
+              disabled={deleting}
               className="h-10 rounded-xl border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 font-bold flex-1 sm:flex-none"
               title="Obriši ponudu"
             >
