@@ -6,6 +6,8 @@ import { analyzeTenderDocumentation, type TenderDocAnalysisResult } from "@/lib/
 import type { BidChecklistItemInsert, Json, Tender } from "@/types/database";
 import { AI_TO_VAULT_TYPE_MAP } from "@/lib/vault/constants";
 
+export const maxDuration = 120;
+
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },

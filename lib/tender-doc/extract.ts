@@ -1,5 +1,4 @@
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const pdfParse = require("pdf-parse");
+import { PDFParse } from "pdf-parse";
 
 export interface ExtractedPage {
   pageNumber: number;
@@ -13,33 +12,35 @@ export interface ExtractionResult {
 }
 
 /**
- * Extract text from a PDF buffer using pdf-parse (Node.js native, no worker needed).
+ * Extract text from a PDF buffer using pdf-parse v2 (PDFParse class).
  * Adds [Stranica X] markers per page for AI page reference extraction.
  */
 export async function extractTextFromPDF(buffer: ArrayBuffer): Promise<ExtractionResult> {
-  const pages: ExtractedPage[] = [];
-  let pageIndex = 0;
-
-  const data = await pdfParse(Buffer.from(buffer), {
-    // Custom page renderer to capture per-page text with markers
-    pagerender: async function (pageData: { getTextContent: () => Promise<{ items: Array<{ str?: string }> }> }) {
-      pageIndex++;
-      const textContent = await pageData.getTextContent();
-      const text = textContent.items
-        .map((item) => item.str || "")
-        .join(" ")
-        .replace(/\s+/g, " ")
-        .trim();
-
-      pages.push({ pageNumber: pageIndex, text });
-      return `[Stranica ${pageIndex}]\n${text}`;
-    },
+  const parser = new PDFParse({
+    data: new Uint8Array(buffer),
+    verbosity: 0,
   });
+
+  const result = await parser.getText({
+    pageJoiner: "\n\n[Stranica page_number]\n",
+  });
+
+  const pages: ExtractedPage[] = result.pages.map((p) => ({
+    pageNumber: p.num,
+    text: p.text,
+  }));
+
+  // Build fullText with [Stranica X] markers prepended to each page
+  const fullText = pages
+    .map((p) => `[Stranica ${p.pageNumber}]\n${p.text}`)
+    .join("\n\n");
+
+  await parser.destroy();
 
   return {
     pages,
-    fullText: data.text,
-    pageCount: data.numpages,
+    fullText,
+    pageCount: result.total,
   };
 }
 
