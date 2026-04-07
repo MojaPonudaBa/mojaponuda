@@ -1,9 +1,7 @@
-import * as pdf from "pdfjs-dist";
+import { getDocument, GlobalWorkerOptions } from "pdfjs-dist";
 
-// Use the worker from the installed pdfjs-dist package
-if (typeof globalThis !== "undefined" && !pdf.GlobalWorkerOptions.workerSrc) {
-  pdf.GlobalWorkerOptions.workerSrc = "";
-}
+// Disable worker entirely for serverless environments (Vercel)
+GlobalWorkerOptions.workerSrc = "";
 
 export interface ExtractedPage {
   pageNumber: number;
@@ -21,7 +19,13 @@ export interface ExtractionResult {
  * Returns per-page text and a combined full text.
  */
 export async function extractTextFromPDF(buffer: ArrayBuffer): Promise<ExtractionResult> {
-  const doc = await pdf.getDocument({ data: new Uint8Array(buffer) }).promise;
+  const doc = await getDocument({
+    data: new Uint8Array(buffer),
+    useWorkerFetch: false,
+    isEvalSupported: false,
+    useSystemFonts: true,
+  }).promise;
+
   const pages: ExtractedPage[] = [];
 
   for (let i = 1; i <= doc.numPages; i++) {
