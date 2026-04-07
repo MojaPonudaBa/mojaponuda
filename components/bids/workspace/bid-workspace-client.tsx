@@ -68,10 +68,9 @@ export function BidWorkspaceLayout({
           {notesSection}
         </div>
 
-        {/* Right: Documents + sticky PDF Viewer — 2/5 */}
-        <div className="lg:col-span-2 space-y-6">
-          {documentsPanel}
-          {viewerOpen && canView && (
+        {/* Right: PDF Viewer OR Documents — 2/5 */}
+        <div className="lg:col-span-2">
+          {viewerOpen && canView ? (
             <div className="sticky top-6 h-[calc(100vh-8rem)]">
               <TenderDocViewer
                 fileUrl={`/api/bids/${bidId}/tender-documentation/file`}
@@ -83,6 +82,8 @@ export function BidWorkspaceLayout({
                 onOpenFull={() => setFullViewerOpen(true)}
               />
             </div>
+          ) : (
+            documentsPanel
           )}
         </div>
       </div>

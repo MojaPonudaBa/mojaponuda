@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
 import "react-pdf/dist/Page/TextLayer.css";
 import { Button } from "@/components/ui/button";
@@ -32,8 +32,18 @@ export function TenderDocFullViewer({
 }: TenderDocFullViewerProps) {
   const [numPages, setNumPages] = useState(0);
   const [pageNumber, setPageNumber] = useState(1);
-  const [scale, setScale] = useState(1.2);
+  const [scale, setScale] = useState(1.0);
   const [loading, setLoading] = useState(true);
+  const pageElementRefs = useRef<Map<number, HTMLDivElement>>(new Map());
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  // Prevent body scroll when modal is open
+  useEffect(() => {
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, []);
 
   // Collect all checklist items that have page references
   const pageRefs = checklistItems
@@ -46,7 +56,14 @@ export function TenderDocFullViewer({
   }, []);
 
   const goToPage = useCallback((page: number) => {
-    setPageNumber(Math.max(1, Math.min(page, numPages)));
+    const targetPage = Math.max(1, Math.min(page, numPages));
+    setPageNumber(targetPage);
+    
+    // Scroll to the target page
+    const pageElement = pageElementRefs.current.get(targetPage);
+    if (pageElement) {
+      pageElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
   }, [numPages]);
 
   // Items on the current page
@@ -181,7 +198,10 @@ export function TenderDocFullViewer({
         )}
 
         {/* PDF content */}
-        <div className="flex-1 overflow-auto flex justify-center bg-slate-100 p-4">
+        <div 
+          ref={scrollContainerRef}
+          className="flex-1 overflow-auto flex justify-center bg-slate-100 p-4"
+        >
           {loading && (
             <div className="flex items-center gap-3 text-slate-500">
               <Loader2 className="size-5 animate-spin" />
@@ -194,13 +214,28 @@ export function TenderDocFullViewer({
             loading={null}
             className="shadow-2xl rounded-lg overflow-hidden"
           >
-            <Page
-              pageNumber={pageNumber}
-              scale={scale}
-              renderAnnotationLayer={false}
-              renderTextLayer={true}
-              className="bg-white"
-            />
+            <div className="flex flex-col gap-4">
+              {Array.from({ length: numPages }, (_, i) => i + 1).map((page) => (
+                <div
+                  key={page}
+                  ref={(el) => {
+                    if (el) {
+                      pageElementRefs.current.set(page, el);
+                    } else {
+                      pageElementRefs.current.delete(page);
+                    }
+                  }}
+                >
+                  <Page
+                    pageNumber={page}
+                    scale={scale}
+                    renderAnnotationLayer={false}
+                    renderTextLayer={true}
+                    className="bg-white"
+                  />
+                </div>
+              ))}
+            </div>
           </Document>
         </div>
       </div>
