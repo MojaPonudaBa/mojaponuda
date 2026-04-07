@@ -25,9 +25,9 @@ interface TenderDocViewerProps {
 }
 
 /**
- * Robust multi-word text highlighting.
- * Extracts significant words from the source text and highlights
- * any PDF text span that contains multiple matching words.
+ * Highlight the source text in the PDF text layer.
+ * Strategy: build concatenated page text from all spans, find the best
+ * matching substring, then map character positions back to spans.
  */
 function highlightMatches(container: HTMLElement, sourceText: string) {
   const textLayer = container.querySelector(".react-pdf__Page__textContent");
@@ -38,33 +38,63 @@ function highlightMatches(container: HTMLElement, sourceText: string) {
 
   if (!sourceText) return;
 
-  // Extract significant words (3+ chars, lowercase) from source text
-  const words = sourceText
-    .toLowerCase()
-    .replace(/[^\p{L}\p{N}\s]/gu, " ")
-    .split(/\s+/)
-    .filter((w) => w.length >= 3);
+  const spans = Array.from(textLayer.querySelectorAll("span"));
+  if (spans.length === 0) return;
 
-  if (words.length === 0) return;
+  // Build a map: for each character in the concatenated text, which span owns it
+  const spanRanges: Array<{ span: HTMLElement; start: number; end: number }> = [];
+  let fullPageText = "";
 
-  const spans = textLayer.querySelectorAll("span");
-  const matched: HTMLElement[] = [];
+  for (const span of spans) {
+    const text = span.textContent ?? "";
+    if (!text) continue;
+    const start = fullPageText.length;
+    fullPageText += text;
+    spanRanges.push({ span: span as HTMLElement, start, end: fullPageText.length });
+  }
 
-  spans.forEach((span) => {
-    const text = span.textContent?.toLowerCase() ?? "";
-    if (!text || text.length < 3) return;
+  const pageTextLower = fullPageText.toLowerCase();
+  const normalize = (s: string) => s.toLowerCase().replace(/\s+/g, " ").trim();
+  const normalizedSource = normalize(sourceText);
 
-    // Count how many source words appear in this span
-    const matchCount = words.filter((w) => text.includes(w)).length;
-    // Highlight if at least 2 words match, or if the span contains a long substring
-    if (matchCount >= 2 || (words.length === 1 && text.includes(words[0]))) {
-      span.classList.add("td-highlight");
-      matched.push(span as HTMLElement);
+  // Try progressively shorter substrings of the source text to find a match
+  // Start with the first 80 chars, then 60, 40, 25
+  let matchStart = -1;
+  let matchEnd = -1;
+
+  for (const len of [80, 60, 40, 25]) {
+    if (normalizedSource.length < len) continue;
+    const searchPhrase = normalizedSource.slice(0, len);
+    const idx = pageTextLower.indexOf(searchPhrase);
+    if (idx >= 0) {
+      matchStart = idx;
+      matchEnd = idx + searchPhrase.length;
+      break;
     }
-  });
+  }
 
-  if (matched.length > 0) {
-    matched[0].scrollIntoView({ behavior: "smooth", block: "center" });
+  // Fallback: try to find the whole normalized source (for short texts)
+  if (matchStart < 0 && normalizedSource.length >= 10) {
+    const idx = pageTextLower.indexOf(normalizedSource.slice(0, Math.min(normalizedSource.length, 120)));
+    if (idx >= 0) {
+      matchStart = idx;
+      matchEnd = idx + Math.min(normalizedSource.length, 120);
+    }
+  }
+
+  if (matchStart < 0) return;
+
+  // Map character range back to spans
+  let firstHighlighted: HTMLElement | null = null;
+  for (const { span, start, end } of spanRanges) {
+    if (end > matchStart && start < matchEnd) {
+      span.classList.add("td-highlight");
+      if (!firstHighlighted) firstHighlighted = span;
+    }
+  }
+
+  if (firstHighlighted) {
+    firstHighlighted.scrollIntoView({ behavior: "smooth", block: "center" });
   }
 }
 

@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { extractText } from "@/lib/tender-doc/extract";
 import { analyzeTenderDocumentation, type TenderDocAnalysisResult } from "@/lib/tender-doc/analyze";
+import { scanForAnnexes, mergeAnnexesIntoChecklist } from "@/lib/tender-doc/annex-scanner";
 import type { BidChecklistItemInsert, Json, Tender } from "@/types/database";
 import { AI_TO_VAULT_TYPE_MAP } from "@/lib/vault/constants";
 
@@ -127,7 +128,30 @@ export async function POST(
       tenderData?.title,
     );
 
-    // Save analysis
+    // Deterministic annex scanner: find annexes AI might have missed
+    const scannedAnnexes = scanForAnnexes(extraction.fullText);
+    const missingAnnexes = mergeAnnexesIntoChecklist(
+      analysis.checklist_items,
+      scannedAnnexes,
+    );
+
+    // Add missing annexes to the analysis result
+    if (missingAnnexes.length > 0) {
+      for (const annex of missingAnnexes) {
+        analysis.checklist_items.push({
+          name: annex.name,
+          description: annex.description,
+          document_type: "form",
+          is_required: true,
+          risk_note: null,
+          page_number: annex.page_number,
+          page_reference: annex.page_reference,
+          source_text: annex.source_text,
+        });
+      }
+    }
+
+    // Save analysis (includes merged annexes)
     await supabaseAdmin
       .from("tender_doc_uploads")
       .update({
