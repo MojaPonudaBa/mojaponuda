@@ -1367,6 +1367,7 @@ async function syncTenders(
 
     let added = 0;
     let updated = 0;
+    const rowsToUpsert: Array<Record<string, unknown>> = [];
 
     for (const n of notices) {
       const existingTender = existingTenderMap.get(n.NoticeId) ?? null;
@@ -1384,14 +1385,10 @@ async function syncTenders(
         authority_canton: fallbackAuthority?.canton ?? null,
         authority_entity: fallbackAuthority?.entity ?? null,
       };
-      let geoEnrichment = resolveBestTenderArea(
+      const geoEnrichment = resolveBestTenderArea(
         areaContext,
         getGeoEnrichmentFromAiAnalysis(existingTender?.ai_analysis ?? null)
       );
-
-      if (!geoEnrichment?.area_label) {
-        geoEnrichment = await resolveTenderAreaWithAiHint(areaContext);
-      }
 
       const row = {
         portal_id: n.NoticeId,
@@ -1416,12 +1413,19 @@ async function syncTenders(
       };
 
       if (existingTender) {
-        await supabase.from("tenders").update(row).eq("portal_id", n.NoticeId);
         updated++;
       } else {
-        await supabase.from("tenders").insert(row);
         added++;
       }
+
+      rowsToUpsert.push(row);
+    }
+
+    for (const batch of chunkArray(rowsToUpsert, 250)) {
+      await supabase.from("tenders").upsert(batch, {
+        onConflict: "portal_id",
+        ignoreDuplicates: false,
+      });
     }
 
     if (options.runTenderAreaMaintenanceAfterSync !== false) {
