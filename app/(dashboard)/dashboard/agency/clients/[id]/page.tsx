@@ -5,6 +5,7 @@ import { AgencyClientDetail } from "@/components/agency/agency-client-detail";
 import {
   buildRecommendationContext,
   fetchRecommendedTenderCandidates,
+  RECOMMENDATION_SUMMARY_CANDIDATE_LIMIT,
   selectTenderRecommendations,
   type RecommendationTenderInput,
 } from "@/lib/tender-recommendations";
@@ -79,7 +80,7 @@ export default async function AgencyClientDetailPage({
       supabase,
       recommendationContext,
       {
-        limit: 120,
+        limit: RECOMMENDATION_SUMMARY_CANDIDATE_LIMIT,
         select: "id, title, deadline, estimated_value, contracting_authority, contracting_authority_jib, contract_type, raw_description, cpv_code, ai_analysis, authority_city, authority_municipality, authority_canton, authority_entity",
       }
     ),
@@ -88,7 +89,7 @@ export default async function AgencyClientDetailPage({
   // Score and rank tenders using the same recommendation engine as regular clients
   const scoredTenders = selectTenderRecommendations(candidateTenders, recommendationContext, {
     limit: 10,
-    minimumResults: 5,
+    minimumResults: 10,
   });
 
   const recommendedTenders = scoredTenders.map((s) => ({

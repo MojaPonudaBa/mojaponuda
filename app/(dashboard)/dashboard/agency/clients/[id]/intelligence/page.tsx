@@ -7,6 +7,8 @@ import {
   buildRecommendationContext,
   fetchRecommendedTenderCandidates,
   hasRecommendationSignals,
+  RECOMMENDATION_SUMMARY_CANDIDATE_LIMIT,
+  RECOMMENDATION_SUMMARY_MINIMUM_RESULTS,
   selectTenderRecommendations,
 } from "@/lib/tender-recommendations";
 import { getSubscriptionStatus } from "@/lib/subscription";
@@ -73,10 +75,13 @@ export default async function AgencyClientIntelligencePage({
   if (hasRecommendationSignals(recCtx)) {
     const rows = await fetchRecommendedTenderCandidates(supabase, recCtx, {
       select: "id, title, deadline, estimated_value, contracting_authority, contracting_authority_jib, contract_type, raw_description",
-      nowIso: now.toISOString(), limit: 240,
+      nowIso: now.toISOString(),
+      limit: RECOMMENDATION_SUMMARY_CANDIDATE_LIMIT,
     });
     const availableRows = rows.filter((r) => !existingBidTenderIds.has(r.id));
-    recommendedOpenCount = selectTenderRecommendations(availableRows, recCtx, { minimumResults: 4 }).length;
+    recommendedOpenCount = selectTenderRecommendations(availableRows, recCtx, {
+      minimumResults: RECOMMENDATION_SUMMARY_MINIMUM_RESULTS,
+    }).length;
   } else {
     recommendedOpenCount = 0;
   }

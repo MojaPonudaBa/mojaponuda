@@ -11,6 +11,8 @@ import {
   fetchRecommendedTenderCandidates,
   hasRecommendationSignals,
   matchesTenderLocationTerms,
+  RECOMMENDATION_FULL_PAGE_CANDIDATE_LIMIT,
+  RECOMMENDATION_FULL_PAGE_MINIMUM_RESULTS,
   selectTenderRecommendations,
   type RecommendationContext,
 } from "@/lib/tender-recommendations";
@@ -94,10 +96,15 @@ async function TendersContent({ agencyClientId, companyId, companyName, recommen
         authority_canton: string | null;
         authority_entity: string | null;
       }
-    >(supabase, recommendationContext, { select: "*", limit: 240 });
+    >(supabase, recommendationContext, {
+      select: "*",
+      limit: RECOMMENDATION_FULL_PAGE_CANDIDATE_LIMIT,
+    });
 
     const available = candidates.filter((t) => !existingBidTenderIds.has(t.id));
-    let ranked = selectTenderRecommendations(available, recommendationContext, { minimumResults: 4 });
+    let ranked = selectTenderRecommendations(available, recommendationContext, {
+      minimumResults: RECOMMENDATION_FULL_PAGE_MINIMUM_RESULTS,
+    });
 
     if (keywordParam) {
       const term = keywordParam.toLowerCase();
@@ -124,8 +131,7 @@ async function TendersContent({ agencyClientId, companyId, companyName, recommen
     if (locationFilterTerms.length > 0) {
       let locationQuery = supabase
         .from("tenders")
-        .select("*")
-        .gt("deadline", new Date().toISOString());
+        .select("*");
 
       if (keywordParam) {
         const kw = `%${keywordParam}%`;
@@ -150,8 +156,7 @@ async function TendersContent({ agencyClientId, companyId, companyName, recommen
     } else {
       let query = supabase
         .from("tenders")
-        .select("*", { count: "exact" })
-        .gt("deadline", new Date().toISOString());
+        .select("*", { count: "exact" });
 
       if (keywordParam) {
         const kw = `%${keywordParam}%`;

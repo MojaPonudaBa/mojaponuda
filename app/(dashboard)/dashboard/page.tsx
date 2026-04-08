@@ -17,6 +17,8 @@ import {
   buildRecommendationContext,
   fetchRecommendedTenderCandidates,
   hasRecommendationSignals,
+  RECOMMENDATION_SUMMARY_CANDIDATE_LIMIT,
+  RECOMMENDATION_SUMMARY_MINIMUM_RESULTS,
   selectTenderRecommendations,
 } from "@/lib/tender-recommendations";
 import { getSubscriptionStatus, isAgencyPlan } from "@/lib/subscription";
@@ -265,7 +267,7 @@ export default async function DashboardPage() {
     }>(supabase, recommendationContext, {
       select: "id, title, deadline, estimated_value, contracting_authority, contracting_authority_jib, contract_type, raw_description",
       nowIso,
-      limit: 60,
+      limit: RECOMMENDATION_SUMMARY_CANDIDATE_LIMIT,
     });
 
     const availableRelevantRows = relevantRows.filter(
@@ -275,7 +277,7 @@ export default async function DashboardPage() {
       availableRelevantRows,
       recommendationContext,
       {
-        minimumResults: 4,
+        minimumResults: RECOMMENDATION_SUMMARY_MINIMUM_RESULTS,
       }
     );
 

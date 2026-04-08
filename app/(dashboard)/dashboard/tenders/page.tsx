@@ -11,6 +11,10 @@ import {
   fetchRecommendedTenderCandidates,
   hasRecommendationSignals,
   matchesTenderLocationTerms,
+  RECOMMENDATION_FULL_PAGE_CANDIDATE_LIMIT,
+  RECOMMENDATION_FULL_PAGE_MINIMUM_RESULTS,
+  RECOMMENDATION_SUMMARY_CANDIDATE_LIMIT,
+  RECOMMENDATION_SUMMARY_MINIMUM_RESULTS,
   selectTenderRecommendations,
   type RecommendationContext,
   type RecommendationTenderInput,
@@ -83,7 +87,7 @@ async function TendersContent({ searchParams }: TendersPageProps) {
     operating_regions: string[] | null;
   }
   let agencyClients: AgencyClientCompany[] = [];
-  let agencyTenderClientMap = new Map<string, { tender: Tender; clientNames: string[]; score: number; locationPriority: number }>();
+  const agencyTenderClientMap = new Map<string, { tender: Tender; clientNames: string[]; score: number; locationPriority: number }>();
   let agencyTotalCount = 0;
 
   let recommendationContext: RecommendationContext | null = null;
@@ -128,9 +132,11 @@ async function TendersContent({ searchParams }: TendersPageProps) {
 
           const candidates = await fetchRecommendedTenderCandidates<RecommendationTenderInput>(
             supabase, ctx,
-            { select: "*", limit: 120 }
+            { select: "*", limit: RECOMMENDATION_SUMMARY_CANDIDATE_LIMIT }
           );
-          const scored = selectTenderRecommendations(candidates, ctx, { minimumResults: 4 });
+          const scored = selectTenderRecommendations(candidates, ctx, {
+            minimumResults: RECOMMENDATION_SUMMARY_MINIMUM_RESULTS,
+          });
           return { client, scored };
         })
       );
@@ -308,7 +314,7 @@ async function TendersContent({ searchParams }: TendersPageProps) {
       }
     >(supabase, recommendationContext, {
       select: "*",
-      limit: 240,
+      limit: RECOMMENDATION_FULL_PAGE_CANDIDATE_LIMIT,
     });
 
     const availableRecommendationRows = scopedRecommendationRows.filter(
@@ -318,7 +324,7 @@ async function TendersContent({ searchParams }: TendersPageProps) {
       availableRecommendationRows,
       recommendationContext,
       {
-        minimumResults: 4,
+        minimumResults: RECOMMENDATION_FULL_PAGE_MINIMUM_RESULTS,
       }
     );
 
@@ -354,8 +360,7 @@ async function TendersContent({ searchParams }: TendersPageProps) {
     if (locationFilterTerms.length > 0) {
       let locationQuery = supabase
         .from("tenders")
-        .select("*")
-        .gt("deadline", new Date().toISOString());
+        .select("*");
 
       if (keywordParam) {
         const kw = `%${keywordParam}%`;
@@ -408,8 +413,7 @@ async function TendersContent({ searchParams }: TendersPageProps) {
     } else {
       let query = supabase
         .from("tenders")
-        .select("*", { count: "exact" })
-        .gt("deadline", new Date().toISOString());
+        .select("*", { count: "exact" });
 
       if (keywordParam) {
         const kw = `%${keywordParam}%`;

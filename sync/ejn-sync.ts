@@ -1402,10 +1402,6 @@ async function syncTenders(
         status: n.Status || null,
         portal_url: n.NoticeUrl || null,
         raw_description: n.Description || null,
-        authority_city: fallbackAuthority?.city ?? null,
-        authority_municipality: fallbackAuthority?.municipality ?? null,
-        authority_canton: fallbackAuthority?.canton ?? null,
-        authority_entity: fallbackAuthority?.entity ?? null,
         ai_analysis: mergeGeoEnrichmentIntoAiAnalysis(
           existingTender?.ai_analysis ?? null,
           geoEnrichment
@@ -1422,10 +1418,13 @@ async function syncTenders(
     }
 
     for (const batch of chunkArray(rowsToUpsert, 250)) {
-      await supabase.from("tenders").upsert(batch, {
+      const { error } = await supabase.from("tenders").upsert(batch, {
         onConflict: "portal_id",
         ignoreDuplicates: false,
       });
+      if (error) {
+        throw new Error(`Tender upsert failed: ${error.message}`);
+      }
     }
 
     if (options.runTenderAreaMaintenanceAfterSync !== false) {
@@ -1774,6 +1773,34 @@ export async function runAdminPortalSync(): Promise<{
     total_added: totalAdded,
     total_updated: totalUpdated,
     status: combinedResults.some((result) => result.error) ? "partial" : "ok",
+  };
+}
+
+export async function runAdminMaintenanceSweep(): Promise<{
+  results: SyncResult[];
+  duration_ms: number;
+  total_updated: number;
+  status: "ok" | "partial";
+}> {
+  const start = Date.now();
+  const results = await runNightlyMaintenanceSweep({
+    authorityTarget: DEFAULT_AUTHORITY_BACKFILL_TARGET,
+    authorityScanBatchSize: DEFAULT_AUTHORITY_SCAN_BATCH_SIZE,
+    authorityScanLimit: DEFAULT_AUTHORITY_SCAN_LIMIT,
+    tenderTarget: DEFAULT_TENDER_AREA_BACKFILL_TARGET,
+    tenderScanBatchSize: DEFAULT_TENDER_AREA_SCAN_BATCH_SIZE,
+    tenderScanLimit: DEFAULT_TENDER_AREA_SCAN_LIMIT,
+    maxCycles: 10,
+    timeBudgetMs: 240_000,
+  });
+
+  const totalUpdated = results.reduce((sum, r) => sum + r.added + r.updated, 0);
+
+  return {
+    results,
+    duration_ms: Date.now() - start,
+    total_updated: totalUpdated,
+    status: results.some((r) => r.error) ? "partial" : "ok",
   };
 }
 

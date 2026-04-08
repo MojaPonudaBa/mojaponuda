@@ -13,6 +13,8 @@ import {
   hasRecommendationSignals,
   matchesCpvPrefixes,
   matchesPreferredContractTypes,
+  RECOMMENDATION_SUMMARY_CANDIDATE_LIMIT,
+  RECOMMENDATION_SUMMARY_MINIMUM_RESULTS,
   type RecommendationTenderInput,
   type ScoredTenderRecommendation,
   scoreTenderRecommendation,
@@ -1200,11 +1202,11 @@ export async function getMarketOverview(
             select:
               "id, title, raw_description, contract_type, contracting_authority, contracting_authority_jib, estimated_value, deadline, created_at",
             nowIso,
-            limit: 240,
+            limit: RECOMMENDATION_SUMMARY_CANDIDATE_LIMIT,
           }
         ),
         recommendationContext,
-        { minimumResults: 4 }
+        { minimumResults: RECOMMENDATION_SUMMARY_MINIMUM_RESULTS }
       ).map(({ tender, score }) => ({
         ...tender,
         market_fit_score: score,

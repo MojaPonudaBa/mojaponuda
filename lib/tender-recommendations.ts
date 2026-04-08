@@ -97,6 +97,11 @@ interface FetchRecommendedTenderCandidatesOptions {
   select?: string;
 }
 
+export const RECOMMENDATION_FULL_PAGE_CANDIDATE_LIMIT = 1200;
+export const RECOMMENDATION_SUMMARY_CANDIDATE_LIMIT = 360;
+export const RECOMMENDATION_FULL_PAGE_MINIMUM_RESULTS = 24;
+export const RECOMMENDATION_SUMMARY_MINIMUM_RESULTS = 12;
+
 const PRIMARY_INDUSTRY_NEGATIVE_KEYWORDS: Record<string, string[]> = {
   construction: [
     "softver",
@@ -564,7 +569,7 @@ export async function fetchRecommendedTenderCandidates<
       : []),
   ];
   const nowIso = options.nowIso ?? new Date().toISOString();
-  const limit = options.limit ?? 240;
+  const limit = options.limit ?? RECOMMENDATION_SUMMARY_CANDIDATE_LIMIT;
 
   let query = supabase
     .from("tenders")

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, CheckCircle2, Play, RefreshCw, ServerCog, ShieldAlert } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Play, RefreshCw, ServerCog, ShieldAlert, Wrench } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,6 +17,13 @@ interface SyncRunResult {
   status: string;
   duration_ms?: number;
   total_added?: number;
+  total_updated?: number;
+  error?: string;
+}
+
+interface MaintenanceRunResult {
+  status: string;
+  duration_ms?: number;
   total_updated?: number;
   error?: string;
 }
@@ -45,11 +52,11 @@ function isManualJobRunResult(value: unknown): value is ManualJobRunResult {
 
 function normalizeSyncErrorMessage(message: string): string {
   if (/timeout|FUNCTION_INVOCATION_TIMEOUT/i.test(message)) {
-    return "Portal sync je trajao predugo i server ga je prekinuo. Pokušaj ponovo za nekoliko minuta. Ako se problem ponavlja, otvori server log i provjeri koji korak usporava prolaz.";
+    return "Portal sync je trajao predugo i server ga je prekinuo. Pokusaj ponovo za nekoliko minuta. Ako se problem ponavlja, otvori server log i provjeri koji korak usporava prolaz.";
   }
 
   if (/deployment/i.test(message)) {
-    return "Portal sync trenutno nije vraćen iz server okruženja kako treba. Pokušaj ponovo, a ako se isto ponovi provjeri deployment log.";
+    return "Portal sync trenutno nije vracen iz server okruzenja kako treba. Pokusaj ponovo, a ako se isto ponovi provjeri deployment log.";
   }
 
   return message;
@@ -57,7 +64,7 @@ function normalizeSyncErrorMessage(message: string): string {
 
 function formatDateTime(value: string | null): string {
   if (!value) {
-    return "—";
+    return "-";
   }
 
   return new Intl.DateTimeFormat("bs-BA", {
@@ -73,7 +80,7 @@ function getJobTone(status: string): string {
   switch (status) {
     case "U redu":
       return "border-emerald-200 bg-emerald-50 text-emerald-700";
-    case "Treba pažnju":
+    case "Treba paznju":
       return "border-amber-200 bg-amber-50 text-amber-700";
     default:
       return "border-rose-200 bg-rose-50 text-rose-700";
@@ -119,6 +126,9 @@ export function AdminSystemShell({ data }: AdminSystemShellProps) {
     result: ManualJobRunResult | null;
     error: string | null;
   }>>({});
+  const [maintenanceRunning, setMaintenanceRunning] = useState(false);
+  const [maintenanceResult, setMaintenanceResult] = useState<MaintenanceRunResult | null>(null);
+  const [maintenanceError, setMaintenanceError] = useState<string | null>(null);
 
   const isAnyJobRunning = Object.values(jobRuns).some((state) => state.running);
 
@@ -137,15 +147,46 @@ export function AdminSystemShell({ data }: AdminSystemShellProps) {
       }
 
       if (!payload) {
-        throw new Error("Sync je vratio neispravan odgovor. Otvori server log i provjeri backend grešku.");
+        throw new Error("Sync je vratio neispravan odgovor. Otvori server log i provjeri backend gresku.");
       }
 
       setResult(payload);
       router.refresh();
     } catch (syncError) {
-      setError(syncError instanceof Error ? normalizeSyncErrorMessage(syncError.message) : "Greška pri pokretanju synca.");
+      setError(syncError instanceof Error ? normalizeSyncErrorMessage(syncError.message) : "Greska pri pokretanju synca.");
     } finally {
       setRunning(false);
+    }
+  }
+
+  async function handleRunMaintenance() {
+    setMaintenanceRunning(true);
+    setMaintenanceResult(null);
+    setMaintenanceError(null);
+
+    try {
+      const response = await fetch("/api/admin/system/run-maintenance", { method: "POST" });
+      const raw = await response.text();
+      const payload = raw.trim().startsWith("{") ? (JSON.parse(raw) as MaintenanceRunResult) : null;
+
+      if (!response.ok) {
+        throw new Error(payload?.error ?? (raw.trim() || "Ne mogu pokrenuti maintenance."));
+      }
+
+      if (!payload) {
+        throw new Error("Maintenance je vratio neispravan odgovor.");
+      }
+
+      setMaintenanceResult(payload);
+      router.refresh();
+    } catch (maintenanceRunError) {
+      setMaintenanceError(
+        maintenanceRunError instanceof Error
+          ? maintenanceRunError.message
+          : "Greska pri pokretanju maintenancea."
+      );
+    } finally {
+      setMaintenanceRunning(false);
     }
   }
 
@@ -179,7 +220,7 @@ export function AdminSystemShell({ data }: AdminSystemShellProps) {
       }
 
       if (!isManualJobRunResult(payload)) {
-        throw new Error("Sync job je vratio neispravan odgovor. Otvori server log i provjeri backend grešku.");
+        throw new Error("Sync job je vratio neispravan odgovor. Otvori server log i provjeri backend gresku.");
       }
 
       setJobRuns((current) => ({
@@ -197,7 +238,7 @@ export function AdminSystemShell({ data }: AdminSystemShellProps) {
         [endpoint]: {
           running: false,
           result: null,
-          error: jobError instanceof Error ? normalizeSyncErrorMessage(jobError.message) : "Greška pri pokretanju sync joba.",
+          error: jobError instanceof Error ? normalizeSyncErrorMessage(jobError.message) : "Greska pri pokretanju sync joba.",
         },
       }));
     }
@@ -213,24 +254,24 @@ export function AdminSystemShell({ data }: AdminSystemShellProps) {
             </Badge>
             <div className="space-y-3">
               <h1 className="font-heading text-3xl font-bold tracking-tight text-white sm:text-4xl">
-                Tehnički pregled sync sistema
+                Tehnicki pregled sync sistema
               </h1>
               <p className="max-w-2xl text-sm leading-7 text-slate-300 sm:text-base">
-                Ovdje vidiš koji dio portala se puni podacima, kada je zadnji put prošao, koliko je stavki dodano ili ažurirano i gdje treba reakcija.
+                Ovdje vidis koji dio portala se puni podacima, kada je zadnji put prosao, koliko je stavki dodano ili azurirano i gdje treba reakcija.
               </p>
             </div>
           </div>
           <div className="rounded-2xl border border-white/10 bg-white/8 px-4 py-3 text-sm text-slate-200">
-            <p className="text-[11px] uppercase tracking-[0.16em] text-slate-400">Zadnji zabilježeni sync</p>
+            <p className="text-[11px] uppercase tracking-[0.16em] text-slate-400">Zadnji zabiljezeni sync</p>
             <p className="mt-2 font-semibold text-white">{formatDateTime(data.summary.lastSyncAt)}</p>
           </div>
         </div>
       </section>
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <SummaryCard title="Jobovi uredni" value={String(data.summary.healthyJobs)} hint="Broj sync jobova koji trenutno djeluju svježe." icon={CheckCircle2} />
-        <SummaryCard title="Treba pažnju" value={String(data.summary.attentionJobs)} hint="Jobovi sa zastarjelim, ali postojećim prolazom." icon={AlertTriangle} />
-        <SummaryCard title="Bez loga" value={String(data.summary.failedJobs)} hint="Jobovi za koje sistem nema nijedan zabilježen prolaz." icon={ShieldAlert} />
+        <SummaryCard title="Jobovi uredni" value={String(data.summary.healthyJobs)} hint="Broj sync jobova koji trenutno djeluju svjeze." icon={CheckCircle2} />
+        <SummaryCard title="Treba paznju" value={String(data.summary.attentionJobs)} hint="Jobovi sa zastarjelim, ali postojecim prolazom." icon={AlertTriangle} />
+        <SummaryCard title="Bez loga" value={String(data.summary.failedJobs)} hint="Jobovi za koje sistem nema nijedan zabiljezen prolaz." icon={ShieldAlert} />
         <SummaryCard title="Ukupno jobova" value={String(data.jobs.length)} hint="Kompletna operativna lista sync procesa koji pune podatke u aplikaciju." icon={ServerCog} />
       </section>
 
@@ -238,15 +279,15 @@ export function AdminSystemShell({ data }: AdminSystemShellProps) {
         <div className="grid gap-3 md:grid-cols-3">
           <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
             <p className="font-semibold">U redu</p>
-            <p className="mt-1">Job ima svjež log i ne traži intervenciju.</p>
+            <p className="mt-1">Job ima svjez log i ne trazi intervenciju.</p>
           </div>
           <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-            <p className="font-semibold">Treba pažnju</p>
-            <p className="mt-1">Job jeste radio, ali zadnji prolaz više nije dovoljno svjež.</p>
+            <p className="font-semibold">Treba paznju</p>
+            <p className="mt-1">Job jeste radio, ali zadnji prolaz vise nije dovoljno svjez.</p>
           </div>
           <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
             <p className="font-semibold">Bez loga</p>
-            <p className="mt-1">Za ovaj job trenutno nema nijednog zabilježenog prolaza u `sync_log`.</p>
+            <p className="mt-1">Za ovaj job trenutno nema nijednog zabiljezenog prolaza u `sync_log`.</p>
           </div>
         </div>
       </section>
@@ -258,18 +299,29 @@ export function AdminSystemShell({ data }: AdminSystemShellProps) {
               <Play className="size-4 text-blue-700" />
               <CardTitle className="text-slate-950">Akcije</CardTitle>
             </div>
-            <CardDescription>Ručno pokretanje operativnog portal sync prolaza.</CardDescription>
+            <CardDescription>Rucno pokretanje synca i maintenance sweepa za portal.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <Button type="button" onClick={handleRunSync} disabled={running || isAnyJobRunning}>
-              {running ? <RefreshCw className="size-4 animate-spin" /> : <Play className="size-4" />}
-              {running ? "Pokreće se sync..." : "Pokreni portal sync"}
-            </Button>
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <Button type="button" onClick={handleRunSync} disabled={running || maintenanceRunning || isAnyJobRunning}>
+                {running ? <RefreshCw className="size-4 animate-spin" /> : <Play className="size-4" />}
+                {running ? "Pokrece se sync..." : "Pokreni portal sync"}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleRunMaintenance}
+                disabled={running || maintenanceRunning || isAnyJobRunning}
+              >
+                {maintenanceRunning ? <RefreshCw className="size-4 animate-spin" /> : <Wrench className="size-4" />}
+                {maintenanceRunning ? "Pokrece se maintenance..." : "Pokreni maintenance"}
+              </Button>
+            </div>
 
             {result ? (
               <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-                <p className="font-semibold">Sync završen: {result.status === "partial" ? "završen uz upozorenja" : "uspješno"}</p>
-                <p className="mt-1">Dodano: {result.total_added ?? 0} · Ažurirano: {result.total_updated ?? 0}</p>
+                <p className="font-semibold">Sync zavrsen: {result.status === "partial" ? "zavrsen uz upozorenja" : "uspjesno"}</p>
+                <p className="mt-1">Dodano: {result.total_added ?? 0} · Azurirano: {result.total_updated ?? 0}</p>
                 <p className="mt-1">Trajanje: {result.duration_ms ? `${Math.round(result.duration_ms / 1000)}s` : "nije dostupno"}</p>
               </div>
             ) : null}
@@ -280,30 +332,61 @@ export function AdminSystemShell({ data }: AdminSystemShellProps) {
               </div>
             ) : null}
 
+            {maintenanceResult ? (
+              <div
+                className={cn(
+                  "rounded-2xl border px-4 py-3 text-sm",
+                  maintenanceResult.status === "partial"
+                    ? "border-amber-200 bg-amber-50 text-amber-800"
+                    : "border-emerald-200 bg-emerald-50 text-emerald-800"
+                )}
+              >
+                <p className="font-semibold">Maintenance zavrsen: {maintenanceResult.status === "partial" ? "uz upozorenja" : "uspjesno"}</p>
+                <p className="mt-1">Dopunjeno / osvjezeno: {maintenanceResult.total_updated ?? 0}</p>
+                <p className="mt-1">Trajanje: {maintenanceResult.duration_ms ? `${Math.round(maintenanceResult.duration_ms / 1000)}s` : "nije dostupno"}</p>
+              </div>
+            ) : null}
+
+            {maintenanceError ? (
+              <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                {maintenanceError}
+              </div>
+            ) : null}
+
             <div className="rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3 text-sm text-slate-700">
-              Ova akcija pokreće operativni prolaz koji osvježava tendere, ugovorne organe, dobavljače, dodjele i planirane nabavke, a zatim radi manji maintenance sweep za ključne praznine. Koristi je kada nešto kasni ili kada želiš odmah osvježiti stanje portala bez čekanja noćnog ciklusa.
+              Ova akcija pokrece operativni prolaz koji osvjezava tendere, ugovorne organe, dobavljace, dodjele i planirane nabavke, a zatim radi manji maintenance sweep za kljucne praznine. Koristi je kada nesto kasni ili kada zelis odmah osvjeziti stanje portala bez cekanja nocnog ciklusa.
+            </div>
+            <div className="rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3 text-sm text-slate-700">
+              Maintenance mozes pokrenuti zasebno kada zelis samo geo enrichment i dopunu praznina bez kompletnog portal sync prolaza.
             </div>
           </CardContent>
         </Card>
 
         <Card className="border-slate-200/80 bg-white shadow-[0_24px_50px_-34px_rgba(15,23,42,0.24)]">
           <CardHeader>
-            <CardTitle className="text-slate-950">Stvari koje traže pažnju</CardTitle>
-            <CardDescription>Ovdje su samo oni sync procesi koji kasne ili uopće nemaju log.</CardDescription>
+            <CardTitle className="text-slate-950">Stvari koje traze paznju</CardTitle>
+            <CardDescription>Ovdje su samo oni sync procesi koji kasne ili uopste nemaju log.</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
               {data.issues.length === 0 ? (
                 <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-4 text-sm text-emerald-700">
-                  Trenutno nema zabilježenih tehničkih stvari koje traže intervenciju.
+                  Trenutno nema zabiljezenih tehnickih stvari koje traze intervenciju.
                 </div>
               ) : (
                 data.issues.map((issue) => (
                   <div key={issue.id} className="rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <p className="text-sm font-semibold text-slate-950">{issue.title}</p>
-                      <span className={cn("rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em]", issue.tone === "danger" ? "border-rose-200 bg-rose-50 text-rose-700" : "border-amber-200 bg-amber-50 text-amber-700")}>
-                        {issue.tone === "danger" ? "hitno" : "pažnja"}
+                      <span
+                        className={cn(
+                          "rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em]",
+                          issue.tone === "danger"
+                            ? "border-rose-200 bg-rose-50 text-rose-700"
+                            : "border-amber-200 bg-amber-50 text-amber-700"
+                        )}
+                      >
+                        {issue.tone === "danger" ? "hitno" : "paznja"}
                       </span>
                     </div>
                     <p className="mt-2 text-sm text-slate-600">{issue.description}</p>
@@ -319,7 +402,7 @@ export function AdminSystemShell({ data }: AdminSystemShellProps) {
       <section className="space-y-4">
         <div>
           <h2 className="text-xl font-semibold tracking-tight text-slate-950">Svi sync jobovi</h2>
-          <p className="mt-1 text-sm text-slate-600">Svaka kartica objašnjava šta taj job radi, kada je zadnji put prošao i koliko je podataka obradio.</p>
+          <p className="mt-1 text-sm text-slate-600">Svaka kartica objasnjava sta taj job radi, kada je zadnji put prosao i koliko je podataka obradio.</p>
         </div>
         <div className="grid gap-4 xl:grid-cols-2 2xl:grid-cols-4">
           {data.jobs.map((job) => {
@@ -349,7 +432,7 @@ export function AdminSystemShell({ data }: AdminSystemShellProps) {
                       <p className="mt-1 text-lg font-semibold text-slate-950">{job.recordsAdded}</p>
                     </div>
                     <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3">
-                      <p className="text-[11px] uppercase tracking-[0.14em] text-slate-500">Ažurirano</p>
+                      <p className="text-[11px] uppercase tracking-[0.14em] text-slate-500">Azurirano</p>
                       <p className="mt-1 text-lg font-semibold text-slate-950">{job.recordsUpdated}</p>
                     </div>
                   </div>
@@ -364,20 +447,22 @@ export function AdminSystemShell({ data }: AdminSystemShellProps) {
                     className="w-full rounded-2xl border-slate-200"
                   >
                     {jobState?.running ? <RefreshCw className="size-4 animate-spin" /> : <Play className="size-4" />}
-                    {jobState?.running ? "Pokreće se job..." : "Pokreni ovaj sync"}
+                    {jobState?.running ? "Pokrece se job..." : "Pokreni ovaj sync"}
                   </Button>
                   {jobState?.result ? (
-                    <div className={cn(
-                      "rounded-2xl border px-3 py-3 text-sm",
-                      jobState.result.status === "partial"
-                        ? "border-amber-200 bg-amber-50 text-amber-800"
-                        : "border-emerald-200 bg-emerald-50 text-emerald-800"
-                    )}>
+                    <div
+                      className={cn(
+                        "rounded-2xl border px-3 py-3 text-sm",
+                        jobState.result.status === "partial"
+                          ? "border-amber-200 bg-amber-50 text-amber-800"
+                          : "border-emerald-200 bg-emerald-50 text-emerald-800"
+                      )}
+                    >
                       <p className="font-semibold">
-                        {jobState.result.status === "partial" ? "Job završen uz upozorenja" : "Job završen uspješno"}
+                        {jobState.result.status === "partial" ? "Job zavrsen uz upozorenja" : "Job zavrsen uspjesno"}
                       </p>
                       <p className="mt-1">
-                        Dodano: {jobState.result.added ?? 0} · Ažurirano: {jobState.result.updated ?? 0}
+                        Dodano: {jobState.result.added ?? 0} · Azurirano: {jobState.result.updated ?? 0}
                       </p>
                       <p className="mt-1">
                         Trajanje: {jobState.result.duration_ms ? `${Math.round(jobState.result.duration_ms / 1000)}s` : "nije dostupno"}
