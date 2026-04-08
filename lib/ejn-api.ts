@@ -5,7 +5,7 @@
 
 const BASE_URL = process.env.EJN_API_BASE_URL || "https://open.ejn.gov.ba";
 const PAGE_SIZE = 50;
-const MAX_PAGES = 100;
+const MAX_PAGES = 10_000;
 
 // --- Normalized types (what our sync module expects) ---
 
@@ -265,14 +265,43 @@ function buildNumericIdFilter(fieldName: string, ids: string[]): string | undefi
 export async function fetchProcurementNotices(
   lastSyncAt?: string | null
 ): Promise<EjnProcurementNotice[]> {
+  const nowIso = new Date().toISOString();
+
+  // Always fetch ALL tenders with future deadlines so we never have gaps
+  // in active tender coverage (~2K items ≈ 40 pages, well within budget).
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const raw = await fetchODataPages<any>(
+  const activeRaw = await fetchODataPages<any>(
     "/ProcurementNotices",
     "Id desc",
-    buildLastUpdatedFilter(lastSyncAt)
+    `ApplicationDeadlineDateTime gt ${nowIso}`
   );
 
-  return raw.map((r) => ({
+  // Additionally fetch anything updated since last sync (status changes,
+  // extended deadlines, newly expired tenders, etc.).
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let incrementalRaw: any[] = [];
+  if (lastSyncAt?.trim()) {
+    incrementalRaw = await fetchODataPages<any>(
+      "/ProcurementNotices",
+      "Id desc",
+      `LastUpdated ge ${lastSyncAt}`
+    );
+  }
+
+  // Merge & deduplicate by Id (active set takes priority)
+  const seenIds = new Set<string>();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const merged: any[] = [];
+  for (const item of [...activeRaw, ...incrementalRaw]) {
+    const id = String(item.Id ?? item.ProcedureId ?? "");
+    if (id && !seenIds.has(id)) {
+      seenIds.add(id);
+      merged.push(item);
+    }
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return merged.map((r: any) => ({
     NoticeId: String(r.Id ?? r.ProcedureId ?? ""),
     Title: r.ProcedureName || r.ProcedureNumber || "Bez naziva",
     ContractingAuthorityName: r.ContractingAuthorityName || null,
