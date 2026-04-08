@@ -6,7 +6,7 @@ import { Bell, CheckCircle, FileText, ArrowRight } from "lucide-react";
 
 export interface CTAConfig {
   primary_text: string;
-  primary_action: "follow" | "signup" | "check_eligibility";
+  primary_action: "follow" | "signup" | "check_eligibility" | "view_similar";
   secondary_text?: string;
   secondary_action?: "download_checklist" | "view_similar";
   outcome_message: string;
