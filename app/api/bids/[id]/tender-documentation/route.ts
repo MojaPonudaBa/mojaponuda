@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { resolveBidAccess } from "@/lib/bids/access";
 import { extractText } from "@/lib/tender-doc/extract";
 import { analyzeTenderDocumentation, type TenderDocAnalysisResult } from "@/lib/tender-doc/analyze";
 import { scanForAnnexes, mergeAnnexesIntoChecklist } from "@/lib/tender-doc/annex-scanner";
-import type { BidChecklistItemInsert, Json, Tender } from "@/types/database";
+import type { BidChecklistItemInsert, Json } from "@/types/database";
 import { AI_TO_VAULT_TYPE_MAP } from "@/lib/vault/constants";
 
 export const maxDuration = 120;
@@ -16,7 +17,6 @@ export async function POST(
   const { id: bidId } = await params;
   const supabase = await createClient();
   const supabaseAdmin = createAdminClient();
-
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -25,25 +25,18 @@ export async function POST(
     return NextResponse.json({ error: "Niste prijavljeni." }, { status: 401 });
   }
 
-  // Verify bid belongs to user
+  const access = await resolveBidAccess(supabase, user.id, bidId);
+  if (!access) {
+    return NextResponse.json({ error: "Ponuda nije pronadjena." }, { status: 404 });
+  }
+
   const { data: bid } = await supabase
     .from("bids")
     .select("id, company_id, tender_id, tenders(id, title)")
     .eq("id", bidId)
     .single();
 
-  if (!bid) {
-    return NextResponse.json({ error: "Ponuda nije pronađena." }, { status: 404 });
-  }
-
-  const { data: company } = await supabase
-    .from("companies")
-    .select("id")
-    .eq("user_id", user.id)
-    .eq("id", bid.company_id)
-    .single();
-
-  if (!company) {
+  if (!bid || bid.company_id !== access.companyId) {
     return NextResponse.json({ error: "Nemate pristup ovoj ponudi." }, { status: 403 });
   }
 
@@ -54,19 +47,13 @@ export async function POST(
     return NextResponse.json({ error: "Fajl je obavezan." }, { status: 400 });
   }
 
-  // Max 50MB
   if (file.size > 50 * 1024 * 1024) {
-    return NextResponse.json(
-      { error: "Fajl ne smije biti veći od 50 MB." },
-      { status: 400 },
-    );
+    return NextResponse.json({ error: "Fajl ne smije biti veci od 50 MB." }, { status: 400 });
   }
 
-  // Upload file to Supabase Storage
   const timestamp = Date.now();
   const sanitizedName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
   const storagePath = `tender-docs/${bid.company_id}/${bidId}/${timestamp}_${sanitizedName}`;
-
   const fileBuffer = await file.arrayBuffer();
 
   const { error: uploadError } = await supabaseAdmin.storage
@@ -78,13 +65,9 @@ export async function POST(
 
   if (uploadError) {
     console.error("Tender doc upload error:", uploadError);
-    return NextResponse.json(
-      { error: "Greška pri uploadu fajla." },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: "Greska pri uploadu fajla." }, { status: 500 });
   }
 
-  // Create the tender_doc_uploads record
   const { data: docUpload, error: insertError } = await supabaseAdmin
     .from("tender_doc_uploads")
     .insert({
@@ -100,18 +83,12 @@ export async function POST(
 
   if (insertError) {
     console.error("Tender doc insert error:", insertError);
-    return NextResponse.json(
-      { error: "Greška pri spremanju dokumenta." },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: "Greska pri spremanju dokumenta." }, { status: 500 });
   }
 
-  // Extract text in the same request (non-blocking response would be better for very large files,
-  // but for now we do it synchronously for simplicity)
   try {
     const extraction = await extractText(fileBuffer, file.type, file.name);
 
-    // Update with extracted text
     await supabaseAdmin
       .from("tender_doc_uploads")
       .update({
@@ -121,21 +98,12 @@ export async function POST(
       })
       .eq("id", docUpload.id);
 
-    // Run AI analysis
     const tenderData = bid.tenders as unknown as { id: string; title: string } | null;
-    const analysis = await analyzeTenderDocumentation(
-      extraction.fullText,
-      tenderData?.title,
-    );
+    const analysis = await analyzeTenderDocumentation(extraction.fullText, tenderData?.title);
 
-    // Deterministic annex scanner: find annexes AI might have missed
     const scannedAnnexes = scanForAnnexes(extraction.fullText);
-    const missingAnnexes = mergeAnnexesIntoChecklist(
-      analysis.checklist_items,
-      scannedAnnexes,
-    );
+    const missingAnnexes = mergeAnnexesIntoChecklist(analysis.checklist_items, scannedAnnexes);
 
-    // Add missing annexes to the analysis result
     if (missingAnnexes.length > 0) {
       for (const annex of missingAnnexes) {
         analysis.checklist_items.push({
@@ -151,7 +119,6 @@ export async function POST(
       }
     }
 
-    // Save analysis (includes merged annexes)
     await supabaseAdmin
       .from("tender_doc_uploads")
       .update({
@@ -160,10 +127,8 @@ export async function POST(
       })
       .eq("id", docUpload.id);
 
-    // Replace checklist items with extracted requirements
     await rebuildChecklistFromAnalysis(supabase, supabaseAdmin, bidId, bid.company_id, analysis);
 
-    // Also update bid's ai_analysis
     await supabaseAdmin
       .from("bids")
       .update({ ai_analysis: analysis as unknown as Json })
@@ -180,7 +145,7 @@ export async function POST(
       { status: 201 },
     );
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Greška pri analizi dokumenta.";
+    const message = err instanceof Error ? err.message : "Greska pri analizi dokumenta.";
     console.error("Tender doc processing error:", err);
 
     await supabaseAdmin
@@ -191,10 +156,7 @@ export async function POST(
       })
       .eq("id", docUpload.id);
 
-    return NextResponse.json(
-      { error: message, doc_upload_id: docUpload.id },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: message, doc_upload_id: docUpload.id }, { status: 500 });
   }
 }
 
@@ -204,7 +166,6 @@ export async function GET(
 ) {
   const { id: bidId } = await params;
   const supabase = await createClient();
-
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -213,25 +174,8 @@ export async function GET(
     return NextResponse.json({ error: "Niste prijavljeni." }, { status: 401 });
   }
 
-  // Verify access using admin client for the join
-  const { data: bid } = await supabase
-    .from("bids")
-    .select("id, company_id")
-    .eq("id", bidId)
-    .single();
-
-  if (!bid) {
-    return NextResponse.json({ error: "Ponuda nije pronađena." }, { status: 404 });
-  }
-
-  const { data: company } = await supabase
-    .from("companies")
-    .select("id")
-    .eq("user_id", user.id)
-    .eq("id", bid.company_id)
-    .single();
-
-  if (!company) {
+  const access = await resolveBidAccess(supabase, user.id, bidId);
+  if (!access) {
     return NextResponse.json({ error: "Nemate pristup." }, { status: 403 });
   }
 
@@ -246,9 +190,6 @@ export async function GET(
   return NextResponse.json({ upload: uploads?.[0] || null });
 }
 
-/**
- * Replace existing checklist items with items extracted from tender documentation.
- */
 async function rebuildChecklistFromAnalysis(
   supabase: Awaited<ReturnType<typeof createClient>>,
   supabaseAdmin: ReturnType<typeof createAdminClient>,
@@ -256,67 +197,50 @@ async function rebuildChecklistFromAnalysis(
   companyId: string,
   analysis: TenderDocAnalysisResult,
 ) {
-  // Delete existing checklist items
-  await supabaseAdmin
-    .from("bid_checklist_items")
-    .delete()
-    .eq("bid_id", bidId);
+  await supabaseAdmin.from("bid_checklist_items").delete().eq("bid_id", bidId);
+  await supabaseAdmin.from("bid_documents").delete().eq("bid_id", bidId);
 
-  // Delete existing bid_documents (auto-attached ones)
-  await supabaseAdmin
-    .from("bid_documents")
-    .delete()
-    .eq("bid_id", bidId);
-
-  // Get vault documents for auto-matching
   const { data: vaultDocs } = await supabase
     .from("documents")
     .select("id, type, expires_at")
     .eq("company_id", companyId);
 
-  // Create new checklist items from analysis
-  const checklistRows: BidChecklistItemInsert[] = analysis.checklist_items.map(
-    (item, idx) => {
-      let docId: string | null = null;
-      let status: "missing" | "attached" = "missing";
+  const checklistRows: BidChecklistItemInsert[] = analysis.checklist_items.map((item, index) => {
+    let docId: string | null = null;
+    let status: "missing" | "attached" = "missing";
 
-      if (item.document_type) {
-        const targetType = AI_TO_VAULT_TYPE_MAP[item.document_type];
-        if (targetType) {
-          const match = vaultDocs?.find(
-            (doc) =>
-              doc.type === targetType &&
-              (!doc.expires_at || new Date(doc.expires_at) > new Date()),
-          );
-          if (match) {
-            docId = match.id;
-            status = "attached";
-          }
+    if (item.document_type) {
+      const targetType = AI_TO_VAULT_TYPE_MAP[item.document_type];
+      if (targetType) {
+        const match = vaultDocs?.find(
+          (doc) => doc.type === targetType && (!doc.expires_at || new Date(doc.expires_at) > new Date()),
+        );
+
+        if (match) {
+          docId = match.id;
+          status = "attached";
         }
       }
+    }
 
-      return {
-        bid_id: bidId,
-        title: item.name,
-        description: item.description,
-        status,
-        document_id: docId,
-        document_type: item.document_type,
-        risk_note: item.risk_note || null,
-        page_reference: item.page_reference || null,
-        source_text: item.source_text || null,
-        page_number: item.page_number ?? null,
-        sort_order: idx,
-      };
-    },
-  );
+    return {
+      bid_id: bidId,
+      title: item.name,
+      description: item.description,
+      status,
+      document_id: docId,
+      document_type: item.document_type,
+      risk_note: item.risk_note || null,
+      page_reference: item.page_reference || null,
+      source_text: item.source_text || null,
+      page_number: item.page_number ?? null,
+      sort_order: index,
+    };
+  });
 
   if (checklistRows.length > 0) {
-    await supabaseAdmin
-      .from("bid_checklist_items")
-      .insert(checklistRows);
+    await supabaseAdmin.from("bid_checklist_items").insert(checklistRows);
 
-    // Auto-attach matched vault documents
     const autoAttachedDocs = checklistRows
       .filter((row) => row.document_id)
       .map((row) => ({
@@ -327,9 +251,7 @@ async function rebuildChecklistFromAnalysis(
       }));
 
     if (autoAttachedDocs.length > 0) {
-      await supabaseAdmin
-        .from("bid_documents")
-        .insert(autoAttachedDocs);
+      await supabaseAdmin.from("bid_documents").insert(autoAttachedDocs);
     }
   }
 }

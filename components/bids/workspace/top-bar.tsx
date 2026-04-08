@@ -21,8 +21,9 @@ interface TopBarProps {
   contractingAuthority: string | null;
   currentStatus: BidStatus;
   initialRiskFlags?: string[];
-  isSubscribed?: boolean;
   hasMissingItems?: boolean;
+  backHref?: string;
+  deleteRedirectHref?: string;
 }
 
 const STATUS_COLORS = {
@@ -39,12 +40,13 @@ export function TopBar({
   contractingAuthority,
   currentStatus,
   initialRiskFlags = [],
-  isSubscribed = false,
   hasMissingItems = false,
+  backHref = "/dashboard/bids",
+  deleteRedirectHref = "/dashboard/bids",
 }: TopBarProps) {
   const router = useRouter();
   const [deleting, setDeleting] = useState(false);
-  const [riskFlags, setRiskFlags] = useState<string[]>(initialRiskFlags);
+  const [riskFlags] = useState<string[]>(initialRiskFlags);
   const [riskDismissed, setRiskDismissed] = useState(false);
 
   async function handleStatusChange(newStatus: string) {
@@ -57,7 +59,7 @@ export function TopBar({
   }
 
   async function handleDelete() {
-    if (!window.confirm("Da li ste sigurni da želite obrisati ovu ponudu? Ova akcija je nepovratna.")) {
+    if (!window.confirm("Da li ste sigurni da zelite obrisati ovu ponudu? Ova akcija je nepovratna.")) {
       return;
     }
 
@@ -68,14 +70,14 @@ export function TopBar({
       });
 
       if (res.ok) {
-        router.push("/dashboard/bids");
+        router.push(deleteRedirectHref);
         router.refresh();
       } else {
-        alert("Greška pri brisanju ponude.");
+        alert("Greska pri brisanju ponude.");
         setDeleting(false);
       }
     } catch (err) {
-      alert("Greška pri komunikaciji sa serverom.");
+      alert("Greska pri komunikaciji sa serverom.");
       console.error("Delete error:", err);
       setDeleting(false);
     }
@@ -83,21 +85,25 @@ export function TopBar({
 
   function handleDownload() {
     if (hasMissingItems) {
-      if (!window.confirm("UPOZORENJE: Nedostaju neki obavezni dokumenti iz liste. Želite li ipak preuzeti paket?")) {
+      const confirmed = window.confirm(
+        "UPOZORENJE: Nedostaju neki obavezni dokumenti iz liste. Zelite li ipak preuzeti paket?",
+      );
+
+      if (!confirmed) {
         return;
       }
     }
+
     window.open(`/api/bids/package?bid_id=${bidId}`, "_blank");
   }
 
   return (
     <div className="space-y-4">
-      {/* Risk flags banner */}
-      {riskFlags.length > 0 && !riskDismissed && (
+      {riskFlags.length > 0 && !riskDismissed ? (
         <div className="relative rounded-xl border border-red-200 bg-red-50 p-4 shadow-sm">
           <button
             onClick={() => setRiskDismissed(true)}
-            className="absolute right-3 top-3 text-red-400 hover:text-red-600 transition-colors"
+            className="absolute right-3 top-3 text-red-400 transition-colors hover:text-red-600"
           >
             <X className="size-4" />
           </button>
@@ -106,13 +112,11 @@ export function TopBar({
               <AlertTriangle className="size-4 text-red-600" />
             </div>
             <div>
-              <p className="font-bold text-red-900">
-                Upozorenja za diskvalifikaciju
-              </p>
+              <p className="font-bold text-red-900">Upozorenja za diskvalifikaciju</p>
               <ul className="mt-2 space-y-1">
-                {riskFlags.map((flag, i) => (
-                  <li key={i} className="text-sm text-red-700 flex items-start gap-2">
-                    <span className="block mt-1.5 size-1 rounded-full bg-red-400 shrink-0" />
+                {riskFlags.map((flag, index) => (
+                  <li key={index} className="flex items-start gap-2 text-sm text-red-700">
+                    <span className="mt-1.5 block size-1 shrink-0 rounded-full bg-red-400" />
                     {flag}
                   </li>
                 ))}
@@ -120,46 +124,45 @@ export function TopBar({
             </div>
           </div>
         </div>
-      )}
+      ) : null}
 
-      {/* Top bar */}
       <div className="flex flex-col gap-4 rounded-[1.5rem] border border-slate-100 bg-white p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0 flex-1">
           <div className="flex items-start gap-3">
-            <Link href="/dashboard/bids">
-              <Button variant="ghost" size="icon" className="shrink-0 text-slate-400 hover:text-slate-900 hover:bg-slate-50 -ml-2 rounded-xl">
+            <Link href={backHref}>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="-ml-2 shrink-0 rounded-xl text-slate-400 hover:bg-slate-50 hover:text-slate-900"
+              >
                 <ArrowLeft className="size-5" />
               </Button>
             </Link>
             <div className="min-w-0 space-y-1">
-              <h2 className="truncate text-xl font-heading font-bold text-slate-900 leading-tight" title={tenderTitle}>
+              <h2 className="truncate font-heading text-xl font-bold leading-tight text-slate-900" title={tenderTitle}>
                 {tenderTitle}
               </h2>
-              {contractingAuthority && (
+              {contractingAuthority ? (
                 <div className="flex items-center gap-1.5 text-sm font-medium text-slate-500">
                   <Building2 className="size-3.5" />
-                  <p className="truncate">
-                    {contractingAuthority}
-                  </p>
+                  <p className="truncate">{contractingAuthority}</p>
                 </div>
-              )}
+              ) : null}
             </div>
           </div>
         </div>
 
-        <div className="flex shrink-0 flex-col sm:flex-row items-stretch sm:items-center gap-3">
+        <div className="flex shrink-0 flex-col items-stretch gap-3 sm:flex-row sm:items-center">
           <Select value={currentStatus} onValueChange={handleStatusChange}>
-            <SelectTrigger className="w-full sm:w-[180px] h-10 rounded-xl border-slate-200 bg-slate-50/50 font-medium focus:ring-primary focus:border-primary">
+            <SelectTrigger className="h-10 w-full rounded-xl border-slate-200 bg-slate-50/50 font-medium focus:border-primary focus:ring-primary sm:w-[180px]">
               <SelectValue />
             </SelectTrigger>
             <SelectContent className="rounded-xl border-slate-200 shadow-lg">
-              {BID_STATUSES.map((s) => (
-                <SelectItem key={s} value={s} className="cursor-pointer rounded-lg focus:bg-slate-50">
+              {BID_STATUSES.map((status) => (
+                <SelectItem key={status} value={status} className="cursor-pointer rounded-lg focus:bg-slate-50">
                   <span className="inline-flex items-center gap-2">
-                    <span
-                      className={`inline-block size-2 rounded-full ${STATUS_COLORS[s] || "bg-slate-400"}`}
-                    />
-                    {BID_STATUS_LABELS[s]}
+                    <span className={`inline-block size-2 rounded-full ${STATUS_COLORS[status] || "bg-slate-400"}`} />
+                    {BID_STATUS_LABELS[status]}
                   </span>
                 </SelectItem>
               ))}
@@ -171,25 +174,21 @@ export function TopBar({
               size="sm"
               onClick={handleDownload}
               disabled={deleting}
-              className="h-10 rounded-xl bg-blue-600 text-white hover:bg-blue-700 shadow-md shadow-blue-500/20 font-bold flex-1 sm:flex-none"
+              className="h-10 flex-1 rounded-xl bg-blue-600 font-bold text-white shadow-md shadow-blue-500/20 sm:flex-none"
             >
               <Download className="mr-2 size-4" />
               Preuzmi
             </Button>
-            
+
             <Button
               variant="outline"
               size="sm"
               onClick={handleDelete}
               disabled={deleting}
-              className="h-10 rounded-xl border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 font-bold flex-1 sm:flex-none"
-              title="Obriši ponudu"
+              className="h-10 flex-1 rounded-xl border-red-200 font-bold text-red-600 hover:bg-red-50 hover:text-red-700 sm:flex-none"
+              title="Obrisi ponudu"
             >
-              {deleting ? (
-                <Loader2 className="size-4 animate-spin" />
-              ) : (
-                <Trash2 className="size-4" />
-              )}
+              {deleting ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
             </Button>
           </div>
         </div>

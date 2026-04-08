@@ -24,11 +24,16 @@ interface Tender {
 
 interface NewBidModalProps {
   tenders: Tender[];
+  agencyClientId?: string;
+  bidPathBase?: string;
 }
 
-export function NewBidModal({ tenders }: NewBidModalProps) {
+export function NewBidModal({
+  tenders,
+  agencyClientId,
+  bidPathBase = "/dashboard/bids",
+}: NewBidModalProps) {
   const router = useRouter();
-
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [selectedTender, setSelectedTender] = useState<Tender | null>(null);
@@ -38,8 +43,8 @@ export function NewBidModal({ tenders }: NewBidModalProps) {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const filteredTenders = tenders.filter((t) =>
-    t.title.toLowerCase().includes(search.toLowerCase())
+  const filteredTenders = tenders.filter((tender) =>
+    tender.title.toLowerCase().includes(search.toLowerCase()),
   );
 
   function resetForm() {
@@ -57,7 +62,7 @@ export function NewBidModal({ tenders }: NewBidModalProps) {
     setError(null);
 
     if (!selectedTender && !manualTitle.trim()) {
-      setError("Odaberite tender ili unesite naziv ručno.");
+      setError("Odaberite tender ili unesite naziv rucno.");
       return;
     }
 
@@ -71,22 +76,29 @@ export function NewBidModal({ tenders }: NewBidModalProps) {
           tender_id: selectedTender?.id || null,
           tender_title: isManual ? manualTitle.trim() : null,
           contracting_authority: isManual ? manualAuthority.trim() : null,
+          agency_client_id: agencyClientId ?? null,
         }),
       });
 
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.error || "Greška pri kreiranju ponude.");
+        setError(data.error || "Greska pri kreiranju ponude.");
         setLoading(false);
         return;
       }
 
       resetForm();
       setOpen(false);
+
+      if (data.bid?.id) {
+        router.push(`${bidPathBase}/${data.bid.id}`);
+        return;
+      }
+
       router.refresh();
     } catch {
-      setError("Greška pri kreiranju ponude.");
+      setError("Greska pri kreiranju ponude.");
       setLoading(false);
     }
   }
@@ -94,25 +106,25 @@ export function NewBidModal({ tenders }: NewBidModalProps) {
   return (
     <Dialog
       open={open}
-      onOpenChange={(val) => {
-        setOpen(val);
-        if (!val) resetForm();
+      onOpenChange={(value) => {
+        setOpen(value);
+        if (!value) resetForm();
       }}
     >
       <DialogTrigger asChild>
-        <Button className="rounded-xl bg-primary text-white shadow-lg shadow-blue-500/30 hover:bg-blue-700 hover:shadow-blue-500/40 hover:-translate-y-0.5 transition-all font-bold px-6 h-11">
+        <Button className="h-11 rounded-xl bg-primary px-6 font-bold text-white shadow-lg shadow-blue-500/30 transition-all hover:-translate-y-0.5 hover:bg-blue-700 hover:shadow-blue-500/40">
           <Plus className="mr-2 size-4" />
           Nova ponuda
         </Button>
       </DialogTrigger>
-      <DialogContent className="rounded-2xl border-none shadow-2xl sm:max-w-lg bg-white p-0 overflow-hidden">
-        <DialogHeader className="px-6 pt-6 pb-4 border-b border-slate-100 bg-slate-50/50">
-          <div className="flex items-center gap-3 mb-1">
+      <DialogContent className="overflow-hidden rounded-2xl border-none bg-white p-0 shadow-2xl sm:max-w-lg">
+        <DialogHeader className="border-b border-slate-100 bg-slate-50/50 px-6 pb-4 pt-6">
+          <div className="mb-1 flex items-center gap-3">
             <div className="flex size-10 items-center justify-center rounded-xl bg-blue-100 text-primary">
               <Briefcase className="size-5" />
             </div>
             <div>
-              <DialogTitle className="text-xl font-heading font-bold text-slate-900">Nova ponuda</DialogTitle>
+              <DialogTitle className="font-heading text-xl font-bold text-slate-900">Nova ponuda</DialogTitle>
               <DialogDescription className="text-slate-500">
                 Otvorite novu pripremu ponude.
               </DialogDescription>
@@ -120,20 +132,19 @@ export function NewBidModal({ tenders }: NewBidModalProps) {
           </div>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-5">
-          {error && (
-            <div className="rounded-xl bg-red-50 p-4 text-sm font-medium text-red-600 border border-red-100">
+        <form onSubmit={handleSubmit} className="space-y-5 p-6">
+          {error ? (
+            <div className="rounded-xl border border-red-100 bg-red-50 p-4 text-sm font-medium text-red-600">
               {error}
             </div>
-          )}
+          ) : null}
 
           {!isManual ? (
             <>
-              {/* Pretraga tendera */}
               <div className="space-y-2">
-                <Label className="text-sm font-bold text-slate-700">Pretraži tendere</Label>
-                <div className="relative group">
-                  <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors" />
+                <Label className="text-sm font-bold text-slate-700">Pretrazi tendere</Label>
+                <div className="group relative">
+                  <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400 transition-colors group-focus-within:text-primary" />
                   <Input
                     type="text"
                     placeholder="Unesite naziv tendera..."
@@ -143,18 +154,17 @@ export function NewBidModal({ tenders }: NewBidModalProps) {
                       setSelectedTender(null);
                     }}
                     disabled={loading}
-                    className="h-11 rounded-xl border-slate-200 bg-white pl-10 text-sm focus-visible:ring-primary focus-visible:border-primary transition-all"
+                    className="h-11 rounded-xl border-slate-200 bg-white pl-10 text-sm transition-all focus-visible:border-primary focus-visible:ring-primary"
                   />
                 </div>
               </div>
 
-              {/* Lista tendera */}
-              {search.length > 0 && !selectedTender && (
-                <div className="max-h-60 space-y-1 overflow-y-auto rounded-xl border border-slate-200 bg-slate-50/50 p-2 custom-scrollbar">
+              {search.length > 0 && !selectedTender ? (
+                <div className="custom-scrollbar max-h-60 space-y-1 overflow-y-auto rounded-xl border border-slate-200 bg-slate-50/50 p-2">
                   {filteredTenders.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-6 text-center">
                       <p className="text-sm font-medium text-slate-900">Nema rezultata</p>
-                      <p className="text-xs text-slate-500 mt-1">Pokušajte sa drugim nazivom ili unesite ručno.</p>
+                      <p className="mt-1 text-xs text-slate-500">Pokusajte sa drugim nazivom ili unesite rucno.</p>
                     </div>
                   ) : (
                     filteredTenders.slice(0, 20).map((tender) => (
@@ -165,54 +175,51 @@ export function NewBidModal({ tenders }: NewBidModalProps) {
                           setSelectedTender(tender);
                           setSearch(tender.title);
                         }}
-                        className="w-full rounded-lg px-3 py-2.5 text-left text-sm transition-colors hover:bg-white hover:shadow-sm hover:text-primary group"
+                        className="group w-full rounded-lg px-3 py-2.5 text-left text-sm transition-colors hover:bg-white hover:text-primary hover:shadow-sm"
                       >
                         <p className="font-bold text-slate-700 group-hover:text-primary">{tender.title}</p>
-                        {tender.contracting_authority && (
-                          <p className="text-xs text-slate-500 mt-0.5">
-                            {tender.contracting_authority}
-                          </p>
-                        )}
+                        {tender.contracting_authority ? (
+                          <p className="mt-0.5 text-xs text-slate-500">{tender.contracting_authority}</p>
+                        ) : null}
                       </button>
                     ))
                   )}
                 </div>
-              )}
+              ) : null}
 
-              {selectedTender && (
+              {selectedTender ? (
                 <div className="rounded-xl border border-blue-200 bg-blue-50 p-4">
-                  <p className="text-xs font-bold uppercase tracking-wider text-blue-500 mb-1">Odabrani tender</p>
-                  <p className="text-sm font-bold text-blue-900">
-                    {selectedTender.title}
-                  </p>
-                  <button 
-                    type="button" 
+                  <p className="mb-1 text-xs font-bold uppercase tracking-wider text-blue-500">Odabrani tender</p>
+                  <p className="text-sm font-bold text-blue-900">{selectedTender.title}</p>
+                  <button
+                    type="button"
                     onClick={() => {
                       setSelectedTender(null);
                       setSearch("");
                     }}
-                    className="text-xs font-medium text-blue-600 hover:text-blue-800 hover:underline mt-2"
+                    className="mt-2 text-xs font-medium text-blue-600 transition-colors hover:text-blue-800 hover:underline"
                   >
                     Promijeni
                   </button>
                 </div>
-              )}
+              ) : null}
 
-              <div className="text-center pt-2">
+              <div className="pt-2 text-center">
                 <button
                   type="button"
                   onClick={() => setIsManual(true)}
-                  className="text-sm font-medium text-slate-500 hover:text-primary hover:underline transition-colors"
+                  className="text-sm font-medium text-slate-500 transition-colors hover:text-primary hover:underline"
                 >
-                  Tender nije u bazi? Unesite ručno
+                  Tender nije u bazi? Unesite rucno
                 </button>
               </div>
             </>
           ) : (
             <>
-              {/* Ručni unos */}
               <div className="space-y-2">
-                <Label htmlFor="manual-title" className="text-sm font-bold text-slate-700">Naziv tendera <span className="text-red-500">*</span></Label>
+                <Label htmlFor="manual-title" className="text-sm font-bold text-slate-700">
+                  Naziv tendera <span className="text-red-500">*</span>
+                </Label>
                 <Input
                   id="manual-title"
                   type="text"
@@ -221,12 +228,14 @@ export function NewBidModal({ tenders }: NewBidModalProps) {
                   onChange={(e) => setManualTitle(e.target.value)}
                   required
                   disabled={loading}
-                  className="h-11 rounded-xl border-slate-200 bg-white px-4 text-sm focus-visible:ring-primary focus-visible:border-primary transition-all"
+                  className="h-11 rounded-xl border-slate-200 bg-white px-4 text-sm transition-all focus-visible:border-primary focus-visible:ring-primary"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="manual-authority" className="text-sm font-bold text-slate-700">Naručilac</Label>
+                <Label htmlFor="manual-authority" className="text-sm font-bold text-slate-700">
+                  Narucilac
+                </Label>
                 <Input
                   id="manual-authority"
                   type="text"
@@ -234,7 +243,7 @@ export function NewBidModal({ tenders }: NewBidModalProps) {
                   value={manualAuthority}
                   onChange={(e) => setManualAuthority(e.target.value)}
                   disabled={loading}
-                  className="h-11 rounded-xl border-slate-200 bg-white px-4 text-sm focus-visible:ring-primary focus-visible:border-primary transition-all"
+                  className="h-11 rounded-xl border-slate-200 bg-white px-4 text-sm transition-all focus-visible:border-primary focus-visible:ring-primary"
                 />
               </div>
 
@@ -246,7 +255,7 @@ export function NewBidModal({ tenders }: NewBidModalProps) {
                     setManualTitle("");
                     setManualAuthority("");
                   }}
-                  className="flex items-center gap-1 text-sm font-medium text-slate-500 hover:text-primary transition-colors"
+                  className="flex items-center gap-1 text-sm font-medium text-slate-500 transition-colors hover:text-primary"
                 >
                   <ArrowLeft className="size-3" />
                   Nazad na pretragu tendera
@@ -261,16 +270,16 @@ export function NewBidModal({ tenders }: NewBidModalProps) {
               variant="outline"
               onClick={() => setOpen(false)}
               disabled={loading}
-              className="h-11 rounded-xl border-slate-200 text-slate-700 hover:bg-slate-50 font-bold px-6"
+              className="h-11 rounded-xl border-slate-200 px-6 font-bold text-slate-700 hover:bg-slate-50"
             >
               Odustani
             </Button>
-            <Button 
-              type="submit" 
+            <Button
+              type="submit"
               disabled={loading}
-              className="h-11 rounded-xl bg-primary text-white hover:bg-blue-700 shadow-lg shadow-blue-500/20 hover:shadow-blue-500/30 transition-all font-bold px-8"
+              className="h-11 rounded-xl bg-primary px-8 font-bold text-white shadow-lg shadow-blue-500/20 transition-all hover:bg-blue-700 hover:shadow-blue-500/30"
             >
-              {loading && <Loader2 className="mr-2 size-4 animate-spin" />}
+              {loading ? <Loader2 className="mr-2 size-4 animate-spin" /> : null}
               Kreiraj ponudu
             </Button>
           </DialogFooter>

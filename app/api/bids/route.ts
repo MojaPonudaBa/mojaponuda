@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { resolveManagedCompanyAccess } from "@/lib/bids/access";
 import { ensureBidChecklist } from "@/lib/bids/checklist";
 import { getSubscriptionStatus } from "@/lib/subscription";
 import type { Tender } from "@/types/database";
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
-
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -16,7 +16,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Niste prijavljeni." }, { status: 401 });
   }
 
-  // Check subscription limits
   const { isSubscribed, plan } = await getSubscriptionStatus(user.id, user.email);
 
   if (!isSubscribed) {
@@ -26,64 +25,61 @@ export async function POST(request: NextRequest) {
         code: "SUBSCRIPTION_REQUIRED",
         upgradeRequired: true,
       },
-      { status: 403 }
-    );
-  }
-
-  const { data: company } = await supabase
-    .from("companies")
-    .select("id")
-    .eq("user_id", user.id)
-    .single();
-
-  if (!company) {
-    return NextResponse.json({ error: "Firma nije pronađena." }, { status: 403 });
-  }
-
-  // Count active bids
-  const { count: activeBidsCount, error: countError } = await supabase
-    .from("bids")
-    .select("*", { count: "exact", head: true })
-    .eq("company_id", company.id)
-    .in("status", ["draft", "in_review", "submitted"]);
-
-  if (countError) {
-    console.error("Error counting bids:", countError);
-    return NextResponse.json(
-      { error: "Greška pri provjeri limita." },
-      { status: 500 }
-    );
-  }
-
-  if ((activeBidsCount || 0) >= plan.limits.maxActiveTenders) {
-    return NextResponse.json(
-      { 
-        error: "Dostigli ste limit aktivnih tendera za vaš paket.",
-        code: "LIMIT_REACHED",
-        limit: plan.limits.maxActiveTenders,
-        current: activeBidsCount,
-        upgradeRequired: true
-      },
-      { status: 403 }
+      { status: 403 },
     );
   }
 
   const body = await request.json();
-  const { tender_id, tender_title, contracting_authority, auto_generate_checklist } = body;
+  const {
+    tender_id,
+    tender_title,
+    contracting_authority,
+    auto_generate_checklist,
+    agency_client_id,
+  } = body;
+
+  const access = await resolveManagedCompanyAccess(
+    supabase,
+    user.id,
+    typeof agency_client_id === "string" ? agency_client_id : null,
+  );
+
+  if (!access) {
+    return NextResponse.json({ error: "Firma nije pronađena." }, { status: 403 });
+  }
+
+  const { count: activeBidsCount, error: countError } = await supabase
+    .from("bids")
+    .select("*", { count: "exact", head: true })
+    .eq("company_id", access.companyId)
+    .in("status", ["draft", "in_review", "submitted"]);
+
+  if (countError) {
+    console.error("Error counting bids:", countError);
+    return NextResponse.json({ error: "Greška pri provjeri limita." }, { status: 500 });
+  }
+
+  if ((activeBidsCount || 0) >= plan.limits.maxActiveTenders) {
+    return NextResponse.json(
+      {
+        error: "Dostigli ste limit aktivnih tendera za vaš paket.",
+        code: "LIMIT_REACHED",
+        limit: plan.limits.maxActiveTenders,
+        current: activeBidsCount,
+        upgradeRequired: true,
+      },
+      { status: 403 },
+    );
+  }
 
   if (!tender_id && !tender_title) {
-    return NextResponse.json(
-      { error: "Unesite tender ili naziv tendera." },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "Unesite tender ili naziv tendera." }, { status: 400 });
   }
 
   let resolvedTenderId = tender_id;
 
-  // Ako nema tender_id, kreiraj tender ručno
   if (!resolvedTenderId && tender_title) {
     const portalId = `manual_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-
     const supabaseAdmin = createAdminClient();
 
     const { data: newTender, error: tenderError } = await supabaseAdmin
@@ -99,23 +95,16 @@ export async function POST(request: NextRequest) {
 
     if (tenderError) {
       console.error("Tender create error:", tenderError);
-      return NextResponse.json(
-        { error: "Greška pri kreiranju tendera." },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: "Greška pri kreiranju tendera." }, { status: 500 });
     }
 
     resolvedTenderId = newTender.id;
   }
 
   if (!resolvedTenderId) {
-    return NextResponse.json(
-      { error: "Tender nije pronađen." },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "Tender nije pronađen." }, { status: 400 });
   }
 
-  // Pay-per-tender: Gating logika za Starter plan
   if (plan.id === "starter") {
     const { data: unlockedTender } = await supabase
       .from("unlocked_tenders")
@@ -132,7 +121,7 @@ export async function POST(request: NextRequest) {
           code: "PAYWALL_REQUIRED",
           tenderId: resolvedTenderId,
         },
-        { status: 403 }
+        { status: 403 },
       );
     }
   }
@@ -144,19 +133,15 @@ export async function POST(request: NextRequest) {
     .single();
 
   if (tenderError || !tenderData) {
-    return NextResponse.json(
-      { error: "Tender nije pronađen." },
-      { status: 404 }
-    );
+    return NextResponse.json({ error: "Tender nije pronađen." }, { status: 404 });
   }
 
   const tender = tenderData as Tender;
 
-  // Kreiraj ponudu
   const { data: bid, error: bidError } = await supabase
     .from("bids")
     .insert({
-      company_id: company.id,
+      company_id: access.companyId,
       tender_id: resolvedTenderId,
       status: "draft",
     })
@@ -165,16 +150,13 @@ export async function POST(request: NextRequest) {
 
   if (bidError) {
     console.error("Bid create error:", bidError);
-    return NextResponse.json(
-      { error: "Greška pri kreiranju ponude." },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Greška pri kreiranju ponude." }, { status: 500 });
   }
 
   if (auto_generate_checklist) {
     const checklist = await ensureBidChecklist({
       bidId: bid.id,
-      companyId: company.id,
+      companyId: access.companyId,
       tender,
       allowAI: isSubscribed && (plan.limits.features.advancedAnalysis || plan.id === "starter"),
     });
@@ -186,7 +168,7 @@ export async function POST(request: NextRequest) {
         auto_attached: checklist.autoAttached,
         checklist_source: checklist.source,
       },
-      { status: 201 }
+      { status: 201 },
     );
   }
 

@@ -13,13 +13,14 @@ import {
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
+import { StartBidButton } from "@/components/tenders/start-bid-button";
 import { getOpenAIClient } from "@/lib/openai";
 import { getSubscriptionStatus } from "@/lib/subscription";
 import { createClient } from "@/lib/supabase/server";
 import type { Tender } from "@/types/database";
 
 function formatDate(dateStr: string | null): string {
-  if (!dateStr) return "—";
+  if (!dateStr) return "-";
   return new Date(dateStr).toLocaleDateString("bs-BA", {
     day: "2-digit",
     month: "2-digit",
@@ -29,9 +30,7 @@ function formatDate(dateStr: string | null): string {
 
 function getDeadlineColor(deadline: string | null): string {
   if (!deadline) return "text-slate-500";
-  const diffDays = Math.ceil(
-    (new Date(deadline).getTime() - Date.now()) / (1000 * 60 * 60 * 24),
-  );
+  const diffDays = Math.ceil((new Date(deadline).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
   if (diffDays < 0) return "text-slate-400 line-through";
   if (diffDays <= 7) return "rounded-full bg-red-50 px-2 py-0.5 font-bold text-red-600";
   return "rounded-full bg-emerald-50 px-2 py-0.5 font-bold text-emerald-700";
@@ -46,12 +45,12 @@ async function generateAiDescription(
   try {
     const openai = getOpenAIClient();
     const prompt = [
-      "Napiši kratki, informativan opis javne nabavke na bosanskom jeziku (2-3 rečenice).",
+      "Napisi kratki, informativan opis javne nabavke na bosanskom jeziku (2-3 recenice).",
       `Naslov nabavke: ${title}`,
-      authority ? `Naručilac: ${authority}` : null,
+      authority ? `Narucilac: ${authority}` : null,
       contractType ? `Vrsta ugovora: ${contractType}` : null,
       procedureType ? `Vrsta procedure: ${procedureType}` : null,
-      "Opis treba biti konkretan i opisivati šta se tenderom nabavlja, bez ponavljanja naslova doslovno.",
+      "Opis treba biti konkretan i opisivati sta se tenderom nabavlja, bez ponavljanja naslova doslovno.",
     ]
       .filter(Boolean)
       .join("\n");
@@ -76,7 +75,6 @@ export default async function AgencyClientTenderDetailPage({
 }) {
   const { id: agencyClientId, tenderId } = await params;
   const supabase = await createClient();
-
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -137,7 +135,6 @@ export default async function AgencyClientTenderDetailPage({
   if (tender.contracting_authority_jib) {
     const awards = awardsResult.data ?? [];
     const awardCount = awardsResult.count ?? 0;
-
     const discounts = awards
       .map((row) => (row as { discount_pct: number | null }).discount_pct)
       .filter((value): value is number => value !== null && value !== undefined && !Number.isNaN(value));
@@ -194,8 +191,8 @@ export default async function AgencyClientTenderDetailPage({
         <div className="grid gap-6 border-t border-slate-50 pt-6 sm:grid-cols-3">
           <InfoItem
             icon={<Building2 className="size-4" />}
-            label="Naručilac"
-            value={tender.contracting_authority || "—"}
+            label="Narucilac"
+            value={tender.contracting_authority || "-"}
             subValue={tender.contracting_authority_jib ? `ID: ${tender.contracting_authority_jib}` : undefined}
           />
           <InfoItem
@@ -207,7 +204,7 @@ export default async function AgencyClientTenderDetailPage({
           <InfoItem
             icon={<Briefcase className="size-4" />}
             label="Procedura"
-            value={tender.procedure_type || "—"}
+            value={tender.procedure_type || "-"}
           />
         </div>
       </div>
@@ -219,18 +216,18 @@ export default async function AgencyClientTenderDetailPage({
               {existingBidId ? "Nastavite pripremu ponude" : "Pripremite ponudu profesionalno"}
             </p>
             <p className="mt-2 text-base leading-relaxed text-slate-400">
-              Odmah dobijete početnu listu koraka, dokumenata i zahtjeva za klijenta {company.name}, bez ručnog sastavljanja.
+              Odmah dobijete pocetnu listu koraka, dokumenata i zahtjeva za klijenta {company.name}, bez rucnog sastavljanja.
             </p>
           </div>
           <div className="flex-shrink-0 sm:pl-8">
-            <Button
-              asChild
+            <StartBidButton
+              tenderId={tenderId}
+              existingBidId={existingBidId}
+              agencyClientId={agencyClientId}
+              bidPathBase={`${clientBase}/bids`}
+              isSubscribed={true}
               className="h-14 w-full rounded-2xl bg-blue-500 px-8 text-base font-bold text-white shadow-xl shadow-blue-500/20 transition-all hover:-translate-y-0.5 hover:bg-blue-400 hover:shadow-blue-500/30 sm:w-auto"
-            >
-              <Link href={`${clientBase}/bids`}>
-                {existingBidId ? "Otvori postojeću ponudu" : "Započni pripremu ponude"}
-              </Link>
-            </Button>
+            />
           </div>
         </div>
       </div>
@@ -257,16 +254,16 @@ export default async function AgencyClientTenderDetailPage({
           )}
 
           <div className="rounded-[1.5rem] border border-slate-100 bg-white p-6 shadow-sm">
-            <h3 className="mb-4 text-base font-bold text-slate-900">Šta dobijate odmah</h3>
+            <h3 className="mb-4 text-base font-bold text-slate-900">Sta dobijate odmah</h3>
             <div className="grid gap-3 text-sm text-slate-600 sm:grid-cols-3">
               <div className="rounded-xl border border-slate-100 bg-slate-50 p-3">
-                Početnu listu dokumentacije bez dodatnog ručnog sastavljanja.
+                Pocetnu listu dokumentacije bez dodatnog rucnog sastavljanja.
               </div>
               <div className="rounded-xl border border-slate-100 bg-slate-50 p-3">
-                Povezivanje postojećih dokumenata kada već imate nešto spremno.
+                Povezivanje postojecih dokumenata kada vec imate nesto spremno.
               </div>
               <div className="rounded-xl border border-slate-100 bg-slate-50 p-3">
-                Prostor za rad i završnu provjeru prije predaje ponude.
+                Prostor za rad i zavrsnu provjeru prije predaje ponude.
               </div>
             </div>
           </div>
@@ -277,7 +274,7 @@ export default async function AgencyClientTenderDetailPage({
             <div className="rounded-[1.5rem] border border-slate-100 bg-white p-6 shadow-sm">
               <h3 className="mb-5 flex items-center gap-2 text-lg font-heading font-bold text-slate-900">
                 <BarChart3 className="size-5 text-slate-400" />
-                Historijat naručioca
+                Historijat narucioca
               </h3>
               <div className="space-y-3">
                 <StatRow
@@ -294,7 +291,7 @@ export default async function AgencyClientTenderDetailPage({
               {authorityStats.avgDiscount !== null && authorityStats.totalAwards > 0 ? (
                 <div className="mt-4 border-t border-slate-100 pt-4">
                   <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-500">
-                    Prosječni popust pobjednika
+                    Prosjecni popust pobjednika
                   </p>
                   <div className="flex items-baseline gap-2">
                     <span className="text-3xl font-heading font-bold text-slate-900">
@@ -302,9 +299,7 @@ export default async function AgencyClientTenderDetailPage({
                     </span>
                     <span className="text-xs text-slate-500">ispod procijenjene</span>
                   </div>
-                  <p className="mt-1 text-xs text-slate-400">
-                    Na osnovu {authorityStats.totalAwards} dodjela
-                  </p>
+                  <p className="mt-1 text-xs text-slate-400">Na osnovu {authorityStats.totalAwards} dodjela</p>
                 </div>
               ) : null}
             </div>
@@ -367,9 +362,7 @@ function StatRow({
   return (
     <div className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50 p-3">
       <div className="flex items-center gap-3">
-        <div className="flex size-8 items-center justify-center rounded-lg bg-white shadow-sm">
-          {icon}
-        </div>
+        <div className="flex size-8 items-center justify-center rounded-lg bg-white shadow-sm">{icon}</div>
         <span className="text-sm font-medium text-slate-700">{label}</span>
       </div>
       <span className="text-lg font-bold text-slate-900">{value}</span>

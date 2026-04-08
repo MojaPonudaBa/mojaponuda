@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { resolveBidAccess } from "@/lib/bids/access";
 import type { Bid, Tender, Company, Document } from "@/types/database";
 import AdmZip from "adm-zip";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 
 function formatDate(dateStr: string | null): string {
-  if (!dateStr) return "—";
+  if (!dateStr) return "-";
   return new Date(dateStr).toLocaleDateString("bs-BA", {
     day: "2-digit",
     month: "2-digit",
@@ -31,7 +32,11 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Niste prijavljeni." }, { status: 401 });
   }
 
-  // 1. Fetch data
+  const access = await resolveBidAccess(supabase, user.id, bidId);
+  if (!access) {
+    return NextResponse.json({ error: "Nemate pravo pristupa ovoj ponudi." }, { status: 403 });
+  }
+
   const { data: bidData, error: bidError } = await supabase
     .from("bids")
     .select("*, tenders(*), companies(*)")
@@ -39,16 +44,15 @@ export async function GET(request: NextRequest) {
     .single();
 
   if (bidError || !bidData) {
-    return NextResponse.json({ error: "Ponuda nije pronađena." }, { status: 404 });
+    return NextResponse.json({ error: "Ponuda nije pronadjena." }, { status: 404 });
   }
 
-  const bid = bidData as unknown as Bid & { tenders: Tender; companies: Company };
+  const bid = bidData as Bid & { tenders: Tender; companies: Company };
 
-  if (bid.companies.user_id !== user.id) {
+  if (bid.company_id !== access.companyId) {
     return NextResponse.json({ error: "Nemate pravo pristupa ovoj ponudi." }, { status: 403 });
   }
 
-  // Fetch attached documents
   const { data: bidDocsData } = await supabase
     .from("bid_documents")
     .select("*, documents(*)")
@@ -72,22 +76,17 @@ export async function GET(request: NextRequest) {
     ];
   });
 
-  // 2. Prepare ZIP
   const zip = new AdmZip();
-
-  // 3. Add Cover Sheet PDF
   const coverSheet = new jsPDF();
-  
-  // Header
+
   coverSheet.setFontSize(20);
   coverSheet.setFont("helvetica", "bold");
   coverSheet.text("Propratni akt ponude", 105, 20, { align: "center" });
-  
+
   coverSheet.setFontSize(12);
   coverSheet.setFont("helvetica", "normal");
   coverSheet.text(`Datum: ${new Date().toLocaleDateString("bs-BA")}`, 105, 30, { align: "center" });
 
-  // Tender Info
   coverSheet.setFillColor(240, 240, 240);
   coverSheet.rect(15, 40, 180, 10, "F");
   coverSheet.setFontSize(11);
@@ -97,20 +96,19 @@ export async function GET(request: NextRequest) {
   coverSheet.setFontSize(10);
   coverSheet.setFont("helvetica", "normal");
   coverSheet.text(`Naziv: ${bid.tenders.title}`, 20, 58, { maxWidth: 170 });
-  
+
   let yPos = 58 + coverSheet.getTextDimensions(bid.tenders.title, { maxWidth: 170 }).h + 5;
-  
-  coverSheet.text(`Naručilac: ${bid.tenders.contracting_authority || "—"}`, 20, yPos);
+
+  coverSheet.text(`Narucilac: ${bid.tenders.contracting_authority || "-"}`, 20, yPos);
   yPos += 6;
   coverSheet.text(`Rok za dostavu: ${formatDate(bid.tenders.deadline)}`, 20, yPos);
   yPos += 10;
 
-  // Company Info
   coverSheet.setFillColor(240, 240, 240);
   coverSheet.rect(15, yPos, 180, 10, "F");
   coverSheet.setFont("helvetica", "bold");
   coverSheet.setFontSize(11);
-  coverSheet.text("Podaci o ponuđaču", 20, yPos + 6);
+  coverSheet.text("Podaci o ponudjacu", 20, yPos + 6);
   yPos += 15;
 
   coverSheet.setFont("helvetica", "normal");
@@ -119,19 +117,18 @@ export async function GET(request: NextRequest) {
   yPos += 6;
   coverSheet.text(`JIB: ${bid.companies.jib}`, 20, yPos);
   yPos += 6;
-  coverSheet.text(`Adresa: ${bid.companies.address || "—"}`, 20, yPos);
+  coverSheet.text(`Adresa: ${bid.companies.address || "-"}`, 20, yPos);
   yPos += 12;
 
-  // Documents Table
   coverSheet.setFont("helvetica", "bold");
-  coverSheet.text("Sadržaj paketa:", 20, yPos);
+  coverSheet.text("Sadrzaj paketa:", 20, yPos);
   yPos += 5;
 
-  const tableData = attachedDocs.map((doc, idx) => [
-    (idx + 1).toString(),
+  const tableData = attachedDocs.map((doc, index) => [
+    (index + 1).toString(),
     doc.name,
-    doc.type || "—",
-    formatDate(doc.expires_at)
+    doc.type || "-",
+    formatDate(doc.expires_at),
   ]);
 
   autoTable(coverSheet, {
@@ -146,14 +143,10 @@ export async function GET(request: NextRequest) {
   const pdfBuffer = Buffer.from(coverSheet.output("arraybuffer"));
   zip.addFile("00_Propratni_list.pdf", pdfBuffer);
 
-  // 4. Download and add files from Storage
-  // Organize by folders if needed, or flat list with prefixes
-  
-  for (let i = 0; i < attachedDocs.length; i++) {
-    const doc = attachedDocs[i];
-    const prefix = (i + 1).toString().padStart(2, "0");
+  for (let index = 0; index < attachedDocs.length; index += 1) {
+    const doc = attachedDocs[index];
+    const prefix = (index + 1).toString().padStart(2, "0");
     const safeName = doc.name.replace(/[^a-zA-Z0-9.-]/g, "_");
-    // Ensure extension
     const ext = doc.file_path.split(".").pop() || "pdf";
     const fileName = `${prefix}_${safeName}.${ext}`;
 
@@ -164,10 +157,9 @@ export async function GET(request: NextRequest) {
 
       if (downloadError) {
         console.error(`Failed to download ${doc.name}:`, downloadError);
-        // Add a text file explaining the error
         zip.addFile(
-          `${prefix}_ERROR_${safeName}.txt`, 
-          Buffer.from(`Nije uspjelo preuzimanje fajla: ${doc.file_path}\nGreška: ${downloadError.message}`)
+          `${prefix}_ERROR_${safeName}.txt`,
+          Buffer.from(`Nije uspjelo preuzimanje fajla: ${doc.file_path}\nGreska: ${downloadError.message}`),
         );
         continue;
       }
@@ -181,9 +173,7 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  // 5. Generate ZIP buffer
   const zipBuffer = zip.toBuffer();
-  
   const zipFilename = `ponuda_${bid.companies.name.replace(/[^a-zA-Z0-9]/g, "")}_${new Date().toISOString().slice(0, 10)}.zip`;
 
   return new NextResponse(zipBuffer as unknown as BodyInit, {

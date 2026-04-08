@@ -78,10 +78,17 @@ export default async function AgencyClientBidsPage({
             Sve ponude ovog klijenta na jednom mjestu.
           </p>
         </div>
-        <NewBidModal tenders={tenders} />
+        <NewBidModal
+          tenders={tenders}
+          agencyClientId={id}
+          bidPathBase={`/dashboard/agency/clients/${id}/bids`}
+        />
       </div>
 
-      <BidsTable bids={bids} />
+      <BidsTable
+        bids={bids}
+        getBidHref={(bid) => `/dashboard/agency/clients/${id}/bids/${bid.id}`}
+      />
     </div>
   );
 }

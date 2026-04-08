@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { resolveBidAccess } from "@/lib/bids/access";
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
   const supabase = await createClient();
-
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -16,25 +16,9 @@ export async function PATCH(
     return NextResponse.json({ error: "Neautorizovan pristup." }, { status: 401 });
   }
 
-  const { data: company } = await supabase
-    .from("companies")
-    .select("id")
-    .eq("user_id", user.id)
-    .single();
-
-  if (!company) {
-    return NextResponse.json({ error: "Firma nije pronađena." }, { status: 403 });
-  }
-
-  // Provjeri vlasništvo
-  const { data: bid } = await supabase
-    .from("bids")
-    .select("id, company_id")
-    .eq("id", id)
-    .single();
-
-  if (!bid || bid.company_id !== company.id) {
-    return NextResponse.json({ error: "Ponuda nije pronađena." }, { status: 404 });
+  const access = await resolveBidAccess(supabase, user.id, id);
+  if (!access) {
+    return NextResponse.json({ error: "Ponuda nije pronadjena." }, { status: 404 });
   }
 
   const body = await request.json();
@@ -44,29 +28,25 @@ export async function PATCH(
   if (body.notes !== undefined) updates.notes = body.notes;
 
   if (Object.keys(updates).length === 0) {
-    return NextResponse.json({ error: "Nema podataka za ažuriranje." }, { status: 400 });
+    return NextResponse.json({ error: "Nema podataka za azuriranje." }, { status: 400 });
   }
 
-  const { error } = await supabase
-    .from("bids")
-    .update(updates)
-    .eq("id", id);
+  const { error } = await supabase.from("bids").update(updates).eq("id", id).eq("company_id", access.companyId);
 
   if (error) {
     console.error("Bid update error:", error);
-    return NextResponse.json({ error: "Greška pri ažuriranju ponude." }, { status: 500 });
+    return NextResponse.json({ error: "Greska pri azuriranju ponude." }, { status: 500 });
   }
 
   return NextResponse.json({ success: true });
 }
 
 export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
   const supabase = await createClient();
-
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -75,35 +55,16 @@ export async function DELETE(
     return NextResponse.json({ error: "Neautorizovan pristup." }, { status: 401 });
   }
 
-  const { data: company } = await supabase
-    .from("companies")
-    .select("id")
-    .eq("user_id", user.id)
-    .single();
-
-  if (!company) {
-    return NextResponse.json({ error: "Firma nije pronađena." }, { status: 403 });
+  const access = await resolveBidAccess(supabase, user.id, id);
+  if (!access) {
+    return NextResponse.json({ error: "Ponuda nije pronadjena." }, { status: 404 });
   }
 
-  // Provjeri vlasništvo
-  const { data: bid } = await supabase
-    .from("bids")
-    .select("id, company_id")
-    .eq("id", id)
-    .single();
-
-  if (!bid || bid.company_id !== company.id) {
-    return NextResponse.json({ error: "Ponuda nije pronađena." }, { status: 404 });
-  }
-
-  const { error } = await supabase
-    .from("bids")
-    .delete()
-    .eq("id", id);
+  const { error } = await supabase.from("bids").delete().eq("id", id).eq("company_id", access.companyId);
 
   if (error) {
     console.error("Bid delete error:", error);
-    return NextResponse.json({ error: "Greška pri brisanju ponude." }, { status: 500 });
+    return NextResponse.json({ error: "Greska pri brisanju ponude." }, { status: 500 });
   }
 
   return NextResponse.json({ success: true });

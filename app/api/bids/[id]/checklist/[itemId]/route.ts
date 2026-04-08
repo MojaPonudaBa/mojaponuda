@@ -1,19 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { resolveBidAccess } from "@/lib/bids/access";
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string; itemId: string }> }
+  { params }: { params: Promise<{ id: string; itemId: string }> },
 ) {
   const { id, itemId } = await params;
   const supabase = await createClient();
-
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
   if (!user) {
     return NextResponse.json({ error: "Neautorizovan pristup." }, { status: 401 });
+  }
+
+  const access = await resolveBidAccess(supabase, user.id, id);
+  if (!access) {
+    return NextResponse.json({ error: "Ponuda nije pronadjena." }, { status: 404 });
   }
 
   const body = await request.json();
@@ -35,7 +40,7 @@ export async function PATCH(
     .single();
 
   if (error || !item) {
-    return NextResponse.json({ error: "Greška pri ažuriranju stavke." }, { status: 500 });
+    return NextResponse.json({ error: "Greska pri azuriranju stavke." }, { status: 500 });
   }
 
   return NextResponse.json({ item });
@@ -43,17 +48,21 @@ export async function PATCH(
 
 export async function DELETE(
   _request: NextRequest,
-  { params }: { params: Promise<{ id: string; itemId: string }> }
+  { params }: { params: Promise<{ id: string; itemId: string }> },
 ) {
   const { id, itemId } = await params;
   const supabase = await createClient();
-
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
   if (!user) {
     return NextResponse.json({ error: "Neautorizovan pristup." }, { status: 401 });
+  }
+
+  const access = await resolveBidAccess(supabase, user.id, id);
+  if (!access) {
+    return NextResponse.json({ error: "Ponuda nije pronadjena." }, { status: 404 });
   }
 
   const { error } = await supabase
@@ -63,7 +72,7 @@ export async function DELETE(
     .eq("bid_id", id);
 
   if (error) {
-    return NextResponse.json({ error: "Greška pri brisanju stavke." }, { status: 500 });
+    return NextResponse.json({ error: "Greska pri brisanju stavke." }, { status: 500 });
   }
 
   return NextResponse.json({ success: true });

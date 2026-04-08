@@ -453,14 +453,14 @@ export function ProfileSettings({ company }: ProfileSettingsProps) {
                               className={cn(
                                 "rounded-2xl border p-4 text-left transition-all",
                                 selected
-                                  ? "border-slate-900 bg-slate-900 text-white shadow-sm"
-                                  : "border-slate-200 bg-slate-50 hover:border-slate-300 hover:bg-white"
+                                  ? "border-sky-400/40 bg-sky-500/12 text-white shadow-sm shadow-sky-500/10"
+                                  : "border-white/10 bg-white/[0.03] text-slate-100 hover:border-white/20 hover:bg-white/[0.06]"
                               )}
                             >
                               <div className="flex items-start justify-between gap-3">
                                 <div>
-                                  <p className={cn("text-sm font-semibold", selected ? "text-white" : "text-slate-900")}>{option.label}</p>
-                                  <p className={cn("mt-2 text-sm leading-6", selected ? "text-slate-300" : "text-slate-500")}>{option.description}</p>
+                                  <p className={cn("text-sm font-semibold", selected ? "text-white" : "text-slate-100")}>{option.label}</p>
+                                  <p className={cn("mt-2 text-sm leading-6", selected ? "text-slate-300" : "text-slate-400")}>{option.description}</p>
                                 </div>
                                 {selected ? <Check className="mt-0.5 size-4 text-blue-200" /> : null}
                               </div>
@@ -501,16 +501,16 @@ export function ProfileSettings({ company }: ProfileSettingsProps) {
                                   className={cn(
                                     "rounded-2xl border p-4 text-left transition-all",
                                     selected
-                                      ? "border-amber-200 bg-amber-50/80 shadow-sm"
-                                      : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50"
+                                      ? "border-amber-400/40 bg-amber-500/10 shadow-sm shadow-amber-500/10"
+                                      : "border-white/10 bg-white/[0.03] hover:border-white/20 hover:bg-white/[0.06]"
                                   )}
                                 >
                                   <div className="flex items-start justify-between gap-3">
                                     <div>
-                                      <p className="text-sm font-semibold text-slate-900">{option.label}</p>
-                                      <p className="mt-2 text-sm leading-6 text-slate-500">{option.description}</p>
+                                      <p className="text-sm font-semibold text-slate-100">{option.label}</p>
+                                      <p className="mt-2 text-sm leading-6 text-slate-400">{option.description}</p>
                                     </div>
-                                    {selected ? <Check className="mt-0.5 size-4 text-amber-700" /> : null}
+                                    {selected ? <Check className="mt-0.5 size-4 text-amber-300" /> : null}
                                   </div>
                                 </button>
                               );
@@ -545,16 +545,16 @@ export function ProfileSettings({ company }: ProfileSettingsProps) {
                       className={cn(
                         "rounded-2xl border p-4 text-left transition-all",
                         selected
-                          ? "border-blue-200 bg-blue-50/80 shadow-sm"
-                          : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50"
+                          ? "border-sky-400/40 bg-sky-500/12 shadow-sm shadow-sky-500/10"
+                          : "border-white/10 bg-white/[0.03] hover:border-white/20 hover:bg-white/[0.06]"
                       )}
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div>
-                          <p className="text-sm font-semibold text-slate-900">{option.label}</p>
-                          <p className="mt-2 text-sm leading-6 text-slate-500">{option.description}</p>
+                          <p className="text-sm font-semibold text-slate-100">{option.label}</p>
+                          <p className="mt-2 text-sm leading-6 text-slate-400">{option.description}</p>
                         </div>
-                        {selected ? <Check className="mt-0.5 size-4 text-blue-700" /> : null}
+                        {selected ? <Check className="mt-0.5 size-4 text-blue-200" /> : null}
                       </div>
                     </button>
                   );

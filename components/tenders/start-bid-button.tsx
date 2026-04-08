@@ -14,9 +14,19 @@ interface StartBidButtonProps {
   variant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link";
   className?: string;
   isSubscribed?: boolean;
+  agencyClientId?: string;
+  bidPathBase?: string;
 }
 
-export function StartBidButton({ tenderId, existingBidId, variant = "default", className, isSubscribed = false }: StartBidButtonProps) {
+export function StartBidButton({
+  tenderId,
+  existingBidId,
+  variant = "default",
+  className,
+  isSubscribed = false,
+  agencyClientId,
+  bidPathBase = "/dashboard/bids",
+}: StartBidButtonProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [loadingText, setLoadingText] = useState("");
@@ -31,13 +41,13 @@ export function StartBidButton({ tenderId, existingBidId, variant = "default", c
       <div className="space-y-2">
         <Button
           variant={variant}
-          onClick={() => router.push(`/dashboard/bids/${existingBidId}`)}
+          onClick={() => router.push(`${bidPathBase}/${existingBidId}`)}
           className={className || "rounded-sm font-semibold"}
         >
           <Briefcase className="mr-2 size-4" />
-          Otvori postojeću ponudu
+          Otvori postojecu ponudu
         </Button>
-        {error && <p className="text-sm font-medium text-red-600">{error}</p>}
+        {error ? <p className="text-sm font-medium text-red-600">{error}</p> : null}
       </div>
     );
   }
@@ -53,6 +63,7 @@ export function StartBidButton({ tenderId, existingBidId, variant = "default", c
     setError(null);
     setLoading(true);
     setLoadingText("Kreiram radni prostor za ponudu...");
+
     try {
       const res = await fetch("/api/bids", {
         method: "POST",
@@ -60,6 +71,7 @@ export function StartBidButton({ tenderId, existingBidId, variant = "default", c
         body: JSON.stringify({
           tender_id: tenderId,
           auto_generate_checklist: false,
+          agency_client_id: agencyClientId ?? null,
         }),
       });
 
@@ -82,22 +94,22 @@ export function StartBidButton({ tenderId, existingBidId, variant = "default", c
         }
 
         if (data.code === "PAYWALL_REQUIRED") {
-           setPaywallTenderId(data.tenderId);
-           trackEvent("SHOW_PAYWALL_PER_TENDER", { tenderId: data.tenderId || tenderId });
-           setShowTenderPaywall(true);
-           setLoading(false);
-           return;
+          setPaywallTenderId(data.tenderId);
+          trackEvent("SHOW_PAYWALL_PER_TENDER", { tenderId: data.tenderId || tenderId });
+          setShowTenderPaywall(true);
+          setLoading(false);
+          return;
         }
 
-        throw new Error(data.error || "Greška pri kreiranju ponude.");
+        throw new Error(data.error || "Greska pri kreiranju ponude.");
       }
 
       if (data.bid?.id) {
-        router.push(`/dashboard/bids/${data.bid.id}`);
+        router.push(`${bidPathBase}/${data.bid.id}`);
       }
     } catch (err) {
       console.error("Start bid error:", err);
-      const message = err instanceof Error ? err.message : "Greška pri kreiranju ponude.";
+      const message = err instanceof Error ? err.message : "Greska pri kreiranju ponude.";
       setError(message);
       setLoading(false);
     }
@@ -106,7 +118,12 @@ export function StartBidButton({ tenderId, existingBidId, variant = "default", c
   return (
     <>
       <div className="space-y-2">
-        <Button onClick={handleStart} disabled={loading} variant={variant} className={className || "rounded-sm font-semibold bg-blue-600 hover:bg-blue-700 text-white"}>
+        <Button
+          onClick={handleStart}
+          disabled={loading}
+          variant={variant}
+          className={className || "rounded-sm bg-blue-600 font-semibold text-white hover:bg-blue-700"}
+        >
           {loading ? (
             <>
               <Loader2 className="mr-2 size-4 animate-spin" />
@@ -115,28 +132,30 @@ export function StartBidButton({ tenderId, existingBidId, variant = "default", c
           ) : (
             <>
               {isSubscribed ? <Sparkles className="mr-2 size-4" /> : <Lock className="mr-2 size-4" />}
-              Započni pripremu ponude
+              Zapocni pripremu ponude
             </>
           )}
         </Button>
-        {error && <p className="text-sm font-medium text-red-600">{error}</p>}
+        {error ? <p className="text-sm font-medium text-red-600">{error}</p> : null}
       </div>
 
       <PaywallModal
         isOpen={showPaywall}
         onClose={() => setShowPaywall(false)}
         title={limitInfo ? "Dostigli ste limit paketa" : "Profesionalna priprema ponude je dostupna uz pretplatu"}
-        description={limitInfo
-          ? `Vaš trenutni paket omogućava maksimalno ${limitInfo?.limit} aktivnih tendera. Trenutno imate ${limitInfo?.current}. Nadogradite paket ako želite nastaviti rad bez blokade.`
-          : "Uz pretplatu dobijate profesionalnu pripremu ponude, početnu listu onoga što treba prikupiti i jasniji pregled prije slanja."}
+        description={
+          limitInfo
+            ? `Vas trenutni paket omogucava maksimalno ${limitInfo.limit} aktivnih tendera. Trenutno imate ${limitInfo.current}. Nadogradite paket ako zelite nastaviti rad bez blokade.`
+            : "Uz pretplatu dobijate profesionalnu pripremu ponude, pocetnu listu onoga sto treba prikupiti i jasniji pregled prije slanja."
+        }
         limitType="tenders"
       />
 
       <PaywallModal
         isOpen={showTenderPaywall}
         onClose={() => setShowTenderPaywall(false)}
-        title={`Otključaj ovaj tender (${PRICING.tenderUnlock} KM)`}
-        description={`Vaš Osnovni paket vam omogućava pregled tendera, ali priprema ponude se naplaćuje po tenderu. Otključajte ovaj tender za samo ${PRICING.tenderUnlock} KM.`}
+        title={`Otkljucaj ovaj tender (${PRICING.tenderUnlock} KM)`}
+        description={`Vas Osnovni paket vam omogucava pregled tendera, ali priprema ponude se naplacuje po tenderu. Otkljucajte ovaj tender za samo ${PRICING.tenderUnlock} KM.`}
         limitType="tenders"
         isPerTenderUnlock={true}
         tenderId={paywallTenderId || tenderId}
@@ -144,4 +163,3 @@ export function StartBidButton({ tenderId, existingBidId, variant = "default", c
     </>
   );
 }
-

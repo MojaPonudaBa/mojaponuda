@@ -1,6 +1,8 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { BidsTable } from "@/components/bids/bids-table";
 import { NewBidModal } from "@/components/bids/new-bid-modal";
+import { Button } from "@/components/ui/button";
 import { demoBidSummaries, isCompanyProfileComplete, isDemoUser } from "@/lib/demo";
 import { getSubscriptionStatus, isAgencyPlan } from "@/lib/subscription";
 import { createClient } from "@/lib/supabase/server";
@@ -32,18 +34,27 @@ export default async function BidsPage() {
   const isDemoAccount = isDemoUser(user.email);
 
   if (isAgency) {
-    const { data: acRows } = await supabase
+    const { data: agencyClientRows } = await supabase
       .from("agency_clients")
-      .select("company_id, companies (id, name)")
+      .select("id, company_id, companies (id, name)")
       .eq("agency_user_id", user.id);
 
-    const clientCompanies = (acRows ?? []).map((row) => {
+    const clientCompanies = (agencyClientRows ?? []).map((row) => {
       const company = row.companies as { id: string; name: string } | null;
-      return { companyId: company?.id ?? row.company_id, companyName: company?.name ?? "Nepoznat" };
+      return {
+        agencyClientId: row.id,
+        companyId: company?.id ?? row.company_id,
+        companyName: company?.name ?? "Nepoznat",
+      };
     });
 
     const companyIds = clientCompanies.map((company) => company.companyId);
-    const companyNameMap = new Map(clientCompanies.map((company) => [company.companyId, company.companyName]));
+    const companyMetaMap = new Map(
+      clientCompanies.map((company) => [
+        company.companyId,
+        { agencyClientId: company.agencyClientId, companyName: company.companyName },
+      ]),
+    );
 
     let agencyBids: Array<{
       id: string;
@@ -51,6 +62,7 @@ export default async function BidsPage() {
       created_at: string;
       tender: { id: string; title: string; contracting_authority: string | null; deadline: string | null };
       clientName: string;
+      clientId: string;
     }> = [];
 
     if (companyIds.length > 0) {
@@ -65,17 +77,10 @@ export default async function BidsPage() {
         status: bid.status,
         created_at: bid.created_at,
         tender: bid.tenders,
-        clientName: companyNameMap.get(bid.company_id) ?? "Nepoznat",
+        clientName: companyMetaMap.get(bid.company_id)?.companyName ?? "Nepoznat",
+        clientId: companyMetaMap.get(bid.company_id)?.agencyClientId ?? "",
       }));
     }
-
-    const { data: tendersData } = await supabase
-      .from("tenders")
-      .select("id, title, contracting_authority")
-      .order("created_at", { ascending: false })
-      .limit(500);
-
-    const tenders = (tendersData ?? []) as Array<{ id: string; title: string; contracting_authority: string | null }>;
 
     return (
       <div className="mx-auto max-w-[1200px] space-y-6">
@@ -85,14 +90,25 @@ export default async function BidsPage() {
             <div>
               <h1 className="text-3xl font-heading font-bold tracking-tight text-white sm:text-4xl">Ponude svih klijenata</h1>
               <p className="mt-2 max-w-3xl text-sm leading-7 text-slate-300 sm:text-base">
-                Sve ponude vaših klijenata na jednom mjestu, sa čistim status signalima i brzim akcijama bez gužve u tabeli.
+                Sve ponude vasih klijenata na jednom mjestu, sa cistim status signalima i brzim akcijama bez guzve u tabeli.
               </p>
             </div>
-            <NewBidModal tenders={tenders} />
+            <Button
+              asChild
+              className="h-11 rounded-xl bg-white px-6 font-bold text-slate-950 shadow-lg shadow-slate-950/20 transition-all hover:-translate-y-0.5 hover:bg-slate-100"
+            >
+              <Link href="/dashboard/agency">Odaberi klijenta za novu ponudu</Link>
+            </Button>
           </div>
         </section>
 
-        <BidsTable bids={agencyBids} showClientColumn />
+        <BidsTable
+          bids={agencyBids}
+          showClientColumn
+          getBidHref={(bid) =>
+            bid.clientId ? `/dashboard/agency/clients/${bid.clientId}/bids/${bid.id}` : `/dashboard/bids/${bid.id}`
+          }
+        />
       </div>
     );
   }
@@ -152,7 +168,7 @@ export default async function BidsPage() {
           <div>
             <h1 className="text-3xl font-heading font-bold tracking-tight text-white sm:text-4xl">Moje ponude</h1>
             <p className="mt-2 max-w-3xl text-sm leading-7 text-slate-300 sm:text-base">
-              Sve aktivne i završene ponude na jednom premium pregledu, sa jasnim statusom i akcijama koje ne pucaju na manjim širinama.
+              Sve aktivne i zavrsene ponude na jednom premium pregledu, sa jasnim statusom i akcijama koje ne pucaju na manjim sirinama.
             </p>
           </div>
           <NewBidModal tenders={tenders} />

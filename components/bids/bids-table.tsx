@@ -35,11 +35,13 @@ interface BidRow {
     deadline: string | null;
   };
   clientName?: string;
+  clientId?: string;
 }
 
 interface BidsTableProps {
   bids: BidRow[];
   showClientColumn?: boolean;
+  getBidHref?: (bid: BidRow) => string;
 }
 
 function formatDate(dateStr: string | null): string {
@@ -59,7 +61,11 @@ const STATUS_STYLES: Record<string, string> = {
   lost: "border-rose-500/25 bg-rose-500/10 text-rose-100",
 };
 
-export function BidsTable({ bids, showClientColumn = false }: BidsTableProps) {
+export function BidsTable({
+  bids,
+  showClientColumn = false,
+  getBidHref,
+}: BidsTableProps) {
   const router = useRouter();
   const [statusFilter, setStatusFilter] = useState("all");
   const [updatingId, setUpdatingId] = useState<string | null>(null);
@@ -95,7 +101,7 @@ export function BidsTable({ bids, showClientColumn = false }: BidsTableProps) {
             </div>
             <div>
               <h3 className="font-heading text-lg font-bold text-white">Pregled ponuda</h3>
-              <p className="text-sm text-slate-400">Status, rokovi i akcije složeni za brzi operativni rad.</p>
+              <p className="text-sm text-slate-400">Status, rokovi i akcije slozeni za brzi operativni rad.</p>
             </div>
           </div>
           <div className="w-full max-w-[240px]">
@@ -121,91 +127,95 @@ export function BidsTable({ bids, showClientColumn = false }: BidsTableProps) {
           <div className="mb-4 flex size-16 items-center justify-center rounded-full border border-white/10 bg-white/5">
             <Briefcase className="size-8 text-slate-400" />
           </div>
-          <h3 className="mb-2 text-lg font-heading font-bold text-white">
+          <h3 className="mb-2 font-heading text-lg font-bold text-white">
             {bids.length === 0 ? "Nemate aktivnih ponuda" : "Nema rezultata"}
           </h3>
           <p className="max-w-sm text-sm text-slate-400">
             {bids.length === 0
-              ? 'Započnite klikom na dugme "Nova ponuda" iznad.'
-              : "Pokušajte promijeniti filtere za pretragu."}
+              ? 'Zapocnite klikom na dugme "Nova ponuda" iznad.'
+              : "Pokusajte promijeniti filtere za pretragu."}
           </p>
         </div>
       ) : (
         <div className="space-y-3">
-          {filtered.map((bid) => (
-            <article
-              key={bid.id}
-              className="rounded-[1.5rem] border border-slate-800 bg-[linear-gradient(180deg,#111827_0%,#0f172a_100%)] p-5 text-white shadow-[0_24px_60px_-42px_rgba(2,6,23,0.88)]"
-            >
-              <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold ${STATUS_STYLES[bid.status] || STATUS_STYLES.draft}`}>
-                      {BID_STATUS_LABELS[bid.status]}
-                    </span>
-                    {showClientColumn && bid.clientName ? (
-                      <span className="inline-flex max-w-full items-center rounded-full border border-violet-500/25 bg-violet-500/10 px-3 py-1 text-xs font-semibold text-violet-100">
-                        <span className="truncate">{bid.clientName}</span>
+          {filtered.map((bid) => {
+            const bidHref = getBidHref ? getBidHref(bid) : `/dashboard/bids/${bid.id}`;
+
+            return (
+              <article
+                key={bid.id}
+                className="rounded-[1.5rem] border border-slate-800 bg-[linear-gradient(180deg,#111827_0%,#0f172a_100%)] p-5 text-white shadow-[0_24px_60px_-42px_rgba(2,6,23,0.88)]"
+              >
+                <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold ${STATUS_STYLES[bid.status] || STATUS_STYLES.draft}`}>
+                        {BID_STATUS_LABELS[bid.status]}
                       </span>
+                      {showClientColumn && bid.clientName ? (
+                        <span className="inline-flex max-w-full items-center rounded-full border border-violet-500/25 bg-violet-500/10 px-3 py-1 text-xs font-semibold text-violet-100">
+                          <span className="truncate">{bid.clientName}</span>
+                        </span>
+                      ) : null}
+                    </div>
+
+                    <h3 className="mt-4 line-clamp-2 text-lg font-semibold leading-7 text-white">
+                      {bid.tender.title}
+                    </h3>
+
+                    <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-sm text-slate-300">
+                      <span className="inline-flex max-w-full items-center gap-2">
+                        <Building2 className="size-4 shrink-0 text-slate-500" />
+                        <span className="truncate" title={bid.tender.contracting_authority ?? ""}>
+                          {bid.tender.contracting_authority ?? "Nepoznat narucilac"}
+                        </span>
+                      </span>
+                      <span className="inline-flex items-center gap-2">
+                        <Calendar className="size-4 shrink-0 text-slate-500" />
+                        {formatDate(bid.tender.deadline)}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2 xl:justify-end">
+                    {bid.status !== "won" && bid.status !== "lost" ? (
+                      <>
+                        <Button
+                          variant="outline"
+                          disabled={updatingId === bid.id}
+                          onClick={() => updateBidStatus(bid.id, "won")}
+                          className="h-11 rounded-2xl border-emerald-500/25 bg-emerald-500/10 px-4 text-sm font-semibold text-emerald-100 hover:bg-emerald-500/20 hover:text-emerald-50"
+                        >
+                          {updatingId === bid.id ? <Loader2 className="mr-2 size-4 animate-spin" /> : <CheckCircle2 className="mr-2 size-4" />}
+                          Dobijeno
+                        </Button>
+                        <Button
+                          variant="outline"
+                          disabled={updatingId === bid.id}
+                          onClick={() => updateBidStatus(bid.id, "lost")}
+                          className="h-11 rounded-2xl border-rose-500/25 bg-rose-500/10 px-4 text-sm font-semibold text-rose-100 hover:bg-rose-500/20 hover:text-rose-50"
+                        >
+                          {updatingId === bid.id ? <Loader2 className="mr-2 size-4 animate-spin" /> : <XCircle className="mr-2 size-4" />}
+                          Izgubljeno
+                        </Button>
+                      </>
                     ) : null}
-                  </div>
 
-                  <h3 className="mt-4 line-clamp-2 text-lg font-semibold leading-7 text-white">
-                    {bid.tender.title}
-                  </h3>
-
-                  <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-sm text-slate-300">
-                    <span className="inline-flex max-w-full items-center gap-2">
-                      <Building2 className="size-4 shrink-0 text-slate-500" />
-                      <span className="truncate" title={bid.tender.contracting_authority ?? ""}>
-                        {bid.tender.contracting_authority ?? "Nepoznat naručilac"}
-                      </span>
-                    </span>
-                    <span className="inline-flex items-center gap-2">
-                      <Calendar className="size-4 shrink-0 text-slate-500" />
-                      {formatDate(bid.tender.deadline)}
-                    </span>
+                    <Button
+                      asChild
+                      variant="outline"
+                      className="h-11 rounded-2xl border-white/10 bg-white/5 px-4 text-sm font-semibold text-slate-200 hover:bg-white/10 hover:text-white"
+                    >
+                      <Link href={bidHref} className="whitespace-nowrap">
+                        <Edit className="mr-2 size-4" />
+                        Otvori ponudu
+                      </Link>
+                    </Button>
                   </div>
                 </div>
-
-                <div className="flex flex-wrap items-center gap-2 xl:justify-end">
-                  {bid.status !== "won" && bid.status !== "lost" ? (
-                    <>
-                      <Button
-                        variant="outline"
-                        disabled={updatingId === bid.id}
-                        onClick={() => updateBidStatus(bid.id, "won")}
-                        className="h-11 rounded-2xl border-emerald-500/25 bg-emerald-500/10 px-4 text-sm font-semibold text-emerald-100 hover:bg-emerald-500/20 hover:text-emerald-50"
-                      >
-                        {updatingId === bid.id ? <Loader2 className="mr-2 size-4 animate-spin" /> : <CheckCircle2 className="mr-2 size-4" />}
-                        Dobijeno
-                      </Button>
-                      <Button
-                        variant="outline"
-                        disabled={updatingId === bid.id}
-                        onClick={() => updateBidStatus(bid.id, "lost")}
-                        className="h-11 rounded-2xl border-rose-500/25 bg-rose-500/10 px-4 text-sm font-semibold text-rose-100 hover:bg-rose-500/20 hover:text-rose-50"
-                      >
-                        {updatingId === bid.id ? <Loader2 className="mr-2 size-4 animate-spin" /> : <XCircle className="mr-2 size-4" />}
-                        Izgubljeno
-                      </Button>
-                    </>
-                  ) : null}
-
-                  <Button
-                    asChild
-                    variant="outline"
-                    className="h-11 rounded-2xl border-white/10 bg-white/5 px-4 text-sm font-semibold text-slate-200 hover:bg-white/10 hover:text-white"
-                  >
-                    <Link href={`/dashboard/bids/${bid.id}`} className="whitespace-nowrap">
-                      <Edit className="mr-2 size-4" />
-                      Otvori ponudu
-                    </Link>
-                  </Button>
-                </div>
-              </div>
-            </article>
-          ))}
+              </article>
+            );
+          })}
         </div>
       )}
     </div>

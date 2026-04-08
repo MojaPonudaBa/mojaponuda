@@ -1,7 +1,6 @@
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { resolveBidAccess } from "@/lib/bids/access";
 import type {
   Bid,
   Tender,
@@ -15,10 +14,7 @@ import { BidWorkspaceLayout } from "@/components/bids/workspace/bid-workspace-cl
 import { DocumentsPanel } from "@/components/bids/workspace/documents-panel";
 import { NotesSection } from "@/components/bids/workspace/notes-section";
 import { TenderDocUpload } from "@/components/bids/workspace/tender-doc-upload";
-import { PaywallOverlay } from "@/components/subscription/paywall-overlay";
-import { getSubscriptionStatus, isAgencyPlan } from "@/lib/subscription";
-
-const MAX_FREE_BIDS = 3;
+import { getSubscriptionStatus } from "@/lib/subscription";
 
 function extractRiskFlags(aiAnalysis: Json | null): string[] {
   if (!aiAnalysis || typeof aiAnalysis !== "object" || Array.isArray(aiAnalysis)) return [];
@@ -35,12 +31,12 @@ interface BidDocRow {
   documents: Document;
 }
 
-export default async function BidWorkspacePage({
+export default async function AgencyClientBidWorkspacePage({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: Promise<{ id: string; bidId: string }>;
 }) {
-  const { id } = await params;
+  const { id: agencyClientId, bidId } = await params;
   const supabase = await createClient();
   const {
     data: { user },
@@ -48,34 +44,41 @@ export default async function BidWorkspacePage({
 
   if (!user) redirect("/login");
 
-  const { plan, isSubscribed } = await getSubscriptionStatus(user.id, user.email, supabase);
-  const access = await resolveBidAccess(supabase, user.id, id);
+  const { plan } = await getSubscriptionStatus(user.id, user.email, supabase);
+  if (plan.id !== "agency") redirect("/dashboard");
 
-  if (!access) {
-    if (isAgencyPlan(plan)) redirect("/dashboard/agency");
-    redirect("/dashboard/bids");
-  }
+  const { data: agencyClient } = await supabase
+    .from("agency_clients")
+    .select("id, company_id, companies(id, name)")
+    .eq("id", agencyClientId)
+    .eq("agency_user_id", user.id)
+    .maybeSingle();
 
-  if (access.agencyClientId) {
-    redirect(`/dashboard/agency/clients/${access.agencyClientId}/bids/${id}`);
-  }
+  if (!agencyClient) notFound();
+
+  const company = agencyClient.companies as { id: string; name: string } | null;
+  if (!company) notFound();
 
   const { data: bidData } = await supabase
     .from("bids")
     .select("*, tenders(*)")
-    .eq("id", id)
+    .eq("id", bidId)
     .single();
 
   const bid = bidData as (Bid & { tenders: Tender }) | null;
 
-  if (!bid || bid.company_id !== access.companyId) {
-    redirect("/dashboard/bids");
+  if (!bid) {
+    notFound();
+  }
+
+  if (bid.company_id !== company.id) {
+    redirect(`/dashboard/agency/clients/${agencyClientId}/bids`);
   }
 
   const { data: checklistData } = await supabase
     .from("bid_checklist_items")
     .select("*")
-    .eq("bid_id", id)
+    .eq("bid_id", bidId)
     .order("sort_order", { ascending: true });
 
   const checklistItems = (checklistData ?? []) as BidChecklistItem[];
@@ -83,7 +86,7 @@ export default async function BidWorkspacePage({
   const { data: bidDocsData } = await supabase
     .from("bid_documents")
     .select("id, document_id, documents(*)")
-    .eq("bid_id", id);
+    .eq("bid_id", bidId);
 
   const attachedDocs = ((bidDocsData ?? []) as BidDocRow[]).map((bidDocument) => ({
     id: bidDocument.id,
@@ -93,7 +96,7 @@ export default async function BidWorkspacePage({
   const { data: vaultData } = await supabase
     .from("documents")
     .select("*")
-    .eq("company_id", access.companyId)
+    .eq("company_id", company.id)
     .order("created_at", { ascending: false });
 
   const vaultDocuments = (vaultData ?? []) as Document[];
@@ -102,75 +105,62 @@ export default async function BidWorkspacePage({
   const { data: tenderDocData } = await supabaseAdmin
     .from("tender_doc_uploads")
     .select("id, file_name, file_size, content_type, page_count, status, ai_analysis, error_message, created_at")
-    .eq("bid_id", id)
+    .eq("bid_id", bidId)
     .order("created_at", { ascending: false })
     .limit(1);
 
   const tenderDocUpload = tenderDocData?.[0] || null;
-
-  let showPaywall = false;
-  let totalBids = 0;
-  if (!isSubscribed) {
-    const { count } = await supabase
-      .from("bids")
-      .select("id", { count: "exact", head: true })
-      .eq("company_id", access.companyId);
-    totalBids = count ?? 0;
-    showPaywall = totalBids > MAX_FREE_BIDS;
-  }
-
   const hasMissingItems = checklistItems.some((item) => item.status === "missing");
+  const clientBase = `/dashboard/agency/clients/${agencyClientId}`;
 
   return (
     <div className="mx-auto max-w-[1400px] space-y-6">
       <TopBar
-        bidId={id}
+        bidId={bidId}
         tenderTitle={bid.tenders.title}
         contractingAuthority={bid.tenders.contracting_authority}
         currentStatus={bid.status as BidStatus}
         initialRiskFlags={extractRiskFlags(bid.ai_analysis)}
         hasMissingItems={hasMissingItems}
+        backHref={`${clientBase}/bids`}
+        deleteRedirectHref={`${clientBase}/bids`}
       />
 
-      {showPaywall ? (
-        <PaywallOverlay usedBids={totalBids} maxFreeBids={MAX_FREE_BIDS} />
-      ) : (
-        <BidWorkspaceLayout
-          bidId={id}
-          checklistItems={checklistItems}
-          vaultDocuments={vaultDocuments}
-          tenderDocUpload={
-            tenderDocUpload
-              ? {
-                  file_name: tenderDocUpload.file_name,
-                  content_type: tenderDocUpload.content_type ?? null,
-                  status: tenderDocUpload.status,
-                }
-              : null
-          }
-          topContent={
-            <TenderDocUpload
-              bidId={id}
-              existingUpload={
-                tenderDocUpload
-                  ? {
-                      id: tenderDocUpload.id,
-                      file_name: tenderDocUpload.file_name,
-                      status: tenderDocUpload.status,
-                      page_count: tenderDocUpload.page_count,
-                      ai_analysis: tenderDocUpload.ai_analysis,
-                      error_message: tenderDocUpload.error_message,
-                    }
-                  : null
+      <BidWorkspaceLayout
+        bidId={bidId}
+        checklistItems={checklistItems}
+        vaultDocuments={vaultDocuments}
+        tenderDocUpload={
+          tenderDocUpload
+            ? {
+                file_name: tenderDocUpload.file_name,
+                content_type: tenderDocUpload.content_type ?? null,
+                status: tenderDocUpload.status,
               }
-            />
-          }
-          notesSection={<NotesSection bidId={id} initialNotes={bid.notes || ""} />}
-          documentsPanel={
-            <DocumentsPanel bidId={id} attachedDocs={attachedDocs} vaultDocuments={vaultDocuments} />
-          }
-        />
-      )}
+            : null
+        }
+        topContent={
+          <TenderDocUpload
+            bidId={bidId}
+            existingUpload={
+              tenderDocUpload
+                ? {
+                    id: tenderDocUpload.id,
+                    file_name: tenderDocUpload.file_name,
+                    status: tenderDocUpload.status,
+                    page_count: tenderDocUpload.page_count,
+                    ai_analysis: tenderDocUpload.ai_analysis,
+                    error_message: tenderDocUpload.error_message,
+                  }
+                : null
+            }
+          />
+        }
+        notesSection={<NotesSection bidId={bidId} initialNotes={bid.notes || ""} />}
+        documentsPanel={
+          <DocumentsPanel bidId={bidId} attachedDocs={attachedDocs} vaultDocuments={vaultDocuments} />
+        }
+      />
     </div>
   );
 }
