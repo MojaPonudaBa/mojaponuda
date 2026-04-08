@@ -22,90 +22,80 @@ export function PricingTable({
   const [loadingPlan, setLoadingPlan] = useState<PlanTier | null>(null);
   const visiblePlans = (visiblePlanIds ?? (Object.keys(PLANS) as PlanTier[])).map((planId) => PLANS[planId]);
 
-  const handleSelect = async (planId: PlanTier) => {
+  async function handleSelect(planId: PlanTier) {
     setLoadingPlan(planId);
     try {
       await onSelectPlan(planId);
     } finally {
       setLoadingPlan(null);
     }
-  };
+  }
 
   return (
-    <div className="grid gap-8 lg:grid-cols-3">
+    <div className="grid gap-6 xl:grid-cols-3">
       {visiblePlans.map((plan) => {
         const isCurrent = currentPlanId === plan.id;
         const isPopular = plan.id === "pro";
         const loading = isLoading || loadingPlan === plan.id;
 
         return (
-          <div
+          <article
             key={plan.id}
             className={cn(
-              "relative flex flex-col rounded-3xl border bg-white p-8 shadow-sm transition-all hover:shadow-md",
+              "relative flex flex-col rounded-[1.85rem] border p-7 text-white shadow-[0_28px_65px_-42px_rgba(2,6,23,0.88)]",
               isPopular
-                ? "border-primary ring-1 ring-primary shadow-blue-500/10"
-                : "border-slate-200",
-              isCurrent && "bg-slate-50/50"
+                ? "border-sky-400/30 bg-[linear-gradient(180deg,#172554_0%,#111827_100%)]"
+                : "border-slate-800 bg-[linear-gradient(180deg,#111827_0%,#0f172a_100%)]",
+              isCurrent && "ring-1 ring-white/10",
             )}
           >
-            {isPopular && (
-              <div className="absolute -top-4 inset-x-0 flex justify-center">
-                <span className="rounded-full bg-primary px-3 py-1 text-xs font-bold uppercase tracking-wider text-white shadow-sm">
+            {isPopular ? (
+              <div className="absolute inset-x-0 -top-4 flex justify-center">
+                <span className="rounded-full border border-sky-400/20 bg-sky-400/15 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-sky-100">
                   Najbolji odnos kontrole i cijene
                 </span>
               </div>
-            )}
+            ) : null}
 
             <div className="mb-8">
-              <h3 className="font-heading text-lg font-bold text-slate-900">
-                {plan.name}
-              </h3>
-              <p className="mt-2 text-sm text-slate-500 min-h-[40px]">
-                {plan.description}
-              </p>
-              <div className="mt-6 flex items-baseline gap-1">
-                <span className="font-heading text-4xl font-bold text-slate-900">
-                  {plan.price}
-                </span>
-                <span className="text-sm font-medium text-slate-500">
-                  KM / mjesečno
-                </span>
+              <h3 className="font-heading text-xl font-bold text-white">{plan.name}</h3>
+              <p className="mt-2 min-h-[48px] text-sm leading-6 text-slate-400">{plan.description}</p>
+              <div className="mt-6 flex items-baseline gap-2">
+                <span className="font-heading text-4xl font-bold text-white">{plan.price}</span>
+                <span className="text-sm font-medium text-slate-400">KM / mjesečno</span>
               </div>
             </div>
 
-            <ul className="mb-8 space-y-4 flex-1">
+            <ul className="mb-8 space-y-3.5 flex-1">
               {plan.features.map((feature, index) => (
-                <li key={index} className="flex items-center gap-3 text-sm">
-                  <Check className="size-5 shrink-0 text-emerald-500" />
-                  <span className="text-slate-700">{feature}</span>
+                <li key={index} className="flex items-start gap-3 text-sm leading-6 text-slate-200">
+                  <Check className="mt-0.5 size-4 shrink-0 text-emerald-300" />
+                  <span>{feature}</span>
                 </li>
               ))}
             </ul>
 
             <Button
               className={cn(
-                "w-full rounded-xl font-bold h-11",
-                isPopular ? "shadow-lg shadow-blue-500/20" : ""
+                "h-12 w-full rounded-2xl px-5 text-sm font-semibold whitespace-nowrap",
+                isCurrent
+                  ? "border-white/10 bg-white/5 text-slate-200 hover:bg-white/10 hover:text-white"
+                  : isPopular
+                    ? "bg-white text-slate-950 hover:bg-slate-100"
+                    : "border-white/10 bg-white/5 text-slate-200 hover:bg-white/10 hover:text-white",
               )}
-              variant={isCurrent ? "outline" : isPopular ? "default" : "outline"}
+              variant="outline"
               disabled={isCurrent || loading}
               onClick={() => handleSelect(plan.id)}
             >
-              {loading ? (
-                <Loader2 className="mr-2 size-4 animate-spin" />
-              ) : null}
-              {isCurrent
-                ? "Trenutni paket"
-                : plan.cta || "Odaberi paket"}
+              {loading ? <Loader2 className="mr-2 size-4 animate-spin" /> : null}
+              {isCurrent ? "Trenutni paket" : plan.cta || "Odaberi paket"}
             </Button>
-            
-            {plan.id === "agency" && !isCurrent && (
-                 <p className="mt-3 text-center text-xs text-slate-500">
-                   Za agencije i konsultante
-                 </p>
-            )}
-          </div>
+
+            {plan.id === "agency" && !isCurrent ? (
+              <p className="mt-3 text-center text-xs text-slate-400">Za agencije i konsultante</p>
+            ) : null}
+          </article>
         );
       })}
     </div>

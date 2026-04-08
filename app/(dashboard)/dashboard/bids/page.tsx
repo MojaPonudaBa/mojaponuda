@@ -1,10 +1,10 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
-import { demoBidSummaries, isCompanyProfileComplete, isDemoUser } from "@/lib/demo";
-import { getSubscriptionStatus, isAgencyPlan } from "@/lib/subscription";
-import type { Company, BidStatus } from "@/types/database";
 import { BidsTable } from "@/components/bids/bids-table";
 import { NewBidModal } from "@/components/bids/new-bid-modal";
+import { demoBidSummaries, isCompanyProfileComplete, isDemoUser } from "@/lib/demo";
+import { getSubscriptionStatus, isAgencyPlan } from "@/lib/subscription";
+import { createClient } from "@/lib/supabase/server";
+import type { Company, BidStatus } from "@/types/database";
 
 interface BidWithTender {
   id: string;
@@ -21,20 +21,16 @@ interface BidWithTender {
 
 export default async function BidsPage() {
   const supabase = await createClient();
-
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) {
-    redirect("/login");
-  }
+  if (!user) redirect("/login");
 
   const { plan } = await getSubscriptionStatus(user.id, user.email, supabase);
   const isAgency = isAgencyPlan(plan);
   const isDemoAccount = isDemoUser(user.email);
 
-  // Agency: fetch bids across all client companies
   if (isAgency) {
     const { data: acRows } = await supabase
       .from("agency_clients")
@@ -42,14 +38,20 @@ export default async function BidsPage() {
       .eq("agency_user_id", user.id);
 
     const clientCompanies = (acRows ?? []).map((row) => {
-      const c = row.companies as { id: string; name: string } | null;
-      return { companyId: c?.id ?? row.company_id, companyName: c?.name ?? "Nepoznat" };
+      const company = row.companies as { id: string; name: string } | null;
+      return { companyId: company?.id ?? row.company_id, companyName: company?.name ?? "Nepoznat" };
     });
 
-    const companyIds = clientCompanies.map((c) => c.companyId);
-    const companyNameMap = new Map(clientCompanies.map((c) => [c.companyId, c.companyName]));
+    const companyIds = clientCompanies.map((company) => company.companyId);
+    const companyNameMap = new Map(clientCompanies.map((company) => [company.companyId, company.companyName]));
 
-    let agencyBids: { id: string; status: BidStatus; created_at: string; tender: { id: string; title: string; contracting_authority: string | null; deadline: string | null }; clientName: string }[] = [];
+    let agencyBids: Array<{
+      id: string;
+      status: BidStatus;
+      created_at: string;
+      tender: { id: string; title: string; contracting_authority: string | null; deadline: string | null };
+      clientName: string;
+    }> = [];
 
     if (companyIds.length > 0) {
       const { data: bidsData } = await supabase
@@ -58,12 +60,12 @@ export default async function BidsPage() {
         .in("company_id", companyIds)
         .order("created_at", { ascending: false });
 
-      agencyBids = ((bidsData as BidWithTender[] | null) ?? []).map((b) => ({
-        id: b.id,
-        status: b.status,
-        created_at: b.created_at,
-        tender: b.tenders,
-        clientName: companyNameMap.get(b.company_id) ?? "Nepoznat",
+      agencyBids = ((bidsData as BidWithTender[] | null) ?? []).map((bid) => ({
+        id: bid.id,
+        status: bid.status,
+        created_at: bid.created_at,
+        tender: bid.tenders,
+        clientName: companyNameMap.get(bid.company_id) ?? "Nepoznat",
       }));
     }
 
@@ -73,28 +75,28 @@ export default async function BidsPage() {
       .order("created_at", { ascending: false })
       .limit(500);
 
-    const tenders = (tendersData ?? []) as { id: string; title: string; contracting_authority: string | null }[];
+    const tenders = (tendersData ?? []) as Array<{ id: string; title: string; contracting_authority: string | null }>;
 
     return (
-      <div className="space-y-8 max-w-[1200px] mx-auto">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-3xl font-heading font-bold text-slate-900 tracking-tight">
-              Ponude svih klijenata
-            </h1>
-            <p className="mt-1 text-base text-slate-500">
-              Sve ponude vaših klijenata na jednom mjestu. Svaka ponuda ima oznaku klijenta.
-            </p>
+      <div className="mx-auto max-w-[1200px] space-y-6">
+        <section className="relative overflow-hidden rounded-[2rem] border border-slate-800 bg-[radial-gradient(circle_at_top_left,rgba(56,189,248,0.14),transparent_28%),radial-gradient(circle_at_top_right,rgba(59,130,246,0.14),transparent_30%),linear-gradient(180deg,#111827_0%,#0f172a_58%,#0b1120_100%)] p-6 text-white shadow-[0_35px_90px_-45px_rgba(2,6,23,0.92)] sm:p-8">
+          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,rgba(148,163,184,0.06)_1px,transparent_1px),linear-gradient(to_bottom,rgba(148,163,184,0.06)_1px,transparent_1px)] bg-[size:52px_52px] [mask-image:radial-gradient(circle_at_top_left,#000_15%,transparent_75%)]" />
+          <div className="relative flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h1 className="text-3xl font-heading font-bold tracking-tight text-white sm:text-4xl">Ponude svih klijenata</h1>
+              <p className="mt-2 max-w-3xl text-sm leading-7 text-slate-300 sm:text-base">
+                Sve ponude vaših klijenata na jednom mjestu, sa čistim status signalima i brzim akcijama bez gužve u tabeli.
+              </p>
+            </div>
+            <NewBidModal tenders={tenders} />
           </div>
-          <NewBidModal tenders={tenders} />
-        </div>
+        </section>
 
         <BidsTable bids={agencyBids} showClientColumn />
       </div>
     );
   }
 
-  // Regular user flow
   const { data: companyData } = await supabase
     .from("companies")
     .select("id, jib, industry, keywords")
@@ -102,25 +104,20 @@ export default async function BidsPage() {
     .maybeSingle();
 
   const company = companyData as Company | null;
-
-  if (!isCompanyProfileComplete(company)) {
-    redirect("/onboarding");
-  }
+  if (!isCompanyProfileComplete(company)) redirect("/onboarding");
 
   const resolvedCompany = company as Company;
-
-  // Dohvati ponude s tender podacima
   const { data: bidsData } = await supabase
     .from("bids")
     .select("id, status, created_at, company_id, tenders(id, title, contracting_authority, deadline)")
     .eq("company_id", resolvedCompany.id)
     .order("created_at", { ascending: false });
 
-  const bids = ((bidsData as BidWithTender[] | null) ?? []).map((b) => ({
-    id: b.id,
-    status: b.status,
-    created_at: b.created_at,
-    tender: b.tenders,
+  const bids = ((bidsData as BidWithTender[] | null) ?? []).map((bid) => ({
+    id: bid.id,
+    status: bid.status,
+    created_at: bid.created_at,
+    tender: bid.tenders,
   }));
 
   const displayBids = bids.length > 0
@@ -139,32 +136,28 @@ export default async function BidsPage() {
         }))
       : [];
 
-  // Dohvati sve tendere za modal
   const { data: tendersData } = await supabase
     .from("tenders")
     .select("id, title, contracting_authority")
     .order("created_at", { ascending: false })
     .limit(500);
 
-  const tenders = (tendersData ?? []) as {
-    id: string;
-    title: string;
-    contracting_authority: string | null;
-  }[];
+  const tenders = (tendersData ?? []) as Array<{ id: string; title: string; contracting_authority: string | null }>;
 
   return (
-    <div className="space-y-8 max-w-[1200px] mx-auto">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-3xl font-heading font-bold text-slate-900 tracking-tight">
-            Moje ponude
-          </h1>
-          <p className="mt-1 text-base text-slate-500">
-            Sve aktivne i završene ponude na jednom mjestu.
-          </p>
+    <div className="mx-auto max-w-[1200px] space-y-6">
+      <section className="relative overflow-hidden rounded-[2rem] border border-slate-800 bg-[radial-gradient(circle_at_top_left,rgba(56,189,248,0.14),transparent_28%),radial-gradient(circle_at_top_right,rgba(59,130,246,0.14),transparent_30%),linear-gradient(180deg,#111827_0%,#0f172a_58%,#0b1120_100%)] p-6 text-white shadow-[0_35px_90px_-45px_rgba(2,6,23,0.92)] sm:p-8">
+        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,rgba(148,163,184,0.06)_1px,transparent_1px),linear-gradient(to_bottom,rgba(148,163,184,0.06)_1px,transparent_1px)] bg-[size:52px_52px] [mask-image:radial-gradient(circle_at_top_left,#000_15%,transparent_75%)]" />
+        <div className="relative flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h1 className="text-3xl font-heading font-bold tracking-tight text-white sm:text-4xl">Moje ponude</h1>
+            <p className="mt-2 max-w-3xl text-sm leading-7 text-slate-300 sm:text-base">
+              Sve aktivne i završene ponude na jednom premium pregledu, sa jasnim statusom i akcijama koje ne pucaju na manjim širinama.
+            </p>
+          </div>
+          <NewBidModal tenders={tenders} />
         </div>
-        <NewBidModal tenders={tenders} />
-      </div>
+      </section>
 
       <BidsTable bids={displayBids} />
     </div>

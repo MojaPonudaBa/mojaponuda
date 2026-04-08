@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { CheckCircle, ExternalLink, Loader2, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { ExternalLink, Loader2, CheckCircle, XCircle } from "lucide-react";
 import type { Plan } from "@/lib/plans";
 
 const STATUS_LABELS: Record<string, string> = {
@@ -15,12 +15,12 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 const STATUS_COLORS: Record<string, string> = {
-  active: "text-emerald-600 bg-emerald-50 border-emerald-100",
-  past_due: "text-amber-600 bg-amber-50 border-amber-100",
-  cancelled: "text-red-600 bg-red-50 border-red-100",
-  paused: "text-slate-600 bg-slate-50 border-slate-100",
-  unpaid: "text-red-600 bg-red-50 border-red-100",
-  inactive: "text-slate-500 bg-slate-50 border-slate-100",
+  active: "border-emerald-500/25 bg-emerald-500/10 text-emerald-100",
+  past_due: "border-amber-500/25 bg-amber-500/10 text-amber-100",
+  cancelled: "border-rose-500/25 bg-rose-500/10 text-rose-100",
+  paused: "border-slate-500/25 bg-slate-500/10 text-slate-200",
+  unpaid: "border-rose-500/25 bg-rose-500/10 text-rose-100",
+  inactive: "border-white/10 bg-white/5 text-slate-200",
 };
 
 interface SubscriptionCardProps {
@@ -47,11 +47,11 @@ export function SubscriptionCard({
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/lemonsqueezy/customer-portal", {
+      const response = await fetch("/api/lemonsqueezy/customer-portal", {
         method: "POST",
       });
-      const data = await res.json();
-      if (!res.ok) {
+      const data = await response.json();
+      if (!response.ok) {
         setError(data.error || "Greška pri otvaranju portala.");
         return;
       }
@@ -67,66 +67,62 @@ export function SubscriptionCard({
   const displayPlanName = isActive && plan ? plan.name : "Besplatni nalog";
 
   return (
-    <div className="rounded-[1.5rem] border border-slate-100 bg-white p-8 shadow-sm">
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <div className={`flex size-12 items-center justify-center rounded-xl ${isActive ? "bg-emerald-50 text-emerald-600" : "bg-slate-100 text-slate-500"}`}>
+    <section className="rounded-[1.85rem] border border-slate-800 bg-[linear-gradient(180deg,#111827_0%,#0f172a_100%)] p-8 text-white shadow-[0_28px_65px_-42px_rgba(2,6,23,0.88)]">
+      <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+        <div className="flex items-start gap-4">
+          <div className={`flex size-12 items-center justify-center rounded-2xl border ${isActive ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-300" : "border-white/10 bg-white/5 text-slate-400"}`}>
             {isActive ? <CheckCircle className="size-6" /> : <XCircle className="size-6" />}
           </div>
           <div>
-            <h2 className="font-heading text-xl font-bold text-slate-900">
-              {displayPlanName}
-            </h2>
-            <div className={`mt-1 inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-bold uppercase tracking-wider ${STATUS_COLORS[displayStatus] ?? "text-slate-500 bg-slate-50 border-slate-100"}`}>
+            <h2 className="font-heading text-2xl font-bold text-white">{displayPlanName}</h2>
+            <div className={`mt-2 inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] ${STATUS_COLORS[displayStatus] ?? STATUS_COLORS.inactive}`}>
               {STATUS_LABELS[displayStatus] ?? displayStatus}
             </div>
           </div>
         </div>
-      </div>
 
-      <div className="mt-6 rounded-xl bg-slate-50 p-4 border border-slate-100">
-        <p className="text-sm font-medium text-slate-500">Šta to znači za vaš rad</p>
-        <p className="mt-1 text-sm leading-6 text-slate-700">
-          {isActive
-            ? `Trenutno koristite paket ${displayPlanName}. Ovo vam omogućava da imate punu kontrolu nad procesom i smanjite rizik od grešaka pri slanju ponuda.`
-            : "Trenutno ste na besplatnom nivou: možete pratiti prilike za vašu firmu, a puni pristup i pripremu ponuda otključavate kada vam zatreba."}
-        </p>
-      </div>
-
-      {isActive && currentPeriodEnd && (
-        <div className="mt-6 rounded-xl bg-slate-50 p-4 border border-slate-100">
-          <p className="text-sm font-medium text-slate-500">Sljedeća obnova</p>
-          <p className="mt-1 text-lg font-bold text-slate-900">
-            {new Date(currentPeriodEnd).toLocaleDateString("bs-Latn-BA", {
-              day: "numeric",
-              month: "long",
-              year: "numeric",
-            })}
-          </p>
-        </div>
-      )}
-
-      {error && (
-        <p className="mt-4 text-sm font-medium text-red-500 bg-red-50 p-3 rounded-lg border border-red-100">{error}</p>
-      )}
-
-      {showPortal && hasCustomerId && (
-        <div className="mt-8 pt-6 border-t border-slate-100">
+        {showPortal && hasCustomerId ? (
           <Button
-            className="w-full sm:w-auto rounded-xl font-bold h-11"
             variant="outline"
             onClick={handlePortal}
             disabled={loading}
+            className="h-11 rounded-2xl border-white/10 bg-white/5 px-5 text-sm font-semibold text-slate-200 hover:bg-white/10 hover:text-white"
           >
-            {loading ? (
-              <Loader2 className="mr-2 size-4 animate-spin" />
-            ) : (
-              <ExternalLink className="mr-2 size-4" />
-            )}
+            {loading ? <Loader2 className="mr-2 size-4 animate-spin" /> : <ExternalLink className="mr-2 size-4" />}
             Upravljaj pretplatom
           </Button>
+        ) : null}
+      </div>
+
+      <div className="mt-6 grid gap-4 lg:grid-cols-2">
+        <div className="rounded-[1.4rem] border border-white/10 bg-white/5 p-5">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Šta to znači za vaš rad</p>
+          <p className="mt-3 text-sm leading-7 text-slate-300">
+            {isActive
+              ? `Trenutno koristite paket ${displayPlanName}. To vam daje pregledan operativni dashboard i veći nivo kontrole prije slanja ponuda.`
+              : "Trenutno ste na besplatnom nivou: možete pratiti prilike za svoju firmu, a puni pristup i pripremu ponuda otključavate kada vam zatreba."}
+          </p>
         </div>
-      )}
-    </div>
+
+        {isActive && currentPeriodEnd ? (
+          <div className="rounded-[1.4rem] border border-white/10 bg-white/5 p-5">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Sljedeća obnova</p>
+            <p className="mt-3 text-xl font-semibold text-white">
+              {new Date(currentPeriodEnd).toLocaleDateString("bs-Latn-BA", {
+                day: "numeric",
+                month: "long",
+                year: "numeric",
+              })}
+            </p>
+          </div>
+        ) : null}
+      </div>
+
+      {error ? (
+        <p className="mt-4 rounded-2xl border border-rose-500/20 bg-rose-500/10 p-4 text-sm font-medium text-rose-100">
+          {error}
+        </p>
+      ) : null}
+    </section>
   );
 }

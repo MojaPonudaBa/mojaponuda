@@ -271,9 +271,9 @@ export function ProfileSettings({ company }: ProfileSettingsProps) {
   return (
     <div className="space-y-8">
       {/* Basic Info */}
-      <div className="rounded-[1.5rem] border border-slate-100 bg-white p-6 shadow-sm">
-        <div className="flex items-center gap-3 mb-6 border-b border-slate-50 pb-4">
-          <div className="flex size-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+      <div className="rounded-[1.75rem] border border-slate-800 bg-[linear-gradient(180deg,#111827_0%,#0f172a_100%)] p-6 shadow-[0_24px_60px_-42px_rgba(2,6,23,0.88)] [&_.text-slate-900]:text-white [&_.text-slate-700]:text-slate-200 [&_.text-slate-600]:text-slate-300 [&_.text-slate-500]:text-slate-400 [&_label]:text-slate-300">
+        <div className="mb-6 flex items-center gap-3 border-b border-white/10 pb-4">
+          <div className="flex size-10 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-sky-300">
             <Building2 className="size-5" />
           </div>
           <div>
@@ -328,9 +328,9 @@ export function ProfileSettings({ company }: ProfileSettingsProps) {
       </div>
 
       {/* Search Profile */}
-      <div className="rounded-[1.5rem] border border-slate-100 bg-white p-6 shadow-sm">
-        <div className="flex items-center gap-3 mb-6 border-b border-slate-50 pb-4">
-          <div className="flex size-10 items-center justify-center rounded-xl bg-purple-50 text-purple-600">
+      <div className="rounded-[1.75rem] border border-slate-800 bg-[linear-gradient(180deg,#111827_0%,#0f172a_100%)] p-6 shadow-[0_24px_60px_-42px_rgba(2,6,23,0.88)] [&_.text-slate-900]:text-white [&_.text-slate-700]:text-slate-200 [&_.text-slate-600]:text-slate-300 [&_.text-slate-500]:text-slate-400 [&_label]:text-slate-300">
+        <div className="mb-6 flex items-center gap-3 border-b border-white/10 pb-4">
+          <div className="flex size-10 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-violet-300">
             <Brain className="size-5" />
           </div>
           <div>
@@ -344,7 +344,7 @@ export function ProfileSettings({ company }: ProfileSettingsProps) {
             <button
               type="button"
               onClick={() => setExpandedSection((value) => value === "offering" ? null : "offering")}
-              className="rounded-2xl border border-slate-300 bg-slate-100/90 p-5 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-slate-400 hover:bg-white hover:shadow-md"
+              className="rounded-2xl border border-white/10 bg-white/5 p-5 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:bg-white/10"
             >
               <div className="flex items-center justify-between gap-3">
                 <div>
@@ -389,7 +389,7 @@ export function ProfileSettings({ company }: ProfileSettingsProps) {
             <button
               type="button"
               onClick={() => setExpandedSection((value) => value === "tender-types" ? null : "tender-types")}
-              className="rounded-2xl border border-slate-300 bg-slate-100/90 p-5 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-slate-400 hover:bg-white hover:shadow-md"
+              className="rounded-2xl border border-white/10 bg-white/5 p-5 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:bg-white/10"
             >
               <div className="flex items-center justify-between gap-3">
                 <div>
@@ -422,7 +422,7 @@ export function ProfileSettings({ company }: ProfileSettingsProps) {
           </div>
 
           {expandedSection === "offering" ? (
-            <div className="rounded-2xl border border-slate-200 bg-slate-50/60 p-5">
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
               <div className="mb-4">
                 <Label className="text-base font-bold text-slate-900">Odaberite sve što firma stvarno radi</Label>
                 <p className="mt-1 text-sm text-slate-500">
@@ -436,7 +436,7 @@ export function ProfileSettings({ company }: ProfileSettingsProps) {
                   );
 
                   return (
-                    <div key={group.id} className="rounded-2xl border border-slate-200 bg-white p-5">
+                    <div key={group.id} className="rounded-2xl border border-white/10 bg-black/10 p-5">
                       <div className="mb-4">
                         <p className="text-sm font-semibold text-slate-900">{group.label}</p>
                         <p className="mt-1 text-sm text-slate-500">{group.description}</p>
@@ -473,7 +473,7 @@ export function ProfileSettings({ company }: ProfileSettingsProps) {
                 })}
 
                 {specializationSections.length > 0 ? (
-                  <div className="rounded-2xl border border-slate-200 bg-white p-5">
+                  <div className="rounded-2xl border border-white/10 bg-black/10 p-5">
                     <div className="mb-4">
                       <Label className="text-base font-bold text-slate-900">Preciznije usmjerite preporuke prema onome što zaista nudite</Label>
                       <p className="mt-1 text-sm text-slate-500">
@@ -482,7 +482,7 @@ export function ProfileSettings({ company }: ProfileSettingsProps) {
                     </div>
                     <div className="space-y-5">
                       {specializationSections.map((section) => (
-                        <div key={section.categoryId} className="rounded-2xl border border-slate-200 bg-slate-50/60 p-5">
+                        <div key={section.categoryId} className="rounded-2xl border border-white/10 bg-white/5 p-5">
                           <div className="mb-4">
                             <p className="text-sm font-semibold text-slate-900">{section.categoryLabel}</p>
                             <p className="mt-1 text-sm text-slate-500">
@@ -526,7 +526,7 @@ export function ProfileSettings({ company }: ProfileSettingsProps) {
           ) : null}
 
           {expandedSection === "tender-types" ? (
-            <div className="rounded-2xl border border-slate-200 bg-slate-50/60 p-5">
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
               <div className="mb-4">
                 <Label className="text-base font-bold text-slate-900">Koje vrste tendera želite pratiti</Label>
                 <p className="mt-1 text-sm text-slate-500">
@@ -563,7 +563,7 @@ export function ProfileSettings({ company }: ProfileSettingsProps) {
             </div>
           ) : null}
 
-          <div className="bg-purple-50/50 rounded-xl p-4 border border-purple-100">
+          <div className="rounded-2xl border border-violet-500/20 bg-violet-500/10 p-4">
             <div className="space-y-2">
               <Label className="text-purple-900 font-bold">Automatska priprema profila</Label>
               <p className="text-xs text-slate-500 mb-2">
@@ -610,7 +610,7 @@ export function ProfileSettings({ company }: ProfileSettingsProps) {
                   <Plus className="size-4" />
                 </Button>
               </div>
-              <div className="flex flex-wrap gap-2 p-3 bg-slate-50 rounded-xl border border-slate-100 min-h-[44px]">
+              <div className="flex min-h-[44px] flex-wrap gap-2 rounded-xl border border-white/10 bg-white/5 p-3">
                 {manualKeywords.length === 0 && <span className="text-xs text-slate-400 italic">Nema ručno unesenih pojmova</span>}
                 {manualKeywords.map(k => (
                   <Badge key={k} variant="outline" className="bg-white border-slate-200 text-slate-700 gap-1 pr-1">
@@ -638,7 +638,7 @@ export function ProfileSettings({ company }: ProfileSettingsProps) {
                   <Plus className="size-4" />
                 </Button>
               </div>
-              <div className="flex flex-wrap gap-2 p-3 bg-slate-50 rounded-xl border border-slate-100 min-h-[44px]">
+              <div className="flex min-h-[44px] flex-wrap gap-2 rounded-xl border border-white/10 bg-white/5 p-3">
                 {cpvCodes.length === 0 && <span className="text-xs text-slate-400 italic">Nema CPV kodova</span>}
                 {cpvCodes.map(c => (
                   <Badge key={c} variant="secondary" className="gap-1 pr-1">
@@ -655,7 +655,7 @@ export function ProfileSettings({ company }: ProfileSettingsProps) {
                 Označite šire područje, gradove i općine gdje je firma ili poslovnica. Ovo koristimo da bliži tenderi imaju prednost u preporukama.
               </p>
               <RegionMultiSelect selectedRegions={regions} onChange={setRegions} />
-              <div className="flex flex-wrap gap-2 p-3 bg-slate-50 rounded-xl border border-slate-100 min-h-[44px]">
+              <div className="flex min-h-[44px] flex-wrap gap-2 rounded-xl border border-white/10 bg-white/5 p-3">
                 {regionSelectionLabels.length === 0 && <span className="text-xs text-slate-400 italic">Cijela BiH</span>}
                 {regionSelectionLabels.map(r => (
                   <Badge key={r} variant="outline" className="bg-blue-50 text-blue-700 border-blue-100 gap-1 pr-1">
@@ -687,7 +687,7 @@ export function ProfileSettings({ company }: ProfileSettingsProps) {
         <Button 
           onClick={handleSave} 
           disabled={loading}
-          className="rounded-full px-8 py-6 text-base font-bold shadow-xl shadow-blue-500/20"
+          className="h-12 rounded-2xl bg-white px-6 text-sm font-semibold text-slate-950 shadow-xl shadow-slate-950/20 hover:bg-slate-100"
         >
           {loading ? <Loader2 className="mr-2 size-5 animate-spin" /> : <Save className="mr-2 size-5" />}
           Sačuvaj promjene

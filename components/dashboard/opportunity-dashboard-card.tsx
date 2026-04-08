@@ -1,8 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { Calendar, MapPin, TrendingUp, ArrowUpRight } from "lucide-react";
+import { ArrowUpRight, Calendar, MapPin, TrendingUp } from "lucide-react";
 import { FollowButton } from "./opportunity-actions";
+
+const DAY_IN_MS = 1000 * 60 * 60 * 24;
+const REFERENCE_NOW = Date.now();
 
 interface Props {
   opportunity: {
@@ -21,81 +24,86 @@ interface Props {
 }
 
 const difficultyColor: Record<string, string> = {
-  lako: "text-emerald-700 bg-emerald-50",
-  srednje: "text-amber-700 bg-amber-50",
-  tesko: "text-red-700 bg-red-50",
+  lako: "border-emerald-500/25 bg-emerald-500/10 text-emerald-100",
+  srednje: "border-amber-500/25 bg-amber-500/10 text-amber-100",
+  tesko: "border-rose-500/25 bg-rose-500/10 text-rose-100",
 };
 
-export function OpportunityDashboardCard({ opportunity: o }: Props) {
-  const slug = o.slug.split("/").pop() ?? o.slug;
-  const daysLeft = o.deadline
-    ? Math.ceil((new Date(o.deadline).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+function formatValue(value: number | null) {
+  if (!value) return null;
+  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M KM`;
+  if (value >= 1_000) return `${(value / 1_000).toFixed(0)}K KM`;
+  return `${value} KM`;
+}
+
+export function OpportunityDashboardCard({ opportunity }: Props) {
+  const slug = opportunity.slug.split("/").pop() ?? opportunity.slug;
+  const daysLeft = opportunity.deadline
+    ? Math.ceil((new Date(opportunity.deadline).getTime() - REFERENCE_NOW) / DAY_IN_MS)
     : null;
 
-  const formatValue = (v: number | null) => {
-    if (!v) return null;
-    if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}M KM`;
-    if (v >= 1_000) return `${(v / 1_000).toFixed(0)}K KM`;
-    return `${v} KM`;
-  };
-
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <article className="rounded-[1.5rem] border border-slate-800 bg-[linear-gradient(180deg,#111827_0%,#0f172a_100%)] p-5 text-white shadow-[0_24px_60px_-42px_rgba(2,6,23,0.88)]">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap gap-2 mb-2">
-            <span className="rounded-full bg-blue-50 px-2.5 py-0.5 text-[11px] font-semibold text-blue-700">
-              {o.type === "poticaj" ? "Poticaj" : "Nabavka"}
+          <div className="mb-3 flex flex-wrap gap-2">
+            <span className="rounded-full border border-sky-500/25 bg-sky-500/10 px-2.5 py-1 text-[11px] font-semibold text-sky-100">
+              {opportunity.type === "poticaj" ? "Poticaj" : "Nabavka"}
             </span>
-            {o.ai_difficulty && (
-              <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${difficultyColor[o.ai_difficulty] ?? ""}`}>
-                {o.ai_difficulty === "lako" ? "Lako" : o.ai_difficulty === "srednje" ? "Srednje" : "Teško"}
+            {opportunity.ai_difficulty ? (
+              <span className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold ${difficultyColor[opportunity.ai_difficulty] ?? "border-white/10 bg-white/5 text-slate-200"}`}>
+                {opportunity.ai_difficulty === "lako" ? "Lako" : opportunity.ai_difficulty === "srednje" ? "Srednje" : "Teško"}
               </span>
-            )}
-            {daysLeft !== null && daysLeft <= 0 && (
-              <span className="rounded-full bg-red-100 px-2.5 py-0.5 text-[11px] font-bold text-red-700">
-                ROK ISTEKAO
+            ) : null}
+            {daysLeft !== null && daysLeft <= 0 ? (
+              <span className="rounded-full border border-rose-500/25 bg-rose-500/10 px-2.5 py-1 text-[11px] font-bold text-rose-100">
+                Rok istekao
               </span>
-            )}
+            ) : null}
           </div>
+
           <Link href={`/prilike/${slug}`} className="group">
-            <h3 className="font-semibold text-slate-900 group-hover:text-blue-700 transition-colors line-clamp-2">
-              {o.title}
+            <h3 className="line-clamp-2 text-lg font-semibold leading-7 text-white transition-colors group-hover:text-sky-200">
+              {opportunity.title}
             </h3>
           </Link>
-          <p className="text-sm text-slate-500 mt-1">{o.issuer}</p>
-          {o.ai_summary && (
-            <p className="text-sm text-slate-600 mt-2 line-clamp-2">{o.ai_summary}</p>
-          )}
-          <div className="mt-3 flex flex-wrap gap-3 text-xs text-slate-500">
-            {o.location && (
-              <span className="flex items-center gap-1">
-                <MapPin className="size-3" />
-                {o.location}
+          <p className="mt-1 text-sm text-slate-400">{opportunity.issuer}</p>
+          {opportunity.ai_summary ? (
+            <p className="mt-3 line-clamp-2 text-sm leading-6 text-slate-300">{opportunity.ai_summary}</p>
+          ) : null}
+
+          <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-sm text-slate-300">
+            {opportunity.location ? (
+              <span className="inline-flex items-center gap-2">
+                <MapPin className="size-4 shrink-0 text-slate-500" />
+                {opportunity.location}
               </span>
-            )}
-            {o.deadline && (
-              <span className={`flex items-center gap-1 ${daysLeft !== null && daysLeft <= 0 ? "text-red-600 font-bold" : daysLeft !== null && daysLeft <= 7 ? "text-red-600 font-semibold" : ""}`}>
-                <Calendar className="size-3" />
+            ) : null}
+            {opportunity.deadline ? (
+              <span className={`inline-flex items-center gap-2 ${daysLeft !== null && daysLeft <= 7 ? "text-amber-100" : ""}`}>
+                <Calendar className="size-4 shrink-0 text-slate-500" />
                 {daysLeft !== null && daysLeft <= 0 ? "Istekao" : daysLeft !== null && daysLeft > 0 ? `${daysLeft} dana` : "Uskoro"}
               </span>
-            )}
-            {o.value && (
-              <span className="flex items-center gap-1 font-semibold text-emerald-700">
-                <TrendingUp className="size-3" />
-                {formatValue(o.value)}
+            ) : null}
+            {opportunity.value ? (
+              <span className="inline-flex items-center gap-2 font-semibold text-emerald-200">
+                <TrendingUp className="size-4 shrink-0 text-emerald-300" />
+                {formatValue(opportunity.value)}
               </span>
-            )}
+            ) : null}
           </div>
 
           <div className="mt-4">
-            <FollowButton opportunityId={o.id} />
+            <FollowButton opportunityId={opportunity.id} />
           </div>
         </div>
-        <Link href={`/prilike/${slug}`}>
-          <ArrowUpRight className="size-4 text-slate-300 hover:text-blue-500 shrink-0 mt-1 transition-colors" />
+
+        <Link href={`/prilike/${slug}`} className="shrink-0">
+          <div className="flex size-10 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-slate-300 transition-colors hover:text-white">
+            <ArrowUpRight className="size-4" />
+          </div>
         </Link>
       </div>
-    </div>
+    </article>
   );
 }

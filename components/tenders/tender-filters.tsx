@@ -1,7 +1,8 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState, useCallback } from "react";
+import { useCallback, useState } from "react";
+import { Filter, RotateCcw, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,7 +14,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, RotateCcw, Filter } from "lucide-react";
 
 const CONTRACT_TYPES = [
   { value: "all", label: "Svi tipovi" },
@@ -36,18 +36,10 @@ export function TenderFilters({ basePath = "/dashboard/tenders" }: { basePath?: 
   const searchParams = useSearchParams();
 
   const [keyword, setKeyword] = useState(searchParams.get("q") || "");
-  const [contractType, setContractType] = useState(
-    searchParams.get("contract_type") || "all"
-  );
-  const [procedureType, setProcedureType] = useState(
-    searchParams.get("procedure_type") || "all"
-  );
-  const [deadlineFrom, setDeadlineFrom] = useState(
-    searchParams.get("deadline_from") || ""
-  );
-  const [deadlineTo, setDeadlineTo] = useState(
-    searchParams.get("deadline_to") || ""
-  );
+  const [contractType, setContractType] = useState(searchParams.get("contract_type") || "all");
+  const [procedureType, setProcedureType] = useState(searchParams.get("procedure_type") || "all");
+  const [deadlineFrom, setDeadlineFrom] = useState(searchParams.get("deadline_from") || "");
+  const [deadlineTo, setDeadlineTo] = useState(searchParams.get("deadline_to") || "");
   const [locations, setLocations] = useState<string[]>(searchParams.getAll("location"));
 
   const applyFilters = useCallback(() => {
@@ -59,10 +51,10 @@ export function TenderFilters({ basePath = "/dashboard/tenders" }: { basePath?: 
     if (procedureType !== "all") params.set("procedure_type", procedureType);
     if (deadlineFrom) params.set("deadline_from", deadlineFrom);
     if (deadlineTo) params.set("deadline_to", deadlineTo);
-    locations.forEach((l) => params.append("location", l));
+    locations.forEach((location) => params.append("location", location));
     params.set("page", "1");
     router.push(`${basePath}?${params.toString()}`);
-  }, [keyword, contractType, procedureType, deadlineFrom, deadlineTo, locations, router, searchParams, basePath]);
+  }, [basePath, contractType, deadlineFrom, deadlineTo, keyword, locations, procedureType, router, searchParams]);
 
   function resetFilters() {
     setKeyword("");
@@ -77,122 +69,126 @@ export function TenderFilters({ basePath = "/dashboard/tenders" }: { basePath?: 
     router.push(`${basePath}?${params.toString()}`);
   }
 
-  function handleKeyDown(e: React.KeyboardEvent) {
-    if (e.key === "Enter") applyFilters();
+  function handleKeyDown(event: React.KeyboardEvent) {
+    if (event.key === "Enter") applyFilters();
   }
 
   return (
-    <div className="rounded-[1.5rem] border border-slate-100 bg-white p-6 shadow-sm mb-6">
-      {/* Header */}
-      <div className="flex items-center gap-2 mb-5">
-        <Filter className="size-4 text-blue-500" />
-        <h3 className="font-heading text-sm font-bold text-slate-900">Pretraga i filteri</h3>
-      </div>
-
-      {/* Row 1: keyword full width */}
-      <div className="mb-4">
-        <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">
-          Pretraga po ključnoj riječi
-        </Label>
-        <div className="relative group">
-          <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors" />
-          <Input
-            placeholder="Npr. računari, izgradnja puta, čišćenje..."
-            value={keyword}
-            onChange={(e) => setKeyword(e.target.value)}
-            onKeyDown={handleKeyDown}
-            className="h-11 rounded-xl border-slate-200 pl-10 text-sm shadow-sm focus-visible:ring-primary focus-visible:border-primary transition-all"
-          />
+    <section className="mb-6 rounded-[1.75rem] border border-slate-800 bg-[linear-gradient(180deg,#111827_0%,#0f172a_100%)] p-6 text-white shadow-[0_28px_65px_-42px_rgba(2,6,23,0.88)]">
+      <div className="mb-5 flex items-center gap-3 border-b border-white/10 pb-5">
+        <div className="flex size-10 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-sky-300">
+          <Filter className="size-4" />
+        </div>
+        <div>
+          <h3 className="font-heading text-lg font-bold text-white">Pretraga i filteri</h3>
+          <p className="text-sm text-slate-400">Složeni tako da ostanu čitljivi i na desktopu i na manjim ekranima.</p>
         </div>
       </div>
 
-      {/* Row 2: dropdowns */}
-      <div className="flex flex-wrap gap-3 mb-4">
-        <div className="flex-1 min-w-[150px] max-w-[220px] space-y-2">
-          <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+      <div className="grid gap-4 lg:grid-cols-2">
+        <div className="space-y-2 lg:col-span-2">
+          <Label className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
+            Ključna riječ
+          </Label>
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-500" />
+            <Input
+              placeholder="Npr. računari, izgradnja puta, čišćenje..."
+              value={keyword}
+              onChange={(event) => setKeyword(event.target.value)}
+              onKeyDown={handleKeyDown}
+              className="h-12 rounded-2xl border-white/10 bg-white/5 pl-10 text-sm text-white placeholder:text-slate-500 focus-visible:border-sky-400/40 focus-visible:ring-sky-400/20"
+            />
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <Label className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
             Tip ugovora
           </Label>
           <Select value={contractType} onValueChange={setContractType}>
-            <SelectTrigger className="h-11 rounded-xl border-slate-200 text-sm shadow-sm">
+            <SelectTrigger className="h-12 rounded-2xl border-white/10 bg-white/5 text-sm text-white">
               <SelectValue />
             </SelectTrigger>
-            <SelectContent className="rounded-xl border-slate-200 shadow-xl">
-              {CONTRACT_TYPES.map((ct) => (
-                <SelectItem key={ct.value} value={ct.value} className="focus:bg-blue-50 focus:text-primary rounded-lg cursor-pointer py-2">
-                  {ct.label}
+            <SelectContent className="rounded-2xl border-slate-700 bg-slate-950 text-slate-200">
+              {CONTRACT_TYPES.map((item) => (
+                <SelectItem key={item.value} value={item.value} className="rounded-xl focus:bg-white/10 focus:text-white">
+                  {item.label}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
-        <div className="flex-1 min-w-[150px] max-w-[220px] space-y-2">
-          <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+
+        <div className="space-y-2">
+          <Label className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
             Procedura
           </Label>
           <Select value={procedureType} onValueChange={setProcedureType}>
-            <SelectTrigger className="h-11 rounded-xl border-slate-200 text-sm shadow-sm">
+            <SelectTrigger className="h-12 rounded-2xl border-white/10 bg-white/5 text-sm text-white">
               <SelectValue />
             </SelectTrigger>
-            <SelectContent className="rounded-xl border-slate-200 shadow-xl">
-              {PROCEDURE_TYPES.map((pt) => (
-                <SelectItem key={pt.value} value={pt.value} className="focus:bg-blue-50 focus:text-primary rounded-lg cursor-pointer py-2">
-                  {pt.label}
+            <SelectContent className="rounded-2xl border-slate-700 bg-slate-950 text-slate-200">
+              {PROCEDURE_TYPES.map((item) => (
+                <SelectItem key={item.value} value={item.value} className="rounded-xl focus:bg-white/10 focus:text-white">
+                  {item.label}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
-        <div className="flex-1 min-w-[140px] space-y-2">
-          <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+
+        <div className="space-y-2">
+          <Label className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
             Rok od
           </Label>
           <Input
             type="date"
             value={deadlineFrom}
-            onChange={(e) => setDeadlineFrom(e.target.value)}
-            className="h-11 rounded-xl border-slate-200 text-sm shadow-sm focus-visible:ring-primary focus-visible:border-primary transition-all"
+            onChange={(event) => setDeadlineFrom(event.target.value)}
+            className="h-12 rounded-2xl border-white/10 bg-white/5 text-sm text-white focus-visible:border-sky-400/40 focus-visible:ring-sky-400/20"
           />
         </div>
-        <div className="flex-1 min-w-[140px] space-y-2">
-          <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+
+        <div className="space-y-2">
+          <Label className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
             Rok do
           </Label>
           <Input
             type="date"
             value={deadlineTo}
-            onChange={(e) => setDeadlineTo(e.target.value)}
-            className="h-11 rounded-xl border-slate-200 text-sm shadow-sm focus-visible:ring-primary focus-visible:border-primary transition-all"
+            onChange={(event) => setDeadlineTo(event.target.value)}
+            className="h-12 rounded-2xl border-white/10 bg-white/5 text-sm text-white focus-visible:border-sky-400/40 focus-visible:ring-sky-400/20"
           />
         </div>
       </div>
 
-      {/* Row 3: location + action buttons always visible */}
-      <div className="flex flex-wrap items-end gap-3 pt-4 border-t border-slate-50">
-        <div className="flex-1 min-w-[220px] space-y-2">
-          <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+      <div className="mt-5 grid gap-4 border-t border-white/10 pt-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+        <div className="space-y-2">
+          <Label className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
             Lokacija tendera
           </Label>
           <RegionMultiSelect selectedRegions={locations} onChange={setLocations} />
         </div>
-        <div className="flex gap-2 self-end flex-shrink-0">
+
+        <div className="flex flex-wrap items-center gap-2 lg:justify-end">
           <Button
             variant="outline"
             onClick={resetFilters}
-            title="Resetuj sve filtere"
-            className="h-11 rounded-xl border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900 font-bold px-4"
+            className="h-12 rounded-2xl border-white/10 bg-white/5 px-5 text-sm font-semibold text-slate-200 hover:bg-white/10 hover:text-white"
           >
             <RotateCcw className="mr-2 size-4" />
             Resetuj
           </Button>
           <Button
             onClick={applyFilters}
-            className="h-11 rounded-xl bg-primary text-white hover:bg-blue-700 shadow-lg shadow-blue-500/25 font-bold px-6"
+            className="h-12 rounded-2xl bg-white px-6 text-sm font-semibold text-slate-950 hover:bg-slate-100"
           >
             <Search className="mr-2 size-4" />
             Pretraži
           </Button>
         </div>
       </div>
-    </div>
+    </section>
   );
 }

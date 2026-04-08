@@ -1,12 +1,11 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
-import { isCompanyProfileComplete } from "@/lib/demo";
-import { getSubscriptionStatus, isAgencyPlan } from "@/lib/subscription";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ProfileSettings } from "@/components/settings/profile-settings";
-import { DangerZone } from "@/components/settings/danger-zone";
-import { TeamSettings } from "@/components/settings/team-settings";
 import { Building2, ShieldAlert, Users } from "lucide-react";
+import { DangerZone } from "@/components/settings/danger-zone";
+import { ProfileSettings } from "@/components/settings/profile-settings";
+import { TeamSettings } from "@/components/settings/team-settings";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { getSubscriptionStatus, isAgencyPlan } from "@/lib/subscription";
+import { createClient } from "@/lib/supabase/server";
 import type { Company } from "@/types/database";
 
 export default async function SettingsPage() {
@@ -15,41 +14,33 @@ export default async function SettingsPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) {
-    redirect("/login");
-  }
+  if (!user) redirect("/login");
 
   const status = await getSubscriptionStatus(user.id, user.email, supabase);
   const isAgency = isAgencyPlan(status.plan);
 
-  // Agency settings view
   if (isAgency) {
     return (
-      <div className="max-w-[1000px] mx-auto space-y-8">
-        <div>
-          <h1 className="text-3xl font-heading font-bold text-slate-900 tracking-tight">
-            Postavke agencije
-          </h1>
-          <p className="mt-2 text-base text-slate-500">
-            Upravljajte postavkama vaše agencije i vašim računom.
-          </p>
-        </div>
+      <div className="mx-auto max-w-[1000px] space-y-6">
+        <section className="relative overflow-hidden rounded-[2rem] border border-slate-800 bg-[radial-gradient(circle_at_top_left,rgba(56,189,248,0.14),transparent_28%),radial-gradient(circle_at_top_right,rgba(59,130,246,0.14),transparent_30%),linear-gradient(180deg,#111827_0%,#0f172a_58%,#0b1120_100%)] p-6 text-white shadow-[0_35px_90px_-45px_rgba(2,6,23,0.92)] sm:p-8">
+          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,rgba(148,163,184,0.06)_1px,transparent_1px),linear-gradient(to_bottom,rgba(148,163,184,0.06)_1px,transparent_1px)] bg-[size:52px_52px] [mask-image:radial-gradient(circle_at_top_left,#000_15%,transparent_75%)]" />
+          <div className="relative">
+            <h1 className="text-3xl font-heading font-bold tracking-tight text-white sm:text-4xl">Postavke agencije</h1>
+            <p className="mt-2 text-sm leading-7 text-slate-300 sm:text-base">
+              Upravljajte postavkama vaše agencije i računa u istom sleek i preglednom dashboard jeziku kao ostatak proizvoda.
+            </p>
+          </div>
+        </section>
 
-        <Tabs defaultValue="team" className="space-y-6">
-          <TabsList className="bg-white border border-slate-200 p-1 h-auto rounded-xl">
-            <TabsTrigger
-              value="team"
-              className="rounded-lg px-4 py-2 data-[state=active]:bg-slate-100 data-[state=active]:text-slate-900 font-medium"
-            >
-              <Users className="mr-2 size-4" />
+        <Tabs defaultValue="team" className="space-y-5">
+          <TabsList className="w-full justify-start sm:w-auto">
+            <TabsTrigger value="team">
+              <Users className="size-4" />
               Tim
             </TabsTrigger>
-            <TabsTrigger
-              value="account"
-              className="rounded-lg px-4 py-2 data-[state=active]:bg-red-50 data-[state=active]:text-red-700 font-medium text-slate-500 hover:text-slate-700"
-            >
-              <ShieldAlert className="mr-2 size-4" />
-              Račun & Opasna zona
+            <TabsTrigger value="account">
+              <ShieldAlert className="size-4" />
+              Račun i opasna zona
             </TabsTrigger>
           </TabsList>
 
@@ -72,49 +63,38 @@ export default async function SettingsPage() {
     .maybeSingle();
 
   const company = data as Company | null;
-
-  if (!company) {
-    redirect("/onboarding");
-  }
+  if (!company) redirect("/onboarding");
 
   return (
-    <div className="max-w-[1000px] mx-auto space-y-8">
-      <div>
-        <h1 className="text-3xl font-heading font-bold text-slate-900 tracking-tight">
-          Postavke
-        </h1>
-        <p className="mt-2 text-base text-slate-500">
-          Upravljajte profilom firme, postavkama pretrage i vašim računom.
-        </p>
-      </div>
+    <div className="mx-auto max-w-[1000px] space-y-6">
+      <section className="relative overflow-hidden rounded-[2rem] border border-slate-800 bg-[radial-gradient(circle_at_top_left,rgba(56,189,248,0.14),transparent_28%),radial-gradient(circle_at_top_right,rgba(59,130,246,0.14),transparent_30%),linear-gradient(180deg,#111827_0%,#0f172a_58%,#0b1120_100%)] p-6 text-white shadow-[0_35px_90px_-45px_rgba(2,6,23,0.92)] sm:p-8">
+        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,rgba(148,163,184,0.06)_1px,transparent_1px),linear-gradient(to_bottom,rgba(148,163,184,0.06)_1px,transparent_1px)] bg-[size:52px_52px] [mask-image:radial-gradient(circle_at_top_left,#000_15%,transparent_75%)]" />
+        <div className="relative">
+          <h1 className="text-3xl font-heading font-bold tracking-tight text-white sm:text-4xl">Postavke</h1>
+          <p className="mt-2 text-sm leading-7 text-slate-300 sm:text-base">
+            Upravljajte profilom firme, timom i računom bez vizuelnog šuma i sa jasnim razmakom između sekcija.
+          </p>
+        </div>
+      </section>
 
-      <Tabs defaultValue="profile" className="space-y-6">
-        <TabsList className="bg-white border border-slate-200 p-1 h-auto rounded-xl">
-          <TabsTrigger 
-            value="profile" 
-            className="rounded-lg px-4 py-2 data-[state=active]:bg-slate-100 data-[state=active]:text-slate-900 font-medium"
-          >
-            <Building2 className="mr-2 size-4" />
+      <Tabs defaultValue="profile" className="space-y-5">
+        <TabsList className="w-full justify-start sm:w-auto">
+          <TabsTrigger value="profile">
+            <Building2 className="size-4" />
             Profil firme
           </TabsTrigger>
-          <TabsTrigger 
-            value="team" 
-            className="rounded-lg px-4 py-2 data-[state=active]:bg-slate-100 data-[state=active]:text-slate-900 font-medium"
-          >
-            <Users className="mr-2 size-4" />
+          <TabsTrigger value="team">
+            <Users className="size-4" />
             Tim
           </TabsTrigger>
-          <TabsTrigger 
-            value="account" 
-            className="rounded-lg px-4 py-2 data-[state=active]:bg-red-50 data-[state=active]:text-red-700 font-medium text-slate-500 hover:text-slate-700"
-          >
-            <ShieldAlert className="mr-2 size-4" />
-            Račun & Opasna zona
+          <TabsTrigger value="account">
+            <ShieldAlert className="size-4" />
+            Račun i opasna zona
           </TabsTrigger>
         </TabsList>
 
         <TabsContent value="profile" className="focus-visible:ring-0">
-          <ProfileSettings 
+          <ProfileSettings
             company={{
               id: company.id,
               name: company.name,
@@ -127,7 +107,7 @@ export default async function SettingsPage() {
               cpv_codes: company.cpv_codes,
               keywords: company.keywords,
               operating_regions: company.operating_regions,
-            }} 
+            }}
           />
         </TabsContent>
 

@@ -1,13 +1,10 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { BidStatus } from "@/types/database";
-import {
-  BID_STATUSES,
-  BID_STATUS_LABELS,
-} from "@/lib/bids/constants";
+import { BID_STATUSES, BID_STATUS_LABELS } from "@/lib/bids/constants";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -16,7 +13,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Eye, Filter, Briefcase, Calendar, Building2, CheckCircle2, XCircle, Edit, Loader2 } from "lucide-react";
+import {
+  Briefcase,
+  Building2,
+  Calendar,
+  CheckCircle2,
+  Edit,
+  Filter,
+  Loader2,
+  XCircle,
+} from "lucide-react";
 
 interface BidRow {
   id: string;
@@ -37,7 +43,7 @@ interface BidsTableProps {
 }
 
 function formatDate(dateStr: string | null): string {
-  if (!dateStr) return "—";
+  if (!dateStr) return "Rok nije objavljen";
   return new Date(dateStr).toLocaleDateString("bs-BA", {
     day: "2-digit",
     month: "2-digit",
@@ -46,11 +52,11 @@ function formatDate(dateStr: string | null): string {
 }
 
 const STATUS_STYLES: Record<string, string> = {
-  draft: "bg-slate-100 text-slate-700 border-slate-200",
-  in_review: "bg-amber-50 text-amber-700 border-amber-200",
-  submitted: "bg-blue-50 text-blue-700 border-blue-200",
-  won: "bg-emerald-50 text-emerald-700 border-emerald-200",
-  lost: "bg-red-50 text-red-700 border-red-200",
+  draft: "border-slate-500/25 bg-slate-500/10 text-slate-100",
+  in_review: "border-amber-500/25 bg-amber-500/10 text-amber-100",
+  submitted: "border-sky-500/25 bg-sky-500/10 text-sky-100",
+  won: "border-emerald-500/25 bg-emerald-500/10 text-emerald-100",
+  lost: "border-rose-500/25 bg-rose-500/10 text-rose-100",
 };
 
 export function BidsTable({ bids, showClientColumn = false }: BidsTableProps) {
@@ -60,7 +66,7 @@ export function BidsTable({ bids, showClientColumn = false }: BidsTableProps) {
 
   const filtered = useMemo(() => {
     if (statusFilter === "all") return bids;
-    return bids.filter((b) => b.status === statusFilter);
+    return bids.filter((bid) => bid.status === statusFilter);
   }, [bids, statusFilter]);
 
   async function updateBidStatus(bidId: string, newStatus: BidStatus) {
@@ -72,8 +78,8 @@ export function BidsTable({ bids, showClientColumn = false }: BidsTableProps) {
         body: JSON.stringify({ status: newStatus }),
       });
       router.refresh();
-    } catch (err) {
-      console.error("Failed to update status:", err);
+    } catch (error) {
+      console.error("Failed to update status:", error);
     } finally {
       setUpdatingId(null);
     }
@@ -81,138 +87,125 @@ export function BidsTable({ bids, showClientColumn = false }: BidsTableProps) {
 
   return (
     <div className="space-y-6">
-      {/* Filter */}
-      <div className="flex items-center gap-3 bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
-        <div className="flex items-center gap-2 text-slate-500 mr-2">
-          <Filter className="size-4" />
-          <span className="text-sm font-bold uppercase tracking-wider">Filteri:</span>
-        </div>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[200px] h-10 rounded-xl border-slate-200 text-sm focus:ring-primary focus:border-primary">
-            <SelectValue placeholder="Svi statusi" />
-          </SelectTrigger>
-          <SelectContent className="rounded-xl border-slate-200 shadow-lg">
-            <SelectItem value="all" className="focus:bg-blue-50 focus:text-primary cursor-pointer rounded-lg">Svi statusi</SelectItem>
-            {BID_STATUSES.map((s) => (
-              <SelectItem key={s} value={s} className="focus:bg-blue-50 focus:text-primary cursor-pointer rounded-lg">
-                {BID_STATUS_LABELS[s]}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* Tabela */}
-      {filtered.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-slate-200 bg-slate-50 py-20">
-          <div className="flex size-16 items-center justify-center rounded-full bg-white shadow-sm mb-4">
-            <Briefcase className="size-8 text-slate-300" />
+      <section className="rounded-[1.75rem] border border-slate-800 bg-[linear-gradient(180deg,#111827_0%,#0f172a_100%)] p-5 text-white shadow-[0_24px_60px_-42px_rgba(2,6,23,0.88)]">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex size-10 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-sky-300">
+              <Filter className="size-4" />
+            </div>
+            <div>
+              <h3 className="font-heading text-lg font-bold text-white">Pregled ponuda</h3>
+              <p className="text-sm text-slate-400">Status, rokovi i akcije složeni za brzi operativni rad.</p>
+            </div>
           </div>
-          <h3 className="text-lg font-heading font-bold text-slate-900 mb-2">
+          <div className="w-full max-w-[240px]">
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="h-11 rounded-2xl border-white/10 bg-white/5 text-sm text-white">
+                <SelectValue placeholder="Svi statusi" />
+              </SelectTrigger>
+              <SelectContent className="rounded-2xl border-slate-700 bg-slate-950 text-slate-200">
+                <SelectItem value="all" className="rounded-xl focus:bg-white/10 focus:text-white">Svi statusi</SelectItem>
+                {BID_STATUSES.map((status) => (
+                  <SelectItem key={status} value={status} className="rounded-xl focus:bg-white/10 focus:text-white">
+                    {BID_STATUS_LABELS[status]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      </section>
+
+      {filtered.length === 0 ? (
+        <div className="flex flex-col items-center justify-center rounded-[1.75rem] border border-dashed border-white/10 bg-white/5 py-20 text-center">
+          <div className="mb-4 flex size-16 items-center justify-center rounded-full border border-white/10 bg-white/5">
+            <Briefcase className="size-8 text-slate-400" />
+          </div>
+          <h3 className="mb-2 text-lg font-heading font-bold text-white">
             {bids.length === 0 ? "Nemate aktivnih ponuda" : "Nema rezultata"}
           </h3>
-          <p className="text-sm text-slate-500 max-w-sm text-center">
+          <p className="max-w-sm text-sm text-slate-400">
             {bids.length === 0
               ? 'Započnite klikom na dugme "Nova ponuda" iznad.'
               : "Pokušajte promijeniti filtere za pretragu."}
           </p>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-[1.5rem] border border-slate-100 bg-white shadow-sm">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="border-b border-slate-100 bg-slate-50/50 text-xs font-bold text-slate-500 uppercase tracking-wider">
-                <th className="px-6 py-4 font-bold">Naziv tendera</th>
-                {showClientColumn && <th className="px-6 py-4 font-bold">Klijent</th>}
-                <th className="px-6 py-4 font-bold">Naručilac</th>
-                <th className="px-6 py-4 font-bold">Rok</th>
-                <th className="px-6 py-4 font-bold">Status</th>
-                <th className="px-6 py-4 font-bold text-right">Akcije</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-50">
-              {filtered.map((bid) => (
-                <tr
-                  key={bid.id}
-                  className="group hover:bg-slate-50/80 transition-colors"
-                >
-                  <td className="px-6 py-4">
-                    <p className="font-bold text-slate-900 line-clamp-1 max-w-[300px]" title={bid.tender.title}>
-                      {bid.tender.title}
-                    </p>
-                  </td>
-                  {showClientColumn && (
-                    <td className="px-6 py-4">
-                      {bid.clientName ? (
-                        <span className="inline-flex items-center gap-1.5 rounded-md border border-violet-200 bg-violet-50 px-2 py-1 text-xs font-bold text-violet-700">
-                          {bid.clientName}
-                        </span>
-                      ) : (
-                        <span className="text-sm text-slate-400">—</span>
-                      )}
-                    </td>
-                  )}
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-2 text-slate-600">
-                      <Building2 className="size-3.5 text-slate-400" />
-                      <span className="text-sm font-medium truncate max-w-[200px]" title={bid.tender.contracting_authority || ""}>
-                        {bid.tender.contracting_authority || "—"}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-2 text-slate-600">
-                      <Calendar className="size-3.5 text-slate-400" />
-                      <span className="text-sm font-medium">
-                        {formatDate(bid.tender.deadline)}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span
-                      className={`inline-flex items-center justify-center rounded-full border px-2.5 py-1 text-xs font-bold ${STATUS_STYLES[bid.status] || STATUS_STYLES.draft}`}
-                    >
+        <div className="space-y-3">
+          {filtered.map((bid) => (
+            <article
+              key={bid.id}
+              className="rounded-[1.5rem] border border-slate-800 bg-[linear-gradient(180deg,#111827_0%,#0f172a_100%)] p-5 text-white shadow-[0_24px_60px_-42px_rgba(2,6,23,0.88)]"
+            >
+              <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold ${STATUS_STYLES[bid.status] || STATUS_STYLES.draft}`}>
                       {BID_STATUS_LABELS[bid.status]}
                     </span>
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      {bid.status !== "won" && bid.status !== "lost" && (
-                        <>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            disabled={updatingId === bid.id}
-                            onClick={() => updateBidStatus(bid.id, "won")}
-                            className="h-8 px-2 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 border-emerald-200"
-                            title="Tender dobijen"
-                          >
-                            {updatingId === bid.id ? <Loader2 className="size-4 animate-spin" /> : <CheckCircle2 className="size-4" />}
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            disabled={updatingId === bid.id}
-                            onClick={() => updateBidStatus(bid.id, "lost")}
-                            className="h-8 px-2 text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
-                            title="Tender nije prošao"
-                          >
-                            {updatingId === bid.id ? <Loader2 className="size-4 animate-spin" /> : <XCircle className="size-4" />}
-                          </Button>
-                        </>
-                      )}
-                      <Link href={`/dashboard/bids/${bid.id}`}>
-                        <Button variant="ghost" size="sm" className="h-8 px-2 rounded-lg text-slate-500 hover:text-primary hover:bg-blue-50">
-                          <Edit className="size-4 mr-1.5" />
-                          Uredi
-                        </Button>
-                      </Link>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                    {showClientColumn && bid.clientName ? (
+                      <span className="inline-flex max-w-full items-center rounded-full border border-violet-500/25 bg-violet-500/10 px-3 py-1 text-xs font-semibold text-violet-100">
+                        <span className="truncate">{bid.clientName}</span>
+                      </span>
+                    ) : null}
+                  </div>
+
+                  <h3 className="mt-4 line-clamp-2 text-lg font-semibold leading-7 text-white">
+                    {bid.tender.title}
+                  </h3>
+
+                  <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-sm text-slate-300">
+                    <span className="inline-flex max-w-full items-center gap-2">
+                      <Building2 className="size-4 shrink-0 text-slate-500" />
+                      <span className="truncate" title={bid.tender.contracting_authority ?? ""}>
+                        {bid.tender.contracting_authority ?? "Nepoznat naručilac"}
+                      </span>
+                    </span>
+                    <span className="inline-flex items-center gap-2">
+                      <Calendar className="size-4 shrink-0 text-slate-500" />
+                      {formatDate(bid.tender.deadline)}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2 xl:justify-end">
+                  {bid.status !== "won" && bid.status !== "lost" ? (
+                    <>
+                      <Button
+                        variant="outline"
+                        disabled={updatingId === bid.id}
+                        onClick={() => updateBidStatus(bid.id, "won")}
+                        className="h-11 rounded-2xl border-emerald-500/25 bg-emerald-500/10 px-4 text-sm font-semibold text-emerald-100 hover:bg-emerald-500/20 hover:text-emerald-50"
+                      >
+                        {updatingId === bid.id ? <Loader2 className="mr-2 size-4 animate-spin" /> : <CheckCircle2 className="mr-2 size-4" />}
+                        Dobijeno
+                      </Button>
+                      <Button
+                        variant="outline"
+                        disabled={updatingId === bid.id}
+                        onClick={() => updateBidStatus(bid.id, "lost")}
+                        className="h-11 rounded-2xl border-rose-500/25 bg-rose-500/10 px-4 text-sm font-semibold text-rose-100 hover:bg-rose-500/20 hover:text-rose-50"
+                      >
+                        {updatingId === bid.id ? <Loader2 className="mr-2 size-4 animate-spin" /> : <XCircle className="mr-2 size-4" />}
+                        Izgubljeno
+                      </Button>
+                    </>
+                  ) : null}
+
+                  <Button
+                    asChild
+                    variant="outline"
+                    className="h-11 rounded-2xl border-white/10 bg-white/5 px-4 text-sm font-semibold text-slate-200 hover:bg-white/10 hover:text-white"
+                  >
+                    <Link href={`/dashboard/bids/${bid.id}`} className="whitespace-nowrap">
+                      <Edit className="mr-2 size-4" />
+                      Otvori ponudu
+                    </Link>
+                  </Button>
+                </div>
+              </div>
+            </article>
+          ))}
         </div>
       )}
     </div>
