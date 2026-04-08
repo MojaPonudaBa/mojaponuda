@@ -1,17 +1,14 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { DashboardHomeOverview } from "@/components/dashboard/home-overview";
+import { getProfileOptionLabel } from "@/lib/company-profile";
 import {
   demoBidSummaries,
-  demoCompetitors,
   getDemoDocuments,
   isCompanyProfileComplete,
   isDemoUser,
-  demoUpcomingProcurements,
 } from "@/lib/demo";
-import type { BidStatus, Document as DocType } from "@/types/database";
-import { getProfileOptionLabel } from "@/lib/company-profile";
-import { DashboardHomeOverview } from "@/components/dashboard/home-overview";
-import { getCompetitorAnalysis } from "@/lib/market-intelligence";
+import { getSubscriptionStatus, isAgencyPlan } from "@/lib/subscription";
+import { createClient } from "@/lib/supabase/server";
 import { maybeRerankTenderRecommendationsWithAI } from "@/lib/tender-recommendation-rerank";
 import {
   buildRecommendationContext,
@@ -21,7 +18,7 @@ import {
   RECOMMENDATION_SUMMARY_MINIMUM_RESULTS,
   selectTenderRecommendations,
 } from "@/lib/tender-recommendations";
-import { getSubscriptionStatus, isAgencyPlan } from "@/lib/subscription";
+import type { BidStatus, Document as DocType } from "@/types/database";
 
 function formatCompactCurrency(value: number | null | undefined): string {
   if (!value) return "—";
@@ -31,9 +28,7 @@ function formatCompactCurrency(value: number | null | undefined): string {
 }
 
 function daysUntil(dateStr: string): number {
-  return Math.ceil(
-    (new Date(dateStr).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
-  );
+  return Math.ceil((new Date(dateStr).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
 }
 
 function formatDaysLabel(days: number): string {
@@ -54,9 +49,9 @@ export default async function DashboardPage() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
+
   if (!user) redirect("/login");
 
-  // Agency users skip onboarding and go directly to agency dashboard
   const { plan } = await getSubscriptionStatus(user.id, user.email, supabase);
   if (isAgencyPlan(plan)) redirect("/dashboard/agency");
 
@@ -80,27 +75,34 @@ export default async function DashboardPage() {
   };
 
   const recommendationContext = buildRecommendationContext(resolvedCompany);
-
-  // Calculate dates outside of query builder to avoid impure function warnings
   const now = new Date();
-  const sixtyDaysFromNow = new Date(now.getTime() + 60 * 24 * 60 * 60 * 1000).toISOString();
   const nowIso = now.toISOString();
+  const sixtyDaysFromNow = new Date(now.getTime() + 60 * 24 * 60 * 60 * 1000).toISOString();
 
   const [
-    , // documentsCount (unused in this parallel block — fetched below)
-    { count: bidsCount },
+    { count: activeBidsCount },
     { count: wonBidsCount },
     { count: lostBidsCount },
     { data: expiringDocs },
-    { data: recentBids },
     subscriptionStatus,
     { count: documentsCountValue },
     { data: allBidRowsData },
   ] = await Promise.all([
-    supabase.from("documents").select("*", { count: "exact", head: true }).eq("company_id", resolvedCompany.id),
-    supabase.from("bids").select("*", { count: "exact", head: true }).eq("company_id", resolvedCompany.id).in("status", ["draft", "in_review", "submitted"]),
-    supabase.from("bids").select("*", { count: "exact", head: true }).eq("company_id", resolvedCompany.id).eq("status", "won"),
-    supabase.from("bids").select("*", { count: "exact", head: true }).eq("company_id", resolvedCompany.id).eq("status", "lost"),
+    supabase
+      .from("bids")
+      .select("*", { count: "exact", head: true })
+      .eq("company_id", resolvedCompany.id)
+      .in("status", ["draft", "in_review", "submitted"]),
+    supabase
+      .from("bids")
+      .select("*", { count: "exact", head: true })
+      .eq("company_id", resolvedCompany.id)
+      .eq("status", "won"),
+    supabase
+      .from("bids")
+      .select("*", { count: "exact", head: true })
+      .eq("company_id", resolvedCompany.id)
+      .eq("status", "lost"),
     supabase
       .from("documents")
       .select("id, name, type, expires_at")
@@ -110,15 +112,7 @@ export default async function DashboardPage() {
       .gte("expires_at", nowIso)
       .order("expires_at", { ascending: true })
       .limit(5),
-    supabase
-      .from("bids")
-      .select("id, status, created_at, tenders(title, deadline, estimated_value)")
-      .eq("company_id", resolvedCompany.id)
-      .order("created_at", { ascending: false })
-      .limit(6),
-    // OPT 2: Reuse existing supabase client — avoids an extra connection
     getSubscriptionStatus(user.id, user.email, supabase),
-    // OPT 1: Run documentsCount and allBidRows in parallel with the above
     supabase
       .from("documents")
       .select("id", { count: "exact", head: true })
@@ -134,34 +128,8 @@ export default async function DashboardPage() {
   const expiring = ((expiringDocs ?? []) as Pick<DocType, "id" | "name" | "type" | "expires_at">[]).length > 0
     ? ((expiringDocs ?? []) as Pick<DocType, "id" | "name" | "type" | "expires_at">[])
     : demoDocuments;
-  const realBids = (recentBids ?? []) as {
-    id: string;
-    status: BidStatus;
-    created_at: string;
-    tenders: { title: string; deadline: string | null; estimated_value: number | null };
-  }[];
-  const bids = realBids.length > 0
-    ? realBids
-    : isDemoAccount
-      ? demoBidSummaries.map((bid) => ({
-        id: bid.id,
-        status: bid.status,
-        created_at: bid.created_at,
-        tenders: {
-          title: bid.tender.title,
-          deadline: bid.tender.deadline,
-          estimated_value: bid.tender.estimated_value,
-        },
-      }))
-      : [];
 
-  const totalActiveBids = (bidsCount ?? 0) + (wonBidsCount ?? 0) + (lostBidsCount ?? 0);
-  const displayTotalBids = totalActiveBids > 0 ? totalActiveBids : bids.length;
-  const displayDraftBids = (bidsCount ?? 0) > 0 ? (bidsCount ?? 0) : bids.filter((bid) => ["draft", "in_review", "submitted"].includes(bid.status)).length;
-  const displayWonBids = (wonBidsCount ?? 0) > 0 ? (wonBidsCount ?? 0) : bids.filter((bid) => bid.status === "won").length;
-  const displayLostBids = (lostBidsCount ?? 0) > 0 ? (lostBidsCount ?? 0) : bids.filter((bid) => bid.status === "lost").length;
-
-  const allBidRows = ((allBidRowsData ?? []) as {
+  const allBidRows = (allBidRowsData ?? []) as Array<{
     id: string;
     tender_id: string;
     status: BidStatus;
@@ -172,11 +140,12 @@ export default async function DashboardPage() {
       estimated_value: number | null;
       contracting_authority: string | null;
     } | null;
-  }[]);
+  }>;
+
   const existingBidTenderIds = new Set(
     allBidRows
       .map((bid) => bid.tender_id)
-      .filter((value): value is string => Boolean(value))
+      .filter((value): value is string => Boolean(value)),
   );
 
   const portfolioBids = allBidRows.length > 0
@@ -206,26 +175,24 @@ export default async function DashboardPage() {
       : [];
 
   const activePortfolioBids = portfolioBids.filter((bid) =>
-    ["draft", "in_review", "submitted"].includes(bid.status)
+    ["draft", "in_review", "submitted"].includes(bid.status),
   );
   const urgentBidDeadlines = activePortfolioBids
     .filter((bid) => bid.tenders.deadline)
-    .sort(
-      (a, b) =>
-        new Date(a.tenders.deadline!).getTime() -
-        new Date(b.tenders.deadline!).getTime()
-    )
+    .sort((first, second) => new Date(first.tenders.deadline!).getTime() - new Date(second.tenders.deadline!).getTime())
     .slice(0, 4);
   const submittedCount = activePortfolioBids.filter((bid) => bid.status === "submitted").length;
   const inReviewCount = activePortfolioBids.filter((bid) => bid.status === "in_review").length;
+  const displayWonBids = (wonBidsCount ?? 0) > 0
+    ? (wonBidsCount ?? 0)
+    : portfolioBids.filter((bid) => bid.status === "won").length;
+  const displayLostBids = (lostBidsCount ?? 0) > 0
+    ? (lostBidsCount ?? 0)
+    : portfolioBids.filter((bid) => bid.status === "lost").length;
   const closedBidsCount = displayWonBids + displayLostBids;
   const winRate = closedBidsCount > 0 ? Math.round((displayWonBids / closedBidsCount) * 100) : null;
-  const wonEstimatedValue = portfolioBids
-    .filter((bid) => bid.status === "won")
-    .reduce((sum, bid) => sum + (Number(bid.tenders.estimated_value) || 0), 0);
 
   let missingChecklistCount = 0;
-  let totalChecklistCount = 0;
   const activeBidIds = activePortfolioBids.map((bid) => bid.id);
   if (activeBidIds.length > 0) {
     const { data: checklistOverview } = await supabase
@@ -233,12 +200,10 @@ export default async function DashboardPage() {
       .select("status")
       .in("bid_id", activeBidIds);
 
-    totalChecklistCount = checklistOverview?.length ?? 0;
-    missingChecklistCount =
-      checklistOverview?.filter((item) => item.status === "missing").length ?? 0;
+    missingChecklistCount = checklistOverview?.filter((item) => item.status === "missing").length ?? 0;
   }
 
-  let relevantTenders: {
+  let relevantTenders: Array<{
     id: string;
     title: string;
     deadline: string | null;
@@ -247,8 +212,7 @@ export default async function DashboardPage() {
     contracting_authority_jib: string | null;
     contract_type: string | null;
     raw_description: string | null;
-    cpv_code?: string | null;
-  }[] = [];
+  }> = [];
 
   if (hasRecommendationSignals(recommendationContext)) {
     const relevantRows = await fetchRecommendedTenderCandidates<{
@@ -270,144 +234,36 @@ export default async function DashboardPage() {
       limit: RECOMMENDATION_SUMMARY_CANDIDATE_LIMIT,
     });
 
-    const availableRelevantRows = relevantRows.filter(
-      (tender) => !existingBidTenderIds.has(tender.id)
-    );
-    const rankedRelevantTenders = selectTenderRecommendations(
-      availableRelevantRows,
-      recommendationContext,
-      {
-        minimumResults: RECOMMENDATION_SUMMARY_MINIMUM_RESULTS,
-      }
-    );
+    const availableRelevantRows = relevantRows.filter((tender) => !existingBidTenderIds.has(tender.id));
+    const rankedRelevantTenders = selectTenderRecommendations(availableRelevantRows, recommendationContext, {
+      minimumResults: RECOMMENDATION_SUMMARY_MINIMUM_RESULTS,
+    });
 
     relevantTenders = (
-      await maybeRerankTenderRecommendationsWithAI(
-        rankedRelevantTenders,
-        recommendationContext,
-        {
-          limit: 12,
-          shortlistSize: 8,
-        }
-      )
+      await maybeRerankTenderRecommendationsWithAI(rankedRelevantTenders, recommendationContext, {
+        limit: 12,
+        shortlistSize: 8,
+      })
     ).map(({ tender }) => tender);
   }
 
   const relevantTenderCount = relevantTenders.length;
-  const relevantTenderValue = relevantTenders.reduce(
-    (sum, tender) => sum + (Number(tender.estimated_value) || 0),
-    0
-  );
-
-  const topAuthoritiesMap = new Map<
-    string,
-    { name: string; count: number; totalValue: number }
-  >();
-  for (const tender of relevantTenders) {
-    const key = tender.contracting_authority || "Nepoznat naručilac";
-    const entry = topAuthoritiesMap.get(key);
-    const amount = Number(tender.estimated_value) || 0;
-    if (entry) {
-      entry.count += 1;
-      entry.totalValue += amount;
-    } else {
-      topAuthoritiesMap.set(key, { name: key, count: 1, totalValue: amount });
-    }
-  }
-  const topRelevantAuthorities = [...topAuthoritiesMap.values()]
-    .sort((a, b) => b.count - a.count || b.totalValue - a.totalValue)
-    .slice(0, 3);
-  const topRelevantAuthoritiesSource = topRelevantAuthorities.length > 0 ? "live" : "empty";
-
-  const today = new Date().toISOString().split("T")[0];
-
-  // OPT 1: upcomingRows and competitorAnalysis are independent — run in parallel
-  const [{ data: upcomingRowsData }, resolvedCompetitorAnalysis] = await Promise.all([
-    supabase
-      .from("planned_procurements")
-      .select(
-        "id, description, planned_date, estimated_value, contract_type, contracting_authorities(name, jib)"
-      )
-      .gte("planned_date", today)
-      .order("planned_date", { ascending: true })
-      .limit(3),
-    subscriptionStatus.isSubscribed
-      ? getCompetitorAnalysis(supabase, {
-          jib: resolvedCompany.jib,
-          industry: resolvedCompany.industry,
-          keywords: resolvedCompany.keywords || [],
-          operating_regions: resolvedCompany.operating_regions || [],
-        })
-      : Promise.resolve(null),
-  ]);
-
-  const upcomingRows = ((upcomingRowsData ?? []) as {
-    id: string;
-    description: string | null;
-    planned_date: string | null;
-    estimated_value: number | null;
-    contract_type: string | null;
-    contracting_authorities: { name: string; jib: string } | null;
-  }[]);
-
-  const displayUpcomingRows = upcomingRows.length > 0
-    ? upcomingRows
-    : isDemoAccount
-      ? demoUpcomingProcurements.slice(0, 3)
-      : [];
-
-  let competitorSnapshot: {
-    name: string;
-    jib: string;
-    wins: number;
-    total_value: number;
-    win_rate: number | null;
-  }[] = [];
-  let competitorSnapshotSource: "live" | "demo" | "empty" = "empty";
-
-  if (resolvedCompetitorAnalysis) {
-    competitorSnapshot = resolvedCompetitorAnalysis.competitors
-      .slice(0, 3)
-      .map((competitor) => ({
-        name: competitor.name,
-        jib: competitor.jib,
-        wins: competitor.wins,
-        total_value: competitor.total_value,
-        win_rate: competitor.win_rate,
-      }));
-
-    if (competitorSnapshot.length > 0) {
-      competitorSnapshotSource = "live";
-    }
-  }
-
-  if (competitorSnapshot.length === 0 && isDemoAccount) {
-    competitorSnapshot = demoCompetitors.slice(0, 3).map((competitor) => ({
-      name: competitor.name,
-      jib: competitor.jib,
-      wins: competitor.wins,
-      total_value: competitor.total_value,
-      win_rate: competitor.win_rate,
-    }));
-    competitorSnapshotSource = "demo";
-  }
-
+  const relevantTenderValue = relevantTenders.reduce((sum, tender) => sum + (Number(tender.estimated_value) || 0), 0);
   const documentsCount = documentsCountValue ?? demoDocuments.length;
   const dashboardBidRows = portfolioBids.slice(0, 6);
   const nextDeadlineInDays = urgentBidDeadlines[0]?.tenders.deadline
     ? daysUntil(urgentBidDeadlines[0].tenders.deadline)
     : null;
-  const currentPlanName = subscriptionStatus.isSubscribed
-    ? subscriptionStatus.plan.name
-    : "Bez aktivne pretplate";
+  const currentPlanName = subscriptionStatus.isSubscribed ? subscriptionStatus.plan.name : "Bez aktivne pretplate";
   const profileLabel = recommendationContext.profile.primaryIndustry
     ? getProfileOptionLabel(recommendationContext.profile.primaryIndustry)
     : null;
   const warningCount = expiring.length + missingChecklistCount;
+
   const nextAction = urgentBidDeadlines[0]
     ? {
         title: "Prvo riješite najbliži rok",
-        description: `Ponuda \"${urgentBidDeadlines[0].tenders.title}\" je najbliže roku i nosi najveći operativni rizik ako je ne otvorite sada.`,
+        description: `Ponuda "${urgentBidDeadlines[0].tenders.title}" je najbliže roku i treba je otvoriti prije ostalih zadataka.`,
         href: `/dashboard/bids/${urgentBidDeadlines[0].id}`,
         cta: "Otvori ponudu",
         meta: formatDeadlineMeta(nextDeadlineInDays),
@@ -416,7 +272,7 @@ export default async function DashboardPage() {
     : missingChecklistCount > 0
       ? {
           title: "Dovršite otvorene stavke",
-          description: `Imate ${missingChecklistCount} stavki koje još mogu usporiti ili ugroziti predaju ponude.`,
+          description: `Imate ${missingChecklistCount} stavki koje još mogu usporiti ili zaustaviti predaju ponude.`,
           href: "/dashboard/bids",
           cta: "Otvori ponude",
           meta: `${missingChecklistCount} otvorenih stavki`,
@@ -425,7 +281,7 @@ export default async function DashboardPage() {
       : expiring.length > 0
         ? {
             title: "Provjerite dokumente",
-            description: `${expiring.length} dokumenata uskoro ističe i mogu vas blokirati kada dođe pravi tender.`,
+            description: `${expiring.length} dokumenata uskoro ističe i vrijedi ih zatvoriti prije sljedeće prijave.`,
             href: "/dashboard/vault",
             cta: "Otvori dokumente",
             meta: `${expiring.length} dokumenata pred istekom`,
@@ -433,16 +289,16 @@ export default async function DashboardPage() {
           }
         : relevantTenders[0]
           ? {
-              title: "Pogledajte novi tender",
-              description: `Tender \"${relevantTenders[0].title}\" izgleda kao realna prilika na osnovu vaše djelatnosti i lokacije firme.`,
+              title: "Pogledajte novu priliku",
+              description: `Tender "${relevantTenders[0].title}" izgleda kao realna prilika na osnovu vašeg profila firme.`,
               href: `/dashboard/tenders/${relevantTenders[0].id}`,
               cta: "Otvori tender",
               meta: `${relevantTenderCount} relevantnih tendera`,
               tone: "opportunity" as const,
             }
           : {
-              title: "Otvorite pregled prilika",
-              description: "Pogledajte nove tendere i provjerite da li se pojavilo nešto što vrijedi otvoriti.",
+              title: "Otvorite preporuke",
+              description: "Pregledajte tender feed i provjerite da li se pojavilo nešto što vrijedi otvoriti danas.",
               href: "/dashboard/tenders?tab=recommended",
               cta: "Idi na preporuke",
               meta: "Nema hitnih blokera",
@@ -452,7 +308,7 @@ export default async function DashboardPage() {
   const focusCards = [
     {
       title: "Aktivne ponude",
-      value: String(activePortfolioBids.length),
+      value: String((activeBidsCount ?? 0) > 0 ? (activeBidsCount ?? 0) : activePortfolioBids.length),
       meta: `${submittedCount} predane · ${inReviewCount} u provjeri`,
       href: "/dashboard/bids",
       icon: "briefcase" as const,
@@ -460,12 +316,11 @@ export default async function DashboardPage() {
     {
       title: "Relevantne prilike",
       value: String(relevantTenderCount),
-      meta:
-        relevantTenderCount > 0
-          ? relevantTenderValue > 0
-            ? `Poznata vrijednost ${formatCompactCurrency(relevantTenderValue)}`
-            : "Najbolje otvorene prilike iz vašeg profila"
-          : "Dopunite profil za jasnije prijedloge",
+      meta: relevantTenderCount > 0
+        ? relevantTenderValue > 0
+          ? `Poznata vrijednost ${formatCompactCurrency(relevantTenderValue)}`
+          : "Najbolje otvorene prilike iz vašeg profila"
+        : "Dopunite profil za jasnije preporuke",
       href: "/dashboard/tenders?tab=recommended",
       icon: "search" as const,
     },
@@ -479,7 +334,9 @@ export default async function DashboardPage() {
     {
       title: "Ishod ponuda",
       value: winRate !== null ? `${winRate}%` : String(displayWonBids),
-      meta: winRate !== null ? `${displayWonBids} dobijeno · ${displayLostBids} izgubljeno` : `${displayWonBids} dobijene ponude`,
+      meta: winRate !== null
+        ? `${displayWonBids} dobijeno · ${displayLostBids} izgubljeno`
+        : `${displayWonBids} dobijene ponude`,
       href: "/dashboard/bids",
       icon: "trend" as const,
     },
@@ -495,42 +352,60 @@ export default async function DashboardPage() {
       tone: "critical" as const,
     })),
     ...(missingChecklistCount > 0
-      ? [
-          {
-            id: "checklist-warning",
-            title: "Zatvorite otvorene stavke",
-            description: "Otvorite ponude i uklonite stvari koje još mogu zaustaviti predaju.",
-            href: "/dashboard/bids",
-            badge: `${missingChecklistCount} stavki`,
-            tone: "attention" as const,
-          },
-        ]
+      ? [{
+          id: "checklist-warning",
+          title: "Zatvorite otvorene stavke",
+          description: "Otvorite ponude i uklonite stvari koje još mogu zaustaviti predaju.",
+          href: "/dashboard/bids",
+          badge: `${missingChecklistCount} stavki`,
+          tone: "attention" as const,
+        }]
       : []),
     ...(expiring.length > 0
-      ? [
-          {
-            id: "documents-warning",
-            title: "Provjerite dokumente pred istekom",
-            description: `${expiring.length} dokumenata uskoro treba obnovu ako ne želite kašnjenje na narednoj prijavi.`,
-            href: "/dashboard/vault",
-            badge: `${expiring.length} dokumenta`,
-            tone: "attention" as const,
-          },
-        ]
+      ? [{
+          id: "documents-warning",
+          title: "Provjerite dokumente pred istekom",
+          description: `${expiring.length} dokumenata uskoro treba obnovu ako ne želite kašnjenje na narednoj prijavi.`,
+          href: "/dashboard/vault",
+          badge: `${expiring.length} dokumenta`,
+          tone: "attention" as const,
+        }]
       : []),
     ...(relevantTenders[0]
-      ? [
-          {
-            id: `relevant-${relevantTenders[0].id}`,
-            title: "Pogledajte sljedeći tender",
-            description: `Vrijedi provjeriti: ${relevantTenders[0].title}`,
-            href: `/dashboard/tenders/${relevantTenders[0].id}`,
-            badge: "Nova prilika",
-            tone: "opportunity" as const,
-          },
-        ]
+      ? [{
+          id: `relevant-${relevantTenders[0].id}`,
+          title: "Pogledajte sljedeći tender",
+          description: `Vrijedi provjeriti: ${relevantTenders[0].title}`,
+          href: `/dashboard/tenders/${relevantTenders[0].id}`,
+          badge: "Nova prilika",
+          tone: "opportunity" as const,
+        }]
       : []),
   ].slice(0, 5);
+
+  const quickLinks = [
+    {
+      label: "Otvori tendere",
+      href: "/dashboard/tenders",
+      description: relevantTenderCount > 0
+        ? `${relevantTenderCount} preporuka već čeka pregled`
+        : "Pregledajte sve aktivne i preporučene tendere",
+    },
+    {
+      label: "Moje ponude",
+      href: "/dashboard/bids",
+      description: activePortfolioBids.length > 0
+        ? `${activePortfolioBids.length} aktivnih ponuda u radu`
+        : "Pokrenite radni prostor za tender koji vrijedi pripremati",
+    },
+    {
+      label: "Dokumenti",
+      href: "/dashboard/vault",
+      description: documentsCount > 0
+        ? `${documentsCount} dokumenata u spremištu`
+        : "Dodajte osnovne dokumente za bržu pripremu prijava",
+    },
+  ];
 
   return (
     <DashboardHomeOverview
@@ -548,11 +423,7 @@ export default async function DashboardPage() {
         estimated_value: tender.estimated_value,
         contracting_authority: tender.contracting_authority,
       }))}
-      topRelevantAuthorities={topRelevantAuthorities}
-      topRelevantAuthoritiesSource={topRelevantAuthoritiesSource}
-      competitorSnapshot={competitorSnapshot}
-      competitorSnapshotSource={competitorSnapshotSource}
-      displayUpcomingRows={displayUpcomingRows}
+      quickLinks={quickLinks}
       subscriptionActive={subscriptionStatus.isSubscribed}
       isLocked={subscriptionStatus.plan?.id === "basic"}
     />

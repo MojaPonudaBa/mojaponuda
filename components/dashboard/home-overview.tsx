@@ -1,20 +1,18 @@
 import Link from "next/link";
 import {
   ArrowUpRight,
-  BellRing,
   Briefcase,
-  CalendarDays,
   CheckCircle2,
+  ChevronRight,
   CircleAlert,
-  Clock,
+  Clock3,
   CreditCard,
   FileText,
+  Lock,
   Search,
   ShieldCheck,
   Sparkles,
-  Swords,
   TrendingUp,
-  Lock,
 } from "lucide-react";
 import type { BidStatus } from "@/types/database";
 
@@ -64,6 +62,12 @@ interface DashboardTenderCard {
   contracting_authority: string | null;
 }
 
+interface DashboardQuickLink {
+  label: string;
+  href: string;
+  description: string;
+}
+
 interface DashboardHomeOverviewProps {
   companyName: string;
   currentPlanName: string;
@@ -73,47 +77,29 @@ interface DashboardHomeOverviewProps {
   actionQueue: ActionQueueItem[];
   dashboardBidRows: DashboardBidRow[];
   recommendedTenders: DashboardTenderCard[];
-  topRelevantAuthorities: Array<{ name: string; count: number; totalValue: number }>;
-  topRelevantAuthoritiesSource: "live" | "empty";
-  competitorSnapshot: Array<{
-    name: string;
-    jib: string;
-    wins: number;
-    total_value: number;
-    win_rate: number | null;
-  }>;
-  competitorSnapshotSource: "live" | "demo" | "empty";
-  displayUpcomingRows: Array<{
-    id: string;
-    description: string | null;
-    planned_date: string | null;
-    estimated_value: number | null;
-    contracting_authorities?: { name: string; jib: string } | null;
-  }>;
+  quickLinks: DashboardQuickLink[];
   subscriptionActive: boolean;
   isLocked: boolean;
 }
 
-const STATUS_CONFIG: Record<
-  BidStatus,
-  { label: string; colors: string }
-> = {
-  draft: { label: "U pripremi", colors: "bg-slate-100 text-slate-700 border-slate-200" },
-  in_review: { label: "U pregledu", colors: "bg-amber-50 text-amber-700 border-amber-200" },
-  submitted: { label: "Predato", colors: "bg-blue-50 text-blue-700 border-blue-200" },
-  won: { label: "Dobijeno", colors: "bg-emerald-50 text-emerald-700 border-emerald-200" },
-  lost: { label: "Izgubljeno", colors: "bg-red-50 text-red-700 border-red-200" },
-};
+interface DashboardChecklistItem {
+  id: string;
+  title: string;
+  description: string;
+  href?: string;
+  tone: "positive" | "critical" | "attention" | "opportunity";
+}
 
-const toneStyles: Record<NextActionCard["tone"], string> = {
-  critical: "border-red-200 bg-red-50/80",
-  attention: "border-amber-200 bg-amber-50/80",
-  opportunity: "border-blue-200 bg-blue-50/80",
-  neutral: "border-slate-200 bg-slate-50/80",
+const STATUS_CONFIG: Record<BidStatus, { label: string; colors: string }> = {
+  draft: { label: "U pripremi", colors: "border-slate-600 bg-slate-800/80 text-slate-200" },
+  in_review: { label: "U pregledu", colors: "border-amber-500/30 bg-amber-500/10 text-amber-200" },
+  submitted: { label: "Predato", colors: "border-blue-500/30 bg-blue-500/10 text-blue-200" },
+  won: { label: "Dobijeno", colors: "border-emerald-500/30 bg-emerald-500/10 text-emerald-200" },
+  lost: { label: "Izgubljeno", colors: "border-rose-500/30 bg-rose-500/10 text-rose-200" },
 };
 
 function formatDate(dateStr: string | null): string {
-  if (!dateStr) return "—";
+  if (!dateStr) return "Rok nije objavljen";
   return new Date(dateStr).toLocaleDateString("bs-BA", {
     day: "2-digit",
     month: "2-digit",
@@ -122,7 +108,7 @@ function formatDate(dateStr: string | null): string {
 }
 
 function formatCompactCurrency(value: number | null | undefined): string {
-  if (!value) return "—";
+  if (!value) return "Vrijednost nije objavljena";
   if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M KM`;
   if (value >= 1_000) return `${(value / 1_000).toFixed(0)}K KM`;
   return `${Math.round(value)} KM`;
@@ -135,10 +121,157 @@ function getFocusIcon(icon: FocusCard["icon"]) {
     case "search":
       return Search;
     case "bell":
-      return BellRing;
+      return CircleAlert;
     case "trend":
       return TrendingUp;
   }
+}
+
+function getChecklistToneClasses(tone: DashboardChecklistItem["tone"]): string {
+  switch (tone) {
+    case "positive":
+      return "border-white/10 bg-white/5";
+    case "critical":
+      return "border-rose-500/45 bg-rose-500/10 shadow-[0_0_20px_rgba(244,63,94,0.12)]";
+    case "attention":
+      return "border-amber-500/35 bg-amber-500/10 shadow-[0_0_20px_rgba(245,158,11,0.08)]";
+    case "opportunity":
+      return "border-sky-500/30 bg-sky-500/10 shadow-[0_0_20px_rgba(56,189,248,0.08)]";
+  }
+}
+
+function getChecklistTextClasses(tone: DashboardChecklistItem["tone"]): string {
+  switch (tone) {
+    case "positive":
+      return "text-white";
+    case "critical":
+      return "text-rose-200";
+    case "attention":
+      return "text-amber-100";
+    case "opportunity":
+      return "text-sky-100";
+  }
+}
+
+function getChecklistIcon(tone: DashboardChecklistItem["tone"]) {
+  return tone === "positive" ? CheckCircle2 : CircleAlert;
+}
+
+function getChecklistIconColor(tone: DashboardChecklistItem["tone"]): string {
+  switch (tone) {
+    case "positive":
+      return "text-emerald-400";
+    case "critical":
+      return "text-rose-400";
+    case "attention":
+      return "text-amber-400";
+    case "opportunity":
+      return "text-sky-400";
+  }
+}
+
+function getTenderUrgencyTone(deadline: string | null): "critical" | "attention" | "positive" {
+  if (!deadline) return "positive";
+  const diffDays = Math.ceil((new Date(deadline).getTime() - Date.now()) / 86_400_000);
+  if (diffDays <= 3) return "critical";
+  if (diffDays <= 10) return "attention";
+  return "positive";
+}
+
+function getTenderToneClasses(tone: "critical" | "attention" | "positive"): string {
+  switch (tone) {
+    case "critical":
+      return "border-rose-500/45 bg-rose-500/10";
+    case "attention":
+      return "border-amber-500/35 bg-amber-500/10";
+    case "positive":
+      return "border-white/10 bg-white/5";
+  }
+}
+
+function buildOperationalChecklist({
+  profileLabel,
+  nextAction,
+  actionQueue,
+  recommendedTenders,
+  dashboardBidRows,
+  currentPlanName,
+  subscriptionActive,
+}: Pick<
+  DashboardHomeOverviewProps,
+  "profileLabel" | "nextAction" | "actionQueue" | "recommendedTenders" | "dashboardBidRows" | "currentPlanName" | "subscriptionActive"
+>): DashboardChecklistItem[] {
+  const positiveItems: DashboardChecklistItem[] = [
+    {
+      id: "workspace-live",
+      title: "Tender feed i radni prostor su aktivni",
+      description: `Paket ${currentPlanName} je spreman za dnevni operativni rad.`,
+      tone: "positive",
+    },
+    ...(profileLabel
+      ? [{
+          id: "profile-focus",
+          title: `Profil firme usklađen: ${profileLabel}`,
+          description: "Preporuke i tender signal koriste isti profil kao i onboarding preview.",
+          tone: "positive" as const,
+        }]
+      : []),
+    ...(recommendedTenders.length > 0
+      ? [{
+          id: "recommended-ready",
+          title: `${recommendedTenders.length} prilika je već izdvojeno za pregled`,
+          description: "Najrelevantnije prilike su spremne za otvaranje bez dodatnog filtriranja.",
+          tone: "positive" as const,
+        }]
+      : []),
+    ...(dashboardBidRows.length > 0
+      ? [{
+          id: "bid-workspace",
+          title: `${dashboardBidRows.length} ponuda je trenutno u radnom prostoru`,
+          description: subscriptionActive
+            ? "Možete odmah otvoriti status, dokumente i sljedeće korake."
+            : "Ponude ostaju pregledne i bez dodatnog klikanja po više sekcija.",
+          tone: "positive" as const,
+        }]
+      : []),
+  ];
+
+  const alertItems: DashboardChecklistItem[] = [
+    {
+      id: "next-action",
+      title: nextAction.title,
+      description: nextAction.description,
+      href: nextAction.href,
+      tone:
+        nextAction.tone === "neutral"
+          ? "opportunity"
+          : nextAction.tone === "critical"
+            ? "critical"
+            : nextAction.tone === "attention"
+              ? "attention"
+              : "opportunity",
+    },
+    ...actionQueue.slice(0, 3).map((item) => ({
+      id: item.id,
+      title: item.title,
+      description: item.description,
+      href: item.href,
+      tone:
+        item.tone === "critical"
+          ? "critical"
+          : item.tone === "attention"
+            ? "attention"
+            : "opportunity",
+    })),
+  ];
+
+  const merged = [...alertItems, ...positiveItems];
+  const seen = new Set<string>();
+  return merged.filter((item) => {
+    if (seen.has(item.id)) return false;
+    seen.add(item.id);
+    return true;
+  }).slice(0, 6);
 }
 
 export function DashboardHomeOverview({
@@ -150,380 +283,319 @@ export function DashboardHomeOverview({
   actionQueue,
   dashboardBidRows,
   recommendedTenders,
-  topRelevantAuthorities,
-  topRelevantAuthoritiesSource,
-  competitorSnapshot,
-  competitorSnapshotSource,
-  displayUpcomingRows,
+  quickLinks,
   subscriptionActive,
   isLocked,
 }: DashboardHomeOverviewProps) {
+  const operationalChecklist = buildOperationalChecklist({
+    profileLabel,
+    nextAction,
+    actionQueue,
+    recommendedTenders,
+    dashboardBidRows,
+    currentPlanName,
+    subscriptionActive,
+  });
+
   return (
-    <div className="space-y-8 lg:space-y-10">
-      <section className="rounded-[2rem] border border-slate-200/80 bg-white/90 p-6 shadow-[0_24px_55px_-32px_rgba(15,23,42,0.22)] backdrop-blur-sm sm:p-8 lg:p-9">
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,1.6fr)_400px] xl:items-start">
+    <div className="space-y-6 xl:space-y-7">
+      <section className="relative overflow-hidden rounded-[2rem] border border-slate-800 bg-[radial-gradient(circle_at_top_left,rgba(56,189,248,0.16),transparent_26%),radial-gradient(circle_at_top_right,rgba(59,130,246,0.16),transparent_30%),linear-gradient(180deg,#111827_0%,#0f172a_55%,#0b1120_100%)] p-6 text-white shadow-[0_35px_90px_-45px_rgba(2,6,23,0.92)] sm:p-8 lg:p-9">
+        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,rgba(148,163,184,0.06)_1px,transparent_1px),linear-gradient(to_bottom,rgba(148,163,184,0.06)_1px,transparent_1px)] bg-[size:52px_52px] [mask-image:radial-gradient(circle_at_top_left,#000_15%,transparent_75%)]" />
+        <div className="relative grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_420px] xl:items-start">
           <div className="space-y-6">
             <div className="flex flex-wrap items-center gap-2">
-              <div className="inline-flex items-center gap-2 rounded-full border border-blue-100 bg-blue-50/80 px-3 py-1">
-                <ShieldCheck className="size-4 text-blue-600" />
-                <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-blue-700">
-                  Pregled
-                </span>
-              </div>
-              <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-600">
-                <CreditCard className="size-3.5" />
+              <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-200">
+                <ShieldCheck className="size-3.5 text-emerald-400" />
+                Operativni dashboard
+              </span>
+              <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-300">
+                <CreditCard className="size-3.5 text-sky-300" />
                 {currentPlanName}
-              </div>
+              </span>
               {profileLabel ? (
-                <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-600">
-                  <Sparkles className="size-3.5 text-blue-600" />
+                <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-300">
+                  <Sparkles className="size-3.5 text-sky-300" />
                   {profileLabel}
-                </div>
+                </span>
               ) : null}
             </div>
 
             <div className="space-y-3">
-              <h1 className="font-heading text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl lg:text-[2.7rem]">
-                Gdje je danas fokus za {companyName}
+              <h1 className="max-w-4xl font-heading text-3xl font-bold tracking-tight text-white sm:text-4xl lg:text-[2.9rem]">
+                Sve što je bitno za {companyName}, bez viška šuma.
               </h1>
-              <p className="max-w-3xl text-sm leading-7 text-slate-600 sm:text-base lg:text-lg">
-                Ovdje odmah vidite šta nosi rizik, šta vrijedi otvoriti i gdje imate realnu tržišnu prednost.
+              <p className="max-w-3xl text-sm leading-7 text-slate-300 sm:text-base lg:text-lg">
+                Tenderi, ponude, rokovi i dokumenti sada koriste isti premium pregled kao i homepage preview, tako da odmah vidite šta je sigurno, šta je hitno i šta vrijedi otvoriti.
               </p>
             </div>
 
             <div className="flex flex-wrap gap-3">
-              <Link
-                href="/dashboard/tenders?tab=recommended"
-                className="inline-flex h-11 items-center rounded-xl bg-slate-950 px-5 text-sm font-semibold text-white transition-all hover:bg-blue-700"
-              >
-                Otvori prilike
-              </Link>
-              <Link
-                href="/dashboard/bids"
-                className="inline-flex h-11 items-center rounded-xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700 transition-all hover:border-slate-300 hover:bg-slate-50"
-              >
-                Ponude u radu
-              </Link>
-              <Link
-                href="/dashboard/vault"
-                className="inline-flex h-11 items-center rounded-xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700 transition-all hover:border-slate-300 hover:bg-slate-50"
-              >
-                Provjeri dokumente
-              </Link>
+              {quickLinks.map((link, index) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className={
+                    index === 0
+                      ? "inline-flex h-11 items-center rounded-xl bg-white px-5 text-sm font-semibold text-slate-950 transition-all hover:bg-slate-100"
+                      : "inline-flex h-11 items-center rounded-xl border border-white/10 bg-white/5 px-5 text-sm font-semibold text-white transition-all hover:bg-white/10"
+                  }
+                >
+                  {link.label}
+                </Link>
+              ))}
             </div>
           </div>
 
-          <div className={`rounded-[1.75rem] border p-6 shadow-sm ${toneStyles[nextAction.tone]}`}>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Sada</p>
-            <h2 className="mt-2 font-heading text-2xl font-bold text-slate-950">{nextAction.title}</h2>
-            <p className="mt-3 text-sm leading-6 text-slate-600">{nextAction.description}</p>
-            <p className="mt-4 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">{nextAction.meta}</p>
+          <div className="rounded-[1.75rem] border border-white/10 bg-white/5 p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Fokus sada</p>
+            <h2 className="mt-3 font-heading text-2xl font-bold text-white">{nextAction.title}</h2>
+            <p className="mt-3 text-sm leading-6 text-slate-300">{nextAction.description}</p>
+            <p className="mt-5 text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">{nextAction.meta}</p>
             <Link
               href={nextAction.href}
-              className="mt-6 inline-flex h-11 w-full items-center justify-between rounded-xl bg-slate-950 px-4 text-sm font-semibold text-white transition-all hover:bg-blue-700"
+              className="mt-6 inline-flex h-11 w-full items-center justify-between rounded-xl bg-white px-4 text-sm font-semibold text-slate-950 transition-all hover:bg-slate-100"
             >
               {nextAction.cta}
               <ArrowUpRight className="size-4" />
             </Link>
           </div>
         </div>
-      </section>
 
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {focusCards.map((card) => {
-          const Icon = getFocusIcon(card.icon);
-          return (
-            <Link
-              key={card.title}
-              href={card.href}
-              className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm transition-all hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-[0_16px_40px_-28px_rgba(15,23,42,0.22)]"
-            >
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex size-11 items-center justify-center rounded-2xl bg-slate-50 text-slate-700">
-                  <Icon className="size-5" />
+        <div className="relative mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {focusCards.map((card) => {
+            const Icon = getFocusIcon(card.icon);
+            return (
+              <Link
+                key={card.title}
+                href={card.href}
+                className="rounded-[1.35rem] border border-white/10 bg-white/5 p-5 transition-all hover:-translate-y-0.5 hover:bg-white/8"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex size-11 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-slate-100">
+                    <Icon className="size-5" />
+                  </div>
+                  <ArrowUpRight className="size-4 text-slate-500" />
                 </div>
-                <ArrowUpRight className="size-4 text-slate-300" />
-              </div>
-              <p className="mt-5 text-sm font-medium text-slate-500">{card.title}</p>
-              <p className="mt-2 font-heading text-3xl font-bold text-slate-950">{card.value}</p>
-              <p className="mt-2 text-sm leading-6 text-slate-600">{card.meta}</p>
-            </Link>
-          );
-        })}
+                <p className="mt-5 text-sm font-medium text-slate-400">{card.title}</p>
+                <p className="mt-2 font-heading text-3xl font-bold text-white">{card.value}</p>
+                <p className="mt-2 text-sm leading-6 text-slate-300">{card.meta}</p>
+              </Link>
+            );
+          })}
+        </div>
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)] xl:gap-7">
-        <div className="rounded-[1.75rem] border border-slate-200/80 bg-white p-6 shadow-sm lg:p-7">
-          <div className="flex items-end justify-between gap-4 border-b border-slate-100 pb-5">
+      <section className="grid gap-6 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+        <div className="rounded-[1.85rem] border border-slate-800 bg-[linear-gradient(180deg,#111827_0%,#0f172a_100%)] p-6 text-white shadow-[0_28px_65px_-42px_rgba(2,6,23,0.88)] lg:p-7">
+          <div className="flex items-center justify-between gap-4 border-b border-white/10 pb-5">
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Danas</p>
-              <h2 className="mt-2 font-heading text-2xl font-bold text-slate-950">Prvi potezi</h2>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Kontrola</p>
+              <h2 className="mt-2 font-heading text-2xl font-bold text-white">Operativni checklist</h2>
             </div>
-            <Clock className="size-5 text-blue-600" />
+            <Clock3 className="size-5 text-sky-300" />
           </div>
 
           <div className="mt-6 space-y-3">
-            {actionQueue.length > 0 ? (
-              actionQueue.map((item) => (
-                <Link
-                  key={item.id}
-                  href={item.href}
-                  className={`block rounded-2xl border p-4 transition-all hover:-translate-y-0.5 ${toneStyles[item.tone]}`}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="text-sm font-semibold text-slate-900">{item.title}</p>
-                      <p className="mt-2 text-sm leading-6 text-slate-600">{item.description}</p>
-                    </div>
-                    <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-600">
-                      {item.badge}
-                    </span>
+            {operationalChecklist.map((item) => {
+              const Icon = getChecklistIcon(item.tone);
+              const content = (
+                <div className={`flex items-center gap-3.5 rounded-xl p-4 transition-colors ${getChecklistToneClasses(item.tone)}`}>
+                  <Icon className={`size-5 shrink-0 ${getChecklistIconColor(item.tone)}`} />
+                  <div className="min-w-0">
+                    <p className={`text-[15px] font-semibold sm:text-base ${getChecklistTextClasses(item.tone)}`}>
+                      {item.title}
+                    </p>
+                    <p className="mt-1 text-xs leading-5 text-slate-400">{item.description}</p>
                   </div>
+                  {item.href ? <ChevronRight className="ml-auto size-4 shrink-0 text-slate-500" /> : null}
+                </div>
+              );
+
+              return item.href ? (
+                <Link key={item.id} href={item.href} className="block">
+                  {content}
                 </Link>
-              ))
-            ) : (
-              <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 text-sm leading-6 text-slate-500">
-                Trenutno nema hitnih blokera. Sljedeći logičan korak je pregled novih prilika.
-              </div>
-            )}
+              ) : (
+                <div key={item.id}>{content}</div>
+              );
+            })}
           </div>
         </div>
 
-        <div className="rounded-[1.75rem] border border-slate-200/80 bg-white p-6 shadow-sm lg:p-7">
-          <div className="flex items-end justify-between gap-4 border-b border-slate-100 pb-5">
+        <div className="rounded-[1.85rem] border border-slate-800 bg-[linear-gradient(180deg,#111827_0%,#0f172a_100%)] p-6 text-white shadow-[0_28px_65px_-42px_rgba(2,6,23,0.88)] lg:p-7">
+          <div className="flex items-center justify-between gap-4 border-b border-white/10 pb-5">
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Tenderi</p>
-              <h2 className="mt-2 font-heading text-2xl font-bold text-slate-950">Vrijedi otvoriti</h2>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Tenderi</p>
+              <h2 className="mt-2 font-heading text-2xl font-bold text-white">Vrijedi otvoriti</h2>
             </div>
-            <Search className="size-5 text-blue-600" />
+            <Search className="size-5 text-sky-300" />
           </div>
 
           <div className="mt-6 space-y-3">
-            {isLocked && recommendedTenders.length > 0 && (
-              <div className="mb-4 rounded-xl bg-[linear-gradient(110deg,#1e1b4b_0%,#0f172a_100%)] p-4 text-white shadow-md relative overflow-hidden">
-                <div className="flex flex-col gap-3">
-                  <div>
-                    <h3 className="text-sm font-bold text-white mb-1 flex items-center gap-2">
-                      <Lock className="size-4 text-blue-400" />
-                      Pregled prilika
-                    </h3>
-                    <p className="text-slate-300 text-xs leading-relaxed">
-                      Kao korisnik Besplatnog naloga vidite samo signale.
-                    </p>
-                  </div>
-                  <Link href="/dashboard/subscription" className="inline-flex h-9 items-center justify-center rounded-lg bg-blue-600 px-4 text-xs font-semibold text-white transition-all hover:bg-blue-500">
-                    Otključaj tendere
-                  </Link>
-                </div>
+            {isLocked && recommendedTenders.length > 0 ? (
+              <div className="rounded-xl border border-blue-400/20 bg-blue-500/10 p-4 text-sm leading-6 text-slate-200">
+                Vidite signal da prilike postoje, ali su puni podaci zaključani na besplatnom paketu.
+                <Link href="/dashboard/subscription" className="mt-3 inline-flex items-center gap-2 font-semibold text-sky-300">
+                  Otključaj kompletan pregled
+                  <ArrowUpRight className="size-4" />
+                </Link>
               </div>
-            )}
+            ) : null}
 
             {recommendedTenders.length > 0 ? (
-              recommendedTenders.map((tender) => (
-                <Link
-                  key={tender.id}
-                  href={isLocked ? "/dashboard/subscription" : `/dashboard/tenders/${tender.id}`}
-                  className="block rounded-2xl border border-slate-200 bg-slate-50/60 p-4 transition-all hover:border-blue-200 hover:bg-white"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className={isLocked ? "opacity-60" : ""}>
-                      <p className={`line-clamp-2 text-sm font-semibold text-slate-900 ${isLocked ? "blur-sm select-none" : ""}`}>
-                        {isLocked ? `Tender #${tender.id.substring(0, 4)} - Podaci zaštićeni` : tender.title}
-                      </p>
-                      <p className={`mt-1 text-xs text-slate-500 ${isLocked ? "blur-sm select-none" : ""}`}>
-                        {isLocked ? "Javno preduzeće Naručilac" : (tender.contracting_authority ?? "Nepoznat naručilac")}
-                      </p>
+              recommendedTenders.map((tender) => {
+                const tone = getTenderUrgencyTone(tender.deadline);
+                return (
+                  <Link
+                    key={tender.id}
+                    href={isLocked ? "/dashboard/subscription" : `/dashboard/tenders/${tender.id}`}
+                    className={`block rounded-xl border p-4 transition-all hover:-translate-y-0.5 hover:bg-white/8 ${getTenderToneClasses(tone)}`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className={`line-clamp-2 text-[15px] font-semibold leading-6 text-white ${isLocked ? "blur-sm select-none" : ""}`}>
+                          {isLocked ? "Premium tender pregled je zaključan" : tender.title}
+                        </p>
+                        <p className={`mt-1 text-xs text-slate-400 ${isLocked ? "blur-sm select-none" : ""}`}>
+                          {isLocked ? "Javni naručilac" : (tender.contracting_authority ?? "Nepoznat naručilac")}
+                        </p>
+                      </div>
+                      {isLocked ? <Lock className="size-4 shrink-0 text-slate-500" /> : <ArrowUpRight className="size-4 shrink-0 text-slate-500" />}
                     </div>
-                    {isLocked ? <Lock className="size-4 text-slate-300" /> : <ArrowUpRight className="size-4 text-slate-300" />}
-                  </div>
-                  <div className={`mt-3 flex flex-wrap gap-2 text-xs text-slate-500 ${isLocked ? "opacity-60" : ""}`}>
-                    <span className="rounded-full bg-white px-2.5 py-1 font-medium">Rok {formatDate(tender.deadline)}</span>
-                    {tender.estimated_value ? (
-                      <span className={`rounded-full px-2.5 py-1 font-semibold ${isLocked ? "bg-slate-100 text-slate-500 blur-sm select-none" : "bg-emerald-50 text-emerald-700"}`}>
+                    <div className="mt-3 flex flex-wrap gap-2 text-xs text-slate-300">
+                      <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 font-medium">
+                        Rok {formatDate(tender.deadline)}
+                      </span>
+                      <span className={`rounded-full px-2.5 py-1 font-semibold ${isLocked ? "border border-white/10 bg-white/5 blur-sm select-none" : "border border-emerald-500/25 bg-emerald-500/10 text-emerald-200"}`}>
                         {isLocked ? "XXX.XXX KM" : formatCompactCurrency(tender.estimated_value)}
                       </span>
-                    ) : null}
-                  </div>
-                </Link>
-              ))
+                    </div>
+                  </Link>
+                );
+              })
             ) : (
-              <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 text-sm leading-6 text-slate-500">
-                Još nema dovoljno jasnih prijedloga. Dopunite profil da preporuke bolje razlikuju prave prilike od buke.
+              <div className="rounded-xl border border-white/10 bg-white/5 p-4 text-sm leading-6 text-slate-300">
+                Još nema dovoljno jakih preporuka. Čim sistem prepozna relevantne prilike, pojavit će se ovdje u istom preview stilu.
               </div>
             )}
           </div>
         </div>
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)] xl:gap-7">
-        <div className="rounded-[1.75rem] border border-slate-200/80 bg-white shadow-sm">
-          <div className="flex flex-col gap-4 border-b border-slate-100 px-7 py-6 sm:flex-row sm:items-center sm:justify-between">
+      <section className="grid gap-6 xl:grid-cols-[minmax(0,1.08fr)_minmax(0,0.92fr)]">
+        <div className="rounded-[1.85rem] border border-slate-800 bg-[linear-gradient(180deg,#111827_0%,#0f172a_100%)] p-6 text-white shadow-[0_28px_65px_-42px_rgba(2,6,23,0.88)] lg:p-7">
+          <div className="flex items-center justify-between gap-4 border-b border-white/10 pb-5">
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Aktivne ponude</p>
-              <h2 className="mt-2 font-heading text-2xl font-bold text-slate-950">Ponude koje vam mogu donijeti posao</h2>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Ponude</p>
+              <h2 className="mt-2 font-heading text-2xl font-bold text-white">Aktivni radni prostor</h2>
             </div>
-            <Link
-              href="/dashboard/bids"
-              className="inline-flex items-center gap-2 text-sm font-semibold text-blue-700 transition-colors hover:text-blue-800"
-            >
-              Sve ponude
-              <ArrowUpRight className="size-4" />
-            </Link>
+            <Briefcase className="size-5 text-sky-300" />
           </div>
 
-          <div className="divide-y divide-slate-100">
+          <div className="mt-6 space-y-3">
             {dashboardBidRows.length > 0 ? (
               dashboardBidRows.slice(0, 5).map((bid) => {
                 const status = STATUS_CONFIG[bid.status];
                 return (
-                  <div key={bid.id} className="flex flex-col gap-4 px-7 py-5 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="min-w-0">
-                      <Link href={`/dashboard/bids/${bid.id}`} className="line-clamp-2 text-sm font-semibold text-slate-950 transition-colors hover:text-blue-700">
-                        {bid.tenders.title}
-                      </Link>
-                      <div className="mt-2 flex flex-wrap gap-2 text-xs text-slate-500">
-                        <span>{bid.tenders.contracting_authority ?? "Nepoznat naručilac"}</span>
-                        <span>•</span>
-                        <span>Rok {formatDate(bid.tenders.deadline)}</span>
-                        <span>•</span>
-                        <span>{formatCompactCurrency(bid.tenders.estimated_value)}</span>
+                  <div key={bid.id} className="rounded-xl border border-white/10 bg-white/5 p-4">
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                      <div className="min-w-0">
+                        <Link href={`/dashboard/bids/${bid.id}`} className="line-clamp-2 text-[15px] font-semibold leading-6 text-white transition-colors hover:text-sky-200">
+                          {bid.tenders.title}
+                        </Link>
+                        <div className="mt-2 flex flex-wrap gap-2 text-xs text-slate-400">
+                          <span>{bid.tenders.contracting_authority ?? "Nepoznat naručilac"}</span>
+                          <span className="text-slate-600">•</span>
+                          <span>Rok {formatDate(bid.tenders.deadline)}</span>
+                          <span className="text-slate-600">•</span>
+                          <span>{formatCompactCurrency(bid.tenders.estimated_value)}</span>
+                        </div>
                       </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <span className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold ${status.colors}`}>
-                        {status.label}
-                      </span>
-                      <Link
-                        href={`/dashboard/bids/${bid.id}`}
-                        className="inline-flex h-9 items-center rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 transition-all hover:border-slate-300 hover:bg-slate-50"
-                      >
-                        Otvori
-                      </Link>
+                      <div className="flex items-center gap-3">
+                        <span className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold ${status.colors}`}>
+                          {status.label}
+                        </span>
+                        <Link
+                          href={`/dashboard/bids/${bid.id}`}
+                          className="inline-flex h-9 items-center rounded-xl border border-white/10 bg-white/5 px-3 text-sm font-semibold text-white transition-all hover:bg-white/10"
+                        >
+                          Otvori
+                        </Link>
+                      </div>
                     </div>
                   </div>
                 );
               })
             ) : (
-              <div className="px-7 py-14 text-center">
-                <Briefcase className="mx-auto mb-3 size-10 text-slate-300" />
-                <p className="font-semibold text-slate-900">Još nemate otvorenih ponuda</p>
-                <p className="mt-2 text-sm text-slate-500">Krenite iz preporuka, otvorite tender i uđite u pripremu kad procijenite da vrijedi.</p>
+              <div className="rounded-xl border border-white/10 bg-white/5 p-5 text-sm leading-6 text-slate-300">
+                Još nema otvorenih ponuda. Krenite iz preporuka i čim procijenite da tender vrijedi, otvorite radni prostor za pripremu.
               </div>
             )}
           </div>
         </div>
 
         <div className="space-y-6">
-          <div className="rounded-[1.75rem] border border-slate-200/80 bg-white p-6 shadow-sm">
-            <div className="flex items-center justify-between gap-3 border-b border-slate-100 pb-5">
+          <div className="rounded-[1.85rem] border border-slate-800 bg-[linear-gradient(180deg,#111827_0%,#0f172a_100%)] p-6 text-white shadow-[0_28px_65px_-42px_rgba(2,6,23,0.88)] lg:p-7">
+            <div className="flex items-center justify-between gap-4 border-b border-white/10 pb-5">
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Tržište</p>
-                <h2 className="mt-2 font-heading text-2xl font-bold text-slate-950">Gdje se otvara prostor</h2>
-                <p className="mt-1 text-xs text-slate-500">
-                  {topRelevantAuthoritiesSource === "live" ? "Podaci uživo iz tendera koji se uklapaju u vaš profil." : "Pojavit će se kada se pojavi dovoljno relevantnih tendera."}
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Brzi pristup</p>
+                <h2 className="mt-2 font-heading text-2xl font-bold text-white">Otvorite ono što vam treba</h2>
+              </div>
+              <FileText className="size-5 text-sky-300" />
+            </div>
+            <div className="mt-6 space-y-3">
+              {quickLinks.map((link, index) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className={`block rounded-xl border p-4 transition-all hover:-translate-y-0.5 ${
+                    index === 0
+                      ? "border-sky-500/35 bg-sky-500/10"
+                      : "border-white/10 bg-white/5 hover:bg-white/8"
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-[15px] font-semibold text-white">{link.label}</p>
+                      <p className="mt-1 text-xs leading-5 text-slate-400">{link.description}</p>
+                    </div>
+                    <ChevronRight className="size-4 shrink-0 text-slate-500" />
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-[1.85rem] border border-slate-800 bg-[linear-gradient(180deg,#111827_0%,#0f172a_100%)] p-6 text-white shadow-[0_28px_65px_-42px_rgba(2,6,23,0.88)] lg:p-7">
+            <div className="flex items-center justify-between gap-4 border-b border-white/10 pb-5">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Status</p>
+                <h2 className="mt-2 font-heading text-2xl font-bold text-white">Radni signal</h2>
+              </div>
+              <ShieldCheck className="size-5 text-emerald-400" />
+            </div>
+            <div className="mt-6 space-y-3">
+              <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Paket</p>
+                <p className="mt-2 text-lg font-semibold text-white">{currentPlanName}</p>
+              </div>
+              <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Preporuke</p>
+                <p className="mt-2 text-sm leading-6 text-slate-300">
+                  {recommendedTenders.length > 0
+                    ? "Dashboard i homepage preview sada koriste isti premium vizuelni jezik za preporuke i operativni pregled."
+                    : "Čim se pojave nove prilike ili operativni signali, ovdje će biti vidljivi bez dodatnog kopanja po sekcijama."}
                 </p>
               </div>
-              <Swords className="size-5 text-rose-600" />
-            </div>
-            <div className="mt-5 space-y-3">
-              {topRelevantAuthorities.length > 0 ? (
-                topRelevantAuthorities.map((authority) => (
-                  <div key={authority.name} className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="text-sm font-semibold text-slate-900">{authority.name}</p>
-                        <p className="mt-1 text-xs text-slate-500">{authority.count} relevantnih tendera</p>
-                      </div>
-                      <span className="text-xs font-semibold text-emerald-700">{formatCompactCurrency(authority.totalValue)}</span>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 text-sm leading-6 text-slate-500">
-                  Ovdje ćete vidjeti naručioce kod kojih se najčešće pojavljuju prilike slične vašem poslu.
-                </div>
-              )}
-            </div>
-
-            <div className="mt-6 space-y-3">
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Konkurencija</p>
-                {competitorSnapshotSource === "live" ? (
-                  <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-emerald-700">
-                    Podaci uživo
-                  </span>
-                ) : competitorSnapshotSource === "demo" ? (
-                  <span className="rounded-full bg-amber-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-amber-700">
-                    Demo primjer
-                  </span>
-                ) : null}
-              </div>
-              {subscriptionActive ? (
-                competitorSnapshot.length > 0 ? (
-                  competitorSnapshot.map((competitor) => (
-                    <div key={competitor.jib} className="rounded-2xl border border-slate-200 bg-white p-4">
-                      <p className="text-sm font-semibold text-slate-900">{competitor.name}</p>
-                      <p className="mt-1 text-xs text-slate-500">
-                        {competitor.wins} pobjeda · {competitor.win_rate !== null ? `${competitor.win_rate}% uspješnost` : "bez podatka"}
-                      </p>
-                    </div>
-                  ))
-                ) : (
-                  <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 text-sm leading-6 text-slate-500">
-                    Trenutno nema dovoljno stvarnih podataka za pregled konkurencije.
-                  </div>
-                )
-              ) : (
-                <div className="rounded-2xl border border-blue-100 bg-blue-50/70 p-4 text-sm leading-6 text-slate-600">
-                  Pregled konkurencije je dostupan u pretplati kada želite odlučivati s više tržišnih informacija.
-                  <Link href="/dashboard/subscription" className="mt-3 inline-flex items-center gap-2 font-semibold text-blue-700">
+              {isLocked ? (
+                <div className="rounded-xl border border-blue-400/20 bg-blue-500/10 p-4 text-sm leading-6 text-slate-200">
+                  Besplatni paket i dalje ima pregledan premium dashboard, ali puni sadržaj tendera ostaje zaključan dok ne aktivirate pretplatu.
+                  <Link href="/dashboard/subscription" className="mt-3 inline-flex items-center gap-2 font-semibold text-sky-300">
                     Pregled paketa
                     <ArrowUpRight className="size-4" />
                   </Link>
                 </div>
-              )}
-            </div>
-          </div>
-
-          <div className="rounded-[1.75rem] border border-slate-200/80 bg-white p-6 shadow-sm">
-            <div className="flex items-center justify-between gap-3 border-b border-slate-100 pb-5">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Planirano</p>
-                <h2 className="mt-2 font-heading text-2xl font-bold text-slate-950">Šta dolazi uskoro</h2>
-              </div>
-              <CalendarDays className="size-5 text-violet-600" />
-            </div>
-            <div className="mt-5 space-y-3">
-              {subscriptionActive ? (
-                displayUpcomingRows.length > 0 ? (
-                  displayUpcomingRows.slice(0, 3).map((item) => (
-                    <div key={item.id} className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
-                      <p className="line-clamp-2 text-sm font-semibold text-slate-900">{item.description || "Bez opisa"}</p>
-                      <p className="mt-1 text-xs text-slate-500">{item.contracting_authorities?.name ?? "Nepoznat naručilac"}</p>
-                      <div className="mt-3 flex flex-wrap gap-2 text-xs text-slate-500">
-                        <span className="rounded-full bg-white px-2.5 py-1 font-medium">{formatDate(item.planned_date)}</span>
-                        {item.estimated_value ? (
-                          <span className="rounded-full bg-violet-50 px-2.5 py-1 font-semibold text-violet-700">
-                            {formatCompactCurrency(item.estimated_value)}
-                          </span>
-                        ) : null}
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 text-sm leading-6 text-slate-500">
-                    Trenutno nema planiranih nabavki za prikaz.
-                  </div>
-                )
-              ) : (
-                <div className="rounded-2xl border border-violet-100 bg-violet-50/70 p-4 text-sm leading-6 text-slate-600">
-                  Ovdje vidite nabavke prije objave, kada želite ranije planirati kapacitete i dokumente.
-                  <Link href="/dashboard/subscription" className="mt-3 inline-flex items-center gap-2 font-semibold text-violet-700">
-                    Otključaj planirano
-                    <ArrowUpRight className="size-4" />
-                  </Link>
-                </div>
-              )}
+              ) : null}
             </div>
           </div>
         </div>
