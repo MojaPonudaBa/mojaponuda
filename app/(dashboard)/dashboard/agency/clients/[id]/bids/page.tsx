@@ -26,12 +26,60 @@ interface BidWithTender {
   tenders: TenderRelation | TenderRelation[] | null;
 }
 
-function normalizeBidTender(tender: TenderRelation | TenderRelation[] | null) {
-  if (Array.isArray(tender)) {
-    return tender[0] ?? null;
+function normalizeBidTender(tender: TenderRelation | TenderRelation[] | null): TenderRelation | null {
+  // Handle undefined explicitly
+  if (tender === undefined) {
+    return null;
   }
-
+  
+  // Handle null
+  if (tender === null) {
+    return null;
+  }
+  
+  // Handle arrays (including empty arrays)
+  if (Array.isArray(tender)) {
+    const firstTender = tender[0];
+    // Return null for empty arrays or if first element is not a valid object
+    if (!firstTender || typeof firstTender !== 'object') {
+      return null;
+    }
+    return firstTender;
+  }
+  
+  // Handle non-object values (strings, numbers, etc.)
+  if (typeof tender !== 'object') {
+    return null;
+  }
+  
+  // Return the tender object if it's valid
   return tender;
+}
+
+// Type guard to ensure bid has valid structure
+function isValidBid(bid: BidWithTender): bid is BidWithTender & { tenders: TenderRelation | TenderRelation[] } {
+  // Bid must have an id
+  if (!bid.id) {
+    return false;
+  }
+  
+  // Tenders can be null (we'll handle that with normalizeBidTender)
+  // But if tenders is defined, it should be an object or array
+  if (bid.tenders !== null && bid.tenders !== undefined) {
+    if (Array.isArray(bid.tenders)) {
+      // If it's an array, it can be empty (we'll normalize to null)
+      return true;
+    }
+    // If it's not an array, it should be an object with an id
+    if (typeof bid.tenders === 'object' && 'id' in bid.tenders) {
+      return true;
+    }
+    // Invalid structure
+    return false;
+  }
+  
+  // Null/undefined tenders are valid (we'll show fallback text)
+  return true;
 }
 
 function normalizeCompanyRelation(company: CompanyRelation | CompanyRelation[] | null) {
@@ -110,12 +158,14 @@ export default async function AgencyClientBidsPage({
       throw bidsError;
     }
 
-    const bids: BidRow[] = ((bidsData as BidWithTender[] | null) ?? []).map((bid) => ({
-      id: bid.id,
-      status: bid.status,
-      created_at: bid.created_at,
-      tender: normalizeBidTender(bid.tenders),
-    }));
+    const bids: BidRow[] = ((bidsData as BidWithTender[] | null) ?? [])
+      .filter(isValidBid)
+      .map((bid) => ({
+        id: bid.id,
+        status: bid.status,
+        created_at: bid.created_at,
+        tender: normalizeBidTender(bid.tenders),
+      }));
 
     const { data: tendersData, error: tendersError } = await supabase
       .from("tenders")
