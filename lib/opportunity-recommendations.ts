@@ -42,6 +42,7 @@ export interface ScoredOpportunityRecommendation<
   textMatches: string[];
   matchedKeywords: string[];
   negativeMatches: string[];
+  structuredSignalCount: number;
   locationScope: OpportunityLocationScope;
   locationPriority: number;
   positiveSignalCount: number;
@@ -323,9 +324,16 @@ export function scoreOpportunityRecommendation<
       [title, category, eligibility, text].some((value) => value.includes(signal))
     )
   );
+  const structuredSignalCount =
+    titleMatches.length + categoryMatches.length + eligibilityMatches.length;
   const locationScope = getOpportunityLocationScope(opportunity, context);
   const locationPriority = getLocationPriority(locationScope);
   const hasLocationPreference = context.regionTerms.length > 0;
+  const isGenericBusinessGrant =
+    structuredSignalCount === 0 &&
+    /poduzetni|preduzetni|msp|mala i srednja|razvoj biznisa|razvoj poslovanja|lokalni razvoj|samozapoÅ¡lj|samozapošlj|preduzeÄ‡|preduzeće|obrtn|biznis/i.test(
+      [title, category, eligibility, text].join(" ")
+    );
 
   let score = 0;
   score += titleMatches.length * 6;
@@ -357,12 +365,14 @@ export function scoreOpportunityRecommendation<
     (locationScope === "selected" ? 2 : locationScope === "same_group" ? 1 : 0);
   const qualifies =
     !broadLocationBlocked &&
+    !isGenericBusinessGrant &&
     negativeMatches.length < 3 &&
+    structuredSignalCount > 0 &&
     (
       (strongBusinessSignal && score >= (strongStructuredSignal ? 6 : 8)) ||
       (locationScope !== "broad" &&
-        score >= 6 &&
-        matchedKeywords.length > 0)
+        structuredSignalCount > 0 &&
+        score >= 6)
     );
 
   return {
@@ -375,6 +385,7 @@ export function scoreOpportunityRecommendation<
     textMatches,
     matchedKeywords,
     negativeMatches,
+    structuredSignalCount,
     locationScope,
     locationPriority,
     positiveSignalCount,

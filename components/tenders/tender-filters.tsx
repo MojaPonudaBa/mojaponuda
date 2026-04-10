@@ -31,15 +31,39 @@ const PROCEDURE_TYPES = [
   { value: "Direktni sporazum", label: "Direktni" },
 ];
 
+const RECOMMENDED_SORT_OPTIONS = [
+  { value: "recommended", label: "Najrelevantniji" },
+  { value: "nearest", label: "Najbliži lokaciji firme" },
+  { value: "deadline_asc", label: "Rok najskoriji" },
+  { value: "deadline_desc", label: "Rok najkasniji" },
+  { value: "value_desc", label: "Najveća vrijednost" },
+  { value: "value_asc", label: "Najmanja vrijednost" },
+  { value: "newest", label: "Najnovije objavljeno" },
+];
+
+const ALL_TENDERS_SORT_OPTIONS = [
+  { value: "deadline_asc", label: "Rok najskoriji" },
+  { value: "deadline_desc", label: "Rok najkasniji" },
+  { value: "value_desc", label: "Najveća vrijednost" },
+  { value: "value_asc", label: "Najmanja vrijednost" },
+  { value: "newest", label: "Najnovije objavljeno" },
+];
+
 export function TenderFilters({ basePath = "/dashboard/tenders" }: { basePath?: string }) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const activeTab = searchParams.get("tab") === "all" ? "all" : "recommended";
+  const sortOptions = activeTab === "recommended" ? RECOMMENDED_SORT_OPTIONS : ALL_TENDERS_SORT_OPTIONS;
+  const defaultSort = activeTab === "recommended" ? "recommended" : "deadline_asc";
 
   const [keyword, setKeyword] = useState(searchParams.get("q") || "");
   const [contractType, setContractType] = useState(searchParams.get("contract_type") || "all");
   const [procedureType, setProcedureType] = useState(searchParams.get("procedure_type") || "all");
   const [deadlineFrom, setDeadlineFrom] = useState(searchParams.get("deadline_from") || "");
   const [deadlineTo, setDeadlineTo] = useState(searchParams.get("deadline_to") || "");
+  const [valueMin, setValueMin] = useState(searchParams.get("value_min") || "");
+  const [valueMax, setValueMax] = useState(searchParams.get("value_max") || "");
+  const [sort, setSort] = useState(searchParams.get("sort") || defaultSort);
   const [locations, setLocations] = useState<string[]>(searchParams.getAll("location"));
 
   const applyFilters = useCallback(() => {
@@ -51,10 +75,13 @@ export function TenderFilters({ basePath = "/dashboard/tenders" }: { basePath?: 
     if (procedureType !== "all") params.set("procedure_type", procedureType);
     if (deadlineFrom) params.set("deadline_from", deadlineFrom);
     if (deadlineTo) params.set("deadline_to", deadlineTo);
+    if (valueMin.trim()) params.set("value_min", valueMin.trim());
+    if (valueMax.trim()) params.set("value_max", valueMax.trim());
+    if (sort !== defaultSort) params.set("sort", sort);
     locations.forEach((location) => params.append("location", location));
     params.set("page", "1");
     router.push(`${basePath}?${params.toString()}`);
-  }, [basePath, contractType, deadlineFrom, deadlineTo, keyword, locations, procedureType, router, searchParams]);
+  }, [basePath, contractType, deadlineFrom, deadlineTo, defaultSort, keyword, locations, procedureType, router, searchParams, sort, valueMax, valueMin]);
 
   function resetFilters() {
     setKeyword("");
@@ -62,6 +89,9 @@ export function TenderFilters({ basePath = "/dashboard/tenders" }: { basePath?: 
     setProcedureType("all");
     setDeadlineFrom("");
     setDeadlineTo("");
+    setValueMin("");
+    setValueMax("");
+    setSort(defaultSort);
     setLocations([]);
     const currentTab = searchParams.get("tab");
     const params = new URLSearchParams();
@@ -100,6 +130,24 @@ export function TenderFilters({ basePath = "/dashboard/tenders" }: { basePath?: 
               className="h-12 rounded-2xl border-white/10 bg-white/5 pl-10 text-sm text-white placeholder:text-slate-500 focus-visible:border-sky-400/40 focus-visible:ring-sky-400/20"
             />
           </div>
+        </div>
+
+        <div className="space-y-2">
+          <Label className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
+            Poredaj po
+          </Label>
+          <Select value={sort} onValueChange={setSort}>
+            <SelectTrigger className="h-12 rounded-2xl border-white/10 bg-white/5 text-sm text-white">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="rounded-2xl border-slate-700 bg-slate-950 text-slate-200">
+              {sortOptions.map((item) => (
+                <SelectItem key={item.value} value={item.value} className="rounded-xl focus:bg-white/10 focus:text-white">
+                  {item.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         <div className="space-y-2">
@@ -159,6 +207,36 @@ export function TenderFilters({ basePath = "/dashboard/tenders" }: { basePath?: 
             value={deadlineTo}
             onChange={(event) => setDeadlineTo(event.target.value)}
             className="h-12 rounded-2xl border-white/10 bg-white/5 text-sm text-white focus-visible:border-sky-400/40 focus-visible:ring-sky-400/20"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
+            Vrijednost od
+          </Label>
+          <Input
+            type="number"
+            min="0"
+            step="1000"
+            value={valueMin}
+            onChange={(event) => setValueMin(event.target.value)}
+            placeholder="npr. 50000"
+            className="h-12 rounded-2xl border-white/10 bg-white/5 text-sm text-white placeholder:text-slate-500 focus-visible:border-sky-400/40 focus-visible:ring-sky-400/20"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
+            Vrijednost do
+          </Label>
+          <Input
+            type="number"
+            min="0"
+            step="1000"
+            value={valueMax}
+            onChange={(event) => setValueMax(event.target.value)}
+            placeholder="npr. 500000"
+            className="h-12 rounded-2xl border-white/10 bg-white/5 text-sm text-white placeholder:text-slate-500 focus-visible:border-sky-400/40 focus-visible:ring-sky-400/20"
           />
         </div>
       </div>

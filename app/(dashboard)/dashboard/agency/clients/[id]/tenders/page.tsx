@@ -5,6 +5,7 @@ import { getSubscriptionStatus } from "@/lib/subscription";
 import type { Tender } from "@/types/database";
 import { buildRegionSearchTerms } from "@/lib/constants/regions";
 import { maybeRerankTenderRecommendationsWithAI } from "@/lib/tender-recommendation-rerank";
+import { resolveTenderSort, sortRecommendedTenderItems, sortStandardTenders } from "@/lib/tender-sorting";
 import {
   buildRecommendationContext,
   enrichTendersWithAuthorityGeo,
@@ -60,12 +61,15 @@ async function TendersContent({ agencyClientId, companyId, recommendationContext
   const procedureTypeParam = getSingleParam(params.procedure_type) ?? "all";
   const deadlineFromParam = getSingleParam(params.deadline_from) ?? "";
   const deadlineToParam = getSingleParam(params.deadline_to) ?? "";
+  const valueMinParam = getSingleParam(params.value_min) ?? "";
+  const valueMaxParam = getSingleParam(params.value_max) ?? "";
   const locationFilterValues = getMultiParam(params.location);
   const locationFilterTerms = buildRegionSearchTerms(locationFilterValues);
 
   const page = Math.max(1, parseInt(pageParam || "1", 10));
   const offset = (page - 1) * PAGE_SIZE;
   const activeTab = tabParam === "all" ? "all" : "recommended";
+  const sortParam = resolveTenderSort(getSingleParam(params.sort), activeTab);
 
   const hasFilters =
     keywordParam ||
@@ -73,7 +77,10 @@ async function TendersContent({ agencyClientId, companyId, recommendationContext
     (procedureTypeParam && procedureTypeParam !== "all") ||
     deadlineFromParam ||
     deadlineToParam ||
-    locationFilterValues.length > 0;
+    valueMinParam ||
+    valueMaxParam ||
+    locationFilterValues.length > 0 ||
+    (activeTab === "recommended" ? sortParam !== "recommended" : sortParam !== "deadline_asc");
 
   let tenders: Tender[] = [];
   let totalCount = 0;
@@ -119,6 +126,8 @@ async function TendersContent({ agencyClientId, companyId, recommendationContext
       shortlistSize: 10,
     });
 
+    ranked = sortRecommendedTenderItems(ranked, sortParam);
+
     if (locationFilterTerms.length > 0) {
       ranked = ranked.filter(({ tender }) => matchesTenderLocationTerms(tender, locationFilterTerms));
     }
@@ -140,9 +149,23 @@ async function TendersContent({ agencyClientId, companyId, recommendationContext
       if (procedureTypeParam !== "all") locationQuery = locationQuery.ilike("procedure_type", `%${procedureTypeParam}%`);
       if (deadlineFromParam) locationQuery = locationQuery.gte("deadline", new Date(deadlineFromParam).toISOString());
       if (deadlineToParam) locationQuery = locationQuery.lte("deadline", new Date(`${deadlineToParam}T23:59:59`).toISOString());
+      if (valueMinParam) locationQuery = locationQuery.gte("estimated_value", parseFloat(valueMinParam));
+      if (valueMaxParam) locationQuery = locationQuery.lte("estimated_value", parseFloat(valueMaxParam));
 
       const { data } = await locationQuery
-        .order("deadline", { ascending: false, nullsFirst: false })
+        .order(
+          sortParam === "value_desc" || sortParam === "value_asc"
+            ? "estimated_value"
+            : sortParam === "newest"
+              ? "created_at"
+              : "deadline",
+          {
+            ascending:
+              sortParam === "value_asc" ||
+              sortParam === "deadline_asc",
+            nullsFirst: false,
+          }
+        )
         .range(0, 2499);
 
       const enriched = await enrichTendersWithAuthorityGeo(
@@ -150,8 +173,9 @@ async function TendersContent({ agencyClientId, companyId, recommendationContext
         (data ?? []) as Array<Tender & { authority_city: string | null; authority_municipality: string | null; authority_canton: string | null; authority_entity: string | null }>
       );
       const filtered = enriched.filter((t) => matchesTenderLocationTerms(t, locationFilterTerms));
-      totalCount = filtered.length;
-      tenders = filtered.slice(offset, offset + PAGE_SIZE).map((t) => t as Tender);
+      const sorted = sortStandardTenders(filtered, sortParam);
+      totalCount = sorted.length;
+      tenders = sorted.slice(offset, offset + PAGE_SIZE).map((t) => t as Tender);
     } else {
       let query = supabase
         .from("tenders")
@@ -165,9 +189,23 @@ async function TendersContent({ agencyClientId, companyId, recommendationContext
       if (procedureTypeParam !== "all") query = query.ilike("procedure_type", `%${procedureTypeParam}%`);
       if (deadlineFromParam) query = query.gte("deadline", new Date(deadlineFromParam).toISOString());
       if (deadlineToParam) query = query.lte("deadline", new Date(`${deadlineToParam}T23:59:59`).toISOString());
+      if (valueMinParam) query = query.gte("estimated_value", parseFloat(valueMinParam));
+      if (valueMaxParam) query = query.lte("estimated_value", parseFloat(valueMaxParam));
 
       const { data, count } = await query
-        .order("deadline", { ascending: false, nullsFirst: false })
+        .order(
+          sortParam === "value_desc" || sortParam === "value_asc"
+            ? "estimated_value"
+            : sortParam === "newest"
+              ? "created_at"
+              : "deadline",
+          {
+            ascending:
+              sortParam === "value_asc" ||
+              sortParam === "deadline_asc",
+            nullsFirst: false,
+          }
+        )
         .range(offset, offset + PAGE_SIZE - 1);
 
       tenders = (data ?? []) as Tender[];
@@ -319,7 +357,7 @@ export default async function AgencyClientTendersPage({ params, searchParams }: 
 
         <div className="mt-6">
           <Suspense fallback={null}>
-            <TenderFilters basePath={basePath} />
+            <TenderFilters key={`filters-${activeTab}-${JSON.stringify(resolvedParams)}`} basePath={basePath} />
           </Suspense>
 
           <Suspense

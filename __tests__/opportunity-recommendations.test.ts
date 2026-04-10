@@ -82,4 +82,49 @@ describe("opportunity recommendations", () => {
 
     expect(selected.map((item) => item.opportunity.id)).toEqual(["relevant"]);
   });
+
+  it("does not treat generic local business grants as personalized for medical suppliers", () => {
+    const medicalContext = buildOpportunityRecommendationContext({
+      industry: JSON.stringify({
+        version: 1,
+        primaryIndustry: "medical",
+        offeringCategories: ["medical_supplies"],
+        specializationIds: ["medical_devices"],
+        preferredTenderTypes: ["goods"],
+        companyDescription: "Prodaja medicinske opreme i potroÅ¡nog materijala",
+        manualKeywords: ["medicinska oprema", "medicinski proizvodi"],
+      }),
+      keywords: ["medicinska oprema", "medicinski proizvodi"],
+      cpv_codes: ["33100000"],
+      operating_regions: ["Kanton Sarajevo"],
+    });
+
+    const selected = selectOpportunityRecommendations(
+      [
+        createOpportunity({
+          id: "generic-local",
+          title: "Javni poziv za sufinansiranje razvoja biznisa",
+          category: "Poticaji za MSP",
+          location: "Visoko",
+          ai_summary:
+            "Program je namijenjen mikro, malim i srednjim preduzeÄ‡ima sa podruÄja grada.",
+          ai_who_should_apply:
+            "PreduzeÄ‡a koja posluju na podruÄju grada i razvijaju poslovanje",
+        }),
+        createOpportunity({
+          id: "medical-fit",
+          title: "Javni poziv za certificiranje i nabavku medicinske opreme",
+          category: "Zdravstvo i medicinska oprema",
+          industry: "Medicinska oprema",
+          ai_who_should_apply:
+            "Privredna druÅ¡tva koja proizvode ili prodaju medicinsku opremu i potroÅ¡ni medicinski materijal",
+          requirements:
+            "Plan investicije u medicinsku opremu, certifikaciju i usklaÄ‘ivanje sa zdravstvenim standardima",
+        }),
+      ],
+      medicalContext
+    );
+
+    expect(selected.map((item) => item.opportunity.id)).toEqual(["medical-fit"]);
+  });
 });

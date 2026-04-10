@@ -4,6 +4,7 @@ import { isAdminEmail } from "@/lib/admin";
 import type { Tender } from "@/types/database";
 import { buildRegionSearchTerms } from "@/lib/constants/regions";
 import { maybeRerankTenderRecommendationsWithAI } from "@/lib/tender-recommendation-rerank";
+import { resolveTenderSort, sortRecommendedTenderItems, sortStandardTenders } from "@/lib/tender-sorting";
 import { getSubscriptionStatus } from "@/lib/subscription";
 import {
   buildRecommendationContext,
@@ -58,14 +59,15 @@ async function TendersContent({ searchParams }: TendersPageProps) {
   const procedureTypeParam = getSingleParam(params.procedure_type) ?? "all";
   const deadlineFromParam = getSingleParam(params.deadline_from) ?? "";
   const deadlineToParam = getSingleParam(params.deadline_to) ?? "";
-  const valueMinParam = "";
-  const valueMaxParam = "";
+  const valueMinParam = getSingleParam(params.value_min) ?? "";
+  const valueMaxParam = getSingleParam(params.value_max) ?? "";
   const locationFilterValues = getMultiParam(params.location);
   const locationFilterTerms = buildRegionSearchTerms(locationFilterValues);
 
   const page = Math.max(1, parseInt(pageParam || "1", 10));
   const offset = (page - 1) * PAGE_SIZE;
   const activeTab = tabParam === "all" ? "all" : "recommended";
+  const sortParam = resolveTenderSort(getSingleParam(params.sort), activeTab);
 
   // Get current user and company for recommendations
   const {
@@ -163,11 +165,13 @@ async function TendersContent({ searchParams }: TendersPageProps) {
         }
       }
 
-      // Sort by relevance score first, then by distance (locationPriority = km)
-      const sorted = [...mergedMap.values()].sort((a, b) => {
-        if (a.score !== b.score) return b.score - a.score;
-        return a.locationPriority - b.locationPriority;
-      });
+      const sorted = sortRecommendedTenderItems(
+        [...mergedMap.values()].map((item) => ({
+          ...item,
+          positiveSignalCount: item.score,
+        })),
+        sortParam
+      );
 
       // Apply keyword filter if present
       let filtered = sorted;
@@ -294,7 +298,8 @@ async function TendersContent({ searchParams }: TendersPageProps) {
     deadlineToParam ||
     valueMinParam ||
     valueMaxParam ||
-    locationFilterValues.length > 0;
+    locationFilterValues.length > 0 ||
+    (activeTab === "recommended" ? sortParam !== "recommended" : sortParam !== "deadline_asc");
 
   let tenders: Tender[] = [];
   let totalCount = 0;
@@ -346,6 +351,8 @@ async function TendersContent({ searchParams }: TendersPageProps) {
       }
     );
 
+    rankedRecommendations = sortRecommendedTenderItems(rankedRecommendations, sortParam);
+
     if (locationFilterTerms.length > 0) {
       rankedRecommendations = rankedRecommendations.filter(({ tender }) =>
         matchesTenderLocationTerms(tender, locationFilterTerms)
@@ -390,7 +397,19 @@ async function TendersContent({ searchParams }: TendersPageProps) {
       }
 
       const { data } = await locationQuery
-        .order("deadline", { ascending: false, nullsFirst: false })
+        .order(
+          sortParam === "value_desc" || sortParam === "value_asc"
+            ? "estimated_value"
+            : sortParam === "newest"
+              ? "created_at"
+              : "deadline",
+          {
+            ascending:
+              sortParam === "value_asc" ||
+              sortParam === "deadline_asc",
+            nullsFirst: false,
+          }
+        )
         .range(0, 2499);
 
       const enrichedRows = await enrichTendersWithAuthorityGeo(
@@ -408,8 +427,9 @@ async function TendersContent({ searchParams }: TendersPageProps) {
         matchesTenderLocationTerms(tender, locationFilterTerms)
       );
 
-      totalCount = filteredRows.length;
-      tenders = filteredRows.slice(offset, offset + PAGE_SIZE).map((tender) => tender as Tender);
+      const sortedRows = sortStandardTenders(filteredRows, sortParam);
+      totalCount = sortedRows.length;
+      tenders = sortedRows.slice(offset, offset + PAGE_SIZE).map((tender) => tender as Tender);
     } else {
       let query = supabase
         .from("tenders")
@@ -443,7 +463,19 @@ async function TendersContent({ searchParams }: TendersPageProps) {
       }
 
       const { data, count } = await query
-        .order("deadline", { ascending: false, nullsFirst: false })
+        .order(
+          sortParam === "value_desc" || sortParam === "value_asc"
+            ? "estimated_value"
+            : sortParam === "newest"
+              ? "created_at"
+              : "deadline",
+          {
+            ascending:
+              sortParam === "value_asc" ||
+              sortParam === "deadline_asc",
+            nullsFirst: false,
+          }
+        )
         .range(offset, offset + PAGE_SIZE - 1);
 
       tenders = (data ?? []) as Tender[];
@@ -596,7 +628,7 @@ export default async function TendersPage(props: TendersPageProps) {
         <div className="mt-6">
           {!isLocked && (
             <Suspense fallback={null}>
-              <TenderFilters />
+              <TenderFilters key={`filters-${activeTab}-${JSON.stringify(params)}`} />
             </Suspense>
           )}
 
