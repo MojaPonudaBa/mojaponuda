@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
@@ -29,18 +29,18 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     .or(`slug.eq.poticaj/${slug},slug.eq.tender/${slug}`)
     .maybeSingle() as { data: Pick<OpportunityRow, "seo_title" | "seo_description" | "title" | "issuer"> | null };
 
-  if (!data) return { title: "Prilika | MojaPonuda.ba" };
+  if (!data) return { title: "Prilika | TenderSistem.com" };
 
   return {
-    title: data.seo_title ?? `${data.title} | MojaPonuda.ba`,
-    description: data.seo_description ?? `${data.title} — ${data.issuer}`,
-    alternates: { canonical: `https://mojaponuda.ba/prilike/${slug}` },
+    title: data.seo_title ?? `${data.title} | TenderSistem.com`,
+    description: data.seo_description ?? `${data.title} â€” ${data.issuer}`,
+    alternates: { canonical: `https://tendersistem.com/prilike/${slug}` },
   };
 }
 
 export const revalidate = 3600;
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
+// â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function formatValue(v: number | null) {
   if (!v) return null;
   if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}M KM`;
@@ -62,7 +62,7 @@ function scoreRelated(r: RelatedRow, opp: OpportunityRow): number {
   return s;
 }
 
-const difficultyLabel: Record<string, string> = { lako: "Lako", srednje: "Srednje", tesko: "Teško" };
+const difficultyLabel: Record<string, string> = { lako: "Lako", srednje: "Srednje", tesko: "TeÅ¡ko" };
 const difficultyColor: Record<string, string> = {
   lako: "text-emerald-700 bg-emerald-50",
   srednje: "text-amber-700 bg-amber-50",
@@ -73,7 +73,7 @@ export default async function OpportunityPage({ params }: PageProps) {
   const { slug } = await params;
   const supabase = await createClient();
 
-  // ── Main opportunity ──────────────────────────────────────────────────────
+  // â”€â”€ Main opportunity â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const { data: opportunity } = await supabase
     .from("opportunities")
     .select("*")
@@ -85,7 +85,7 @@ export default async function OpportunityPage({ params }: PageProps) {
 
   const sixMonthsAgo = new Date(Date.now() - 180 * 24 * 60 * 60 * 1000).toISOString();
 
-  // ── Parallel fetches (Layers 2, 3, 4) ────────────────────────────────────
+  // â”€â”€ Parallel fetches (Layers 2, 3, 4) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const [
     { data: candidateRelated },
     { data: pastFromIssuer },
@@ -102,7 +102,7 @@ export default async function OpportunityPage({ params }: PageProps) {
       .order("deadline", { ascending: true, nullsFirst: false })
       .limit(10),
 
-    // Layer 3: temporal — other published opportunities from same issuer
+    // Layer 3: temporal â€” other published opportunities from same issuer
     supabase
       .from("opportunities")
       .select("id, slug, title, issuer, deadline, type")
@@ -112,7 +112,7 @@ export default async function OpportunityPage({ params }: PageProps) {
       .order("created_at", { ascending: false })
       .limit(3),
 
-    // Layer 4: trend — active opps in same category last 6 months (matches what category page shows)
+    // Layer 4: trend â€” active opps in same category last 6 months (matches what category page shows)
     supabase
       .from("opportunities")
       .select("*", { count: "exact", head: true })
@@ -122,7 +122,7 @@ export default async function OpportunityPage({ params }: PageProps) {
       .gte("created_at", sixMonthsAgo),
   ]);
 
-  // Layer 2: score + deduplicate → top 4
+  // Layer 2: score + deduplicate â†’ top 4
   const smartRelated: RelatedRow[] = (candidateRelated ?? [])
     .map((r) => ({ ...r, _score: scoreRelated(r, opportunity) }))
     .sort((a, b) => (b as RelatedRow & { _score: number })._score - (a as RelatedRow & { _score: number })._score)
@@ -144,9 +144,9 @@ export default async function OpportunityPage({ params }: PageProps) {
 
       <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6">
 
-        {/* ── Layer 1: Breadcrumb ────────────────────────────────────────── */}
+        {/* â”€â”€ Layer 1: Breadcrumb â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
         <nav aria-label="breadcrumb" className="mb-6 flex items-center gap-1.5 text-xs text-slate-400 flex-wrap">
-          <Link href="/" className="hover:text-slate-700 transition-colors">Početna</Link>
+          <Link href="/" className="hover:text-slate-700 transition-colors">PoÄetna</Link>
           <ChevronRight className="size-3 shrink-0" />
           <Link href="/prilike" className="hover:text-slate-700 transition-colors">Poticaji</Link>
           {seoCategory && (
@@ -161,7 +161,7 @@ export default async function OpportunityPage({ params }: PageProps) {
           <span className="text-slate-600 truncate max-w-[200px]">{opportunity.seo_title ?? opportunity.title}</span>
         </nav>
 
-        {/* ── Header card ───────────────────────────────────────────────── */}
+        {/* â”€â”€ Header card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
         <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm mb-5">
           <div className="flex flex-wrap gap-2 mb-4">
             <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
@@ -193,7 +193,7 @@ export default async function OpportunityPage({ params }: PageProps) {
             <p className="text-sm text-slate-500 mb-4 leading-5">{opportunity.title}</p>
           )}
 
-          {/* Urgency banner — shown when deadline is ≤7 days and not expired */}
+          {/* Urgency banner â€” shown when deadline is â‰¤7 days and not expired */}
           {!isExpired && daysLeft !== null && daysLeft <= 7 && (
             <div className={`flex items-center gap-2 rounded-xl px-4 py-3 mb-4 ${
               daysLeft <= 1
@@ -209,10 +209,10 @@ export default async function OpportunityPage({ params }: PageProps) {
                 daysLeft <= 1 ? "text-red-700" : daysLeft <= 3 ? "text-orange-700" : "text-amber-700"
               }`}>
                 {daysLeft === 0
-                  ? "⚡ ROK ISTJEČE DANAS — PRIJAVITE SE!"
+                  ? "âš¡ ROK ISTJEÄŒE DANAS â€” PRIJAVITE SE!"
                   : daysLeft === 1
-                  ? "⚡ ROK ISTJEČE SUTRA — POSLJEDNJI DAN!"
-                  : `⏰ ROK ZA PRIJAVU ZA ${daysLeft} DANA`}
+                  ? "âš¡ ROK ISTJEÄŒE SUTRA â€” POSLJEDNJI DAN!"
+                  : `â° ROK ZA PRIJAVU ZA ${daysLeft} DANA`}
               </p>
             </div>
           )}
@@ -257,29 +257,29 @@ export default async function OpportunityPage({ params }: PageProps) {
             )}
           </div>
 
-          {/* CTA #1 — primary follow action */}
+          {/* CTA #1 â€” primary follow action */}
           <OpportunityActionsWrapper
             opportunityId={opportunity.id}
             signupHref={`/signup?ref=follow&id=${opportunity.id}`}
           />
         </div>
 
-        {/* ── Layer 4: Trend insight strip ──────────────────────────────── */}
+        {/* â”€â”€ Layer 4: Trend insight strip â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
         {(trendCount ?? 0) > 1 && opportunity.category && (
           <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 mb-5 flex items-center gap-3">
             <BarChart2 className="size-4 text-blue-500 shrink-0" />
             <p className="text-xs text-slate-600">
-              <span className="font-semibold text-slate-800">{trendCount}</span> sličnih poziva objavljeno u ovoj kategoriji u zadnjih 6 mjeseci.{" "}
+              <span className="font-semibold text-slate-800">{trendCount}</span> sliÄnih poziva objavljeno u ovoj kategoriji u zadnjih 6 mjeseci.{" "}
               {seoCategory && (
                 <Link href={`/prilike/kategorija/${seoCategory.slug}`} className="text-blue-600 hover:underline font-medium">
-                  Pogledaj sve →
+                  Pogledaj sve â†’
                 </Link>
               )}
             </p>
           </div>
         )}
 
-        {/* ── AI Summary strip ──────────────────────────────────────────── */}
+        {/* â”€â”€ AI Summary strip â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
         {opportunity.ai_summary && (
           <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm mb-5 space-y-2">
             <p className="text-sm leading-6 text-slate-700">{opportunity.ai_summary}</p>
@@ -292,36 +292,36 @@ export default async function OpportunityPage({ params }: PageProps) {
           </div>
         )}
 
-        {/* ── AI Content (SEO article) ──────────────────────────────────── */}
+        {/* â”€â”€ AI Content (SEO article) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
         {aiContent && (
           <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm mb-5">
             <ArticleContent content={aiContent} />
           </div>
         )}
 
-        {/* ── CTA #2 — mid-content conversion banner ────────────────────── */}
+        {/* â”€â”€ CTA #2 â€” mid-content conversion banner â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
         <div className="rounded-2xl border border-blue-100 bg-blue-50 p-6 mb-5">
           <p className="text-sm font-semibold text-slate-900 mb-1">
             {isExpired
-              ? "Pratite sljedeće slične prilike"
+              ? "Pratite sljedeÄ‡e sliÄne prilike"
               : "Ne propustite rok za prijavu"}
           </p>
           <p className="text-xs text-slate-600 mb-4 leading-5">
             {isExpired
-              ? `Ovaj poziv je istekao, ali slične prilike se redovno objavljuju. `
-              : `Prati ovu i slične prilike i nikad ne propusti rok. `}
+              ? `Ovaj poziv je istekao, ali sliÄne prilike se redovno objavljuju. `
+              : `Prati ovu i sliÄne prilike i nikad ne propusti rok. `}
             {seoCategory ? (
               <>
                 Sve prilike u kategoriji{" "}
                 <Link href={`/prilike/kategorija/${seoCategory.slug}`} className="text-blue-700 underline hover:text-blue-900 font-medium">
                   {seoCategory.title}
                 </Link>{" "}
-                dostupne su na MojaPonuda.ba.
+                dostupne su na TenderSistem.com.
               </>
             ) : (
               <>
                 Sve prilike dostupne su na{" "}
-                <Link href="/prilike" className="text-blue-700 underline hover:text-blue-900">MojaPonuda.ba</Link>.
+                <Link href="/prilike" className="text-blue-700 underline hover:text-blue-900">TenderSistem.com</Link>.
               </>
             )}
           </p>
@@ -336,13 +336,13 @@ export default async function OpportunityPage({ params }: PageProps) {
               href={`/prilike/kategorija/${seoCategory.slug}`}
               className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 transition-colors"
             >
-              Aktivne prilike — {seoCategory.title}
+              Aktivne prilike â€” {seoCategory.title}
               <ArrowUpRight className="size-3.5" />
             </Link>
           )}
         </div>
 
-        {/* ── Layer 3: Temporal — past/other from same issuer ───────────── */}
+        {/* â”€â”€ Layer 3: Temporal â€” past/other from same issuer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
         {(pastFromIssuer ?? []).length > 0 && (
           <div className="mb-5">
             <h2 className="font-heading text-base font-bold text-slate-900 mb-3 flex items-center gap-2">
@@ -376,10 +376,10 @@ export default async function OpportunityPage({ params }: PageProps) {
           </div>
         )}
 
-        {/* ── Layer 2: Smart related ────────────────────────────────────── */}
+        {/* â”€â”€ Layer 2: Smart related â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
         {smartRelated.length > 0 && (
           <div className="mb-5">
-            <h2 className="font-heading text-lg font-bold text-slate-900 mb-1">Slične prilike</h2>
+            <h2 className="font-heading text-lg font-bold text-slate-900 mb-1">SliÄne prilike</h2>
             <p className="text-xs text-slate-500 mb-3">
               Odabrano prema kategoriji, lokaciji i tipu poziva.
             </p>
@@ -424,7 +424,7 @@ export default async function OpportunityPage({ params }: PageProps) {
           </div>
         )}
 
-        {/* ── CTA #3 — bottom category link ────────────────────────────── */}
+        {/* â”€â”€ CTA #3 â€” bottom category link â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
         {seoCategory && (
           <div className="rounded-xl border border-slate-200 bg-white px-5 py-4 mb-6 flex items-center justify-between gap-4">
             <p className="text-sm text-slate-600">
@@ -440,7 +440,7 @@ export default async function OpportunityPage({ params }: PageProps) {
           </div>
         )}
 
-        {/* ── Source attribution ───────────────────────────────────────── */}
+        {/* â”€â”€ Source attribution â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
         <p className="text-xs text-slate-400 flex items-center gap-1.5">
           <ExternalLink className="size-3 shrink-0" />
           Izvor:{" "}
@@ -458,3 +458,4 @@ export default async function OpportunityPage({ params }: PageProps) {
     </main>
   );
 }
+

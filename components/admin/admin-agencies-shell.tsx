@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useMemo, useState } from "react";
 import { Building2, MailPlus, ShieldCheck, ShieldX, Users } from "lucide-react";
@@ -50,14 +50,14 @@ export function AdminAgenciesShell({ data }: AdminAgenciesShellProps) {
         throw new Error(payload.error || "Ne mogu kreirati agencijski nalog.");
       }
 
-      setSuccess(payload.message ?? "Agencijski nalog je uspješno provisioniran.");
+      setSuccess(payload.message ?? "Agencijski nalog je uspjeÅ¡no provisioniran.");
       setEmail("");
       window.location.reload();
     } catch (inviteError) {
       setError(
         inviteError instanceof Error
           ? inviteError.message
-          : "Greška pri kreiranju agencijskog naloga."
+          : "GreÅ¡ka pri kreiranju agencijskog naloga."
       );
     } finally {
       setInviteLoading(false);
@@ -83,7 +83,7 @@ export function AdminAgenciesShell({ data }: AdminAgenciesShellProps) {
       window.location.reload();
     } catch (deactivateError) {
       setError(
-        deactivateError instanceof Error ? deactivateError.message : "Greška pri deaktivaciji."
+        deactivateError instanceof Error ? deactivateError.message : "GreÅ¡ka pri deaktivaciji."
       );
     } finally {
       setDeactivatingUserId(null);
@@ -103,13 +103,13 @@ export function AdminAgenciesShell({ data }: AdminAgenciesShellProps) {
                 Invite-only provisioning za agencijske naloge
               </h1>
               <p className="max-w-2xl text-sm leading-7 text-slate-300 sm:text-base">
-                Ovdje admin kreira agencijski pristup, prati postojeće naloge i po potrebi gasi
+                Ovdje admin kreira agencijski pristup, prati postojeÄ‡e naloge i po potrebi gasi
                 entitlement bez brisanja korisnika ili CRM historije.
               </p>
             </div>
           </div>
           <div className="rounded-2xl border border-white/10 bg-white/8 px-4 py-3 text-sm text-slate-200">
-            <p className="text-[11px] uppercase tracking-[0.16em] text-slate-400">Ažurirano</p>
+            <p className="text-[11px] uppercase tracking-[0.16em] text-slate-400">AÅ¾urirano</p>
             <p className="mt-2 font-semibold text-white">{formatDateTime(data.generatedAt)}</p>
           </div>
         </div>
@@ -160,9 +160,9 @@ export function AdminAgenciesShell({ data }: AdminAgenciesShellProps) {
             Kreiraj agencijski nalog
           </h2>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-            Unesite email i sistem će provisionirati agency entitlement. Ako korisnik ne postoji,
-            bit će poslan invite link. Ako već postoji, pristup će biti aktiviran na postojećem
-            računu.
+            Unesite email i sistem Ä‡e provisionirati agency entitlement. Ako korisnik ne postoji,
+            bit Ä‡e poslan invite link. Ako veÄ‡ postoji, pristup Ä‡e biti aktiviran na postojeÄ‡em
+            raÄunu.
           </p>
         </div>
 
@@ -175,7 +175,7 @@ export function AdminAgenciesShell({ data }: AdminAgenciesShellProps) {
             <Input
               id="agency-email"
               type="email"
-              placeholder="agencija@mojaponuda.ba"
+              placeholder="agencija@tendersistem.com"
               value={email}
               onChange={(event) => setEmail(event.target.value)}
               disabled={inviteLoading}
@@ -202,7 +202,7 @@ export function AdminAgenciesShell({ data }: AdminAgenciesShellProps) {
       <section className="space-y-4">
         <div>
           <h2 className="text-xl font-semibold tracking-tight text-slate-950">
-            Postojeći agencijski nalozi
+            PostojeÄ‡i agencijski nalozi
           </h2>
           <p className="mt-1 text-sm text-slate-600">
             Aktivne i deaktivirane agencije, zajedno sa osnovnim statusom i brojem klijenata koje
@@ -286,7 +286,7 @@ export function AdminAgenciesShell({ data }: AdminAgenciesShellProps) {
 
               {agency.isComplimentary ? (
                 <p className="mt-4 text-xs leading-5 text-slate-500">
-                  Ovaj nalog ima hardcoded complimentary agency pristup za testiranje i ne može se
+                  Ovaj nalog ima hardcoded complimentary agency pristup za testiranje i ne moÅ¾e se
                   deaktivirati iz admin panela.
                 </p>
               ) : null}
@@ -297,3 +297,4 @@ export function AdminAgenciesShell({ data }: AdminAgenciesShellProps) {
     </div>
   );
 }
+

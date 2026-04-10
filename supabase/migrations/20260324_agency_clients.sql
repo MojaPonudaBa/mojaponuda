@@ -1,4 +1,4 @@
--- Agency Clients System
+﻿-- Agency Clients System
 -- Enables agency accounts to manage multiple client companies under one account
 
 -- Create agency_clients table
@@ -79,5 +79,6 @@ CREATE POLICY "Agency can read managed client companies"
 -- Create user + subscription for agency test account (idempotent)
 INSERT INTO public.subscriptions (user_id, status, lemonsqueezy_subscription_id, lemonsqueezy_customer_id, lemonsqueezy_variant_id, current_period_end)
 SELECT id, 'active', 'test_agency_v2', 'test_agency_v2', 'agency', '2030-01-01'
-FROM auth.users WHERE email = 'agencija@mojaponuda.ba'
+FROM auth.users WHERE email = 'agencija@tendersistem.com'
 AND NOT EXISTS (SELECT 1 FROM public.subscriptions WHERE user_id = auth.users.id);
+

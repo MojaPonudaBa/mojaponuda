@@ -1,4 +1,4 @@
-import "server-only";
+﻿import "server-only";
 
 export interface SEOOptimizedContent {
   seo_title: string;
@@ -23,7 +23,7 @@ export class SEOOptimizer {
 
   private readonly ACTION_WORDS = [
     "Prijavite se",
-    "Saznajte više",
+    "Saznajte viÅ¡e",
     "Iskoristite",
     "Aplicirajte",
     "Prijavite",
@@ -119,7 +119,7 @@ export class SEOOptimizer {
 
     // Ensure length is within bounds
     if (description.length < this.MIN_DESCRIPTION_LENGTH) {
-      description += ". Detalji i uslovi na MojaPonuda.ba";
+      description += ". Detalji i uslovi na TenderSistem.com";
     }
 
     if (description.length > this.MAX_DESCRIPTION_LENGTH) {
@@ -246,8 +246,8 @@ export class SEOOptimizer {
       "Republika Srpska": "RS",
       "Tuzlanski kanton": "TK",
       "Kanton Sarajevo": "KS",
-      "Hercegovačko-neretvanski kanton": "HNK",
-      "Zeničko-dobojski kanton": "ZDK",
+      "HercegovaÄko-neretvanski kanton": "HNK",
+      "ZeniÄko-dobojski kanton": "ZDK",
     };
 
     return shortForms[location] ?? location;
@@ -263,7 +263,7 @@ export class SEOOptimizer {
       "srednje firme": "MSP",
       "preduzetnici": "preduzetnici",
       "izvoznici": "izvoznici",
-      "proizvođači": "proizvođači",
+      "proizvoÄ‘aÄi": "proizvoÄ‘aÄi",
     };
 
     // Check for exact match
@@ -340,3 +340,4 @@ export class SEOOptimizer {
  * Singleton instance for reuse
  */
 export const seoOptimizer = new SEOOptimizer();
+

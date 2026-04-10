@@ -6,6 +6,7 @@ import { getDemoCompanyDefaults, isCompanyProfileComplete, isDemoUser } from "@/
 import { OnboardingValueFirstForm } from "@/components/onboarding-value-first-form";
 import { isAgencyPlan } from "@/lib/agency";
 import { getSubscriptionStatus } from "@/lib/subscription";
+import { TenderSistemLogo } from "@/components/brand/tender-sistem-logo";
 
 export default async function OnboardingPage() {
   const supabase = await createClient();
@@ -40,16 +41,11 @@ export default async function OnboardingPage() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-slate-50 px-4 py-12">
       <div className="mb-10 text-center">
-        <div className="inline-flex items-baseline gap-0.5 mb-6">
-          <span className="font-heading text-3xl font-bold tracking-tight text-slate-900">
-            MojaPonuda
-          </span>
-          <span className="font-heading text-3xl font-bold text-primary">.ba</span>
-        </div>
+        <TenderSistemLogo href="/" size="lg" className="mb-6" />
         <h1 className="font-heading text-3xl font-bold text-slate-900">
           Prvo pogledajte tendere koji vam imaju smisla
         </h1>
-        <p className="mt-3 text-base text-slate-500 max-w-2xl mx-auto leading-7">
+        <p className="mx-auto mt-3 max-w-2xl text-base leading-7 text-slate-500">
           Ne tražimo od vas odmah sve podatke firme. Prvo odaberite čime se bavite i gdje se firma nalazi, pogledajte prve relevantne i najbliže tendere, a zatim dopunite profil da preporuke budu još preciznije.
         </p>
         <div className="mt-5 flex items-center justify-center gap-3">
@@ -62,7 +58,7 @@ export default async function OnboardingPage() {
         </div>
       </div>
 
-      <div className="w-full max-w-5xl rounded-3xl border border-slate-200 bg-white p-8 sm:p-10 shadow-xl shadow-blue-500/5">
+      <div className="w-full max-w-5xl rounded-3xl border border-slate-200 bg-white p-8 shadow-xl shadow-blue-500/5 sm:p-10">
         <OnboardingValueFirstForm
           companyId={company?.id ?? ""}
           companyName={company?.name ?? user.user_metadata?.company_name ?? demoDefaults?.name ?? ""}

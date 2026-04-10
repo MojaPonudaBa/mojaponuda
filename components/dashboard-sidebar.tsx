@@ -1,11 +1,10 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   ArrowLeft,
-  Box,
   Briefcase,
   Building2,
   ChevronDown,
@@ -25,6 +24,7 @@ import {
   Wrench,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { TenderSistemLogo } from "@/components/brand/tender-sistem-logo";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
@@ -37,7 +37,7 @@ interface NavItem {
 }
 
 const coreItems: NavItem[] = [
-  { href: "/dashboard", label: "Početna", icon: LayoutDashboard, exact: true },
+  { href: "/dashboard", label: "PoÄetna", icon: LayoutDashboard, exact: true },
   { href: "/dashboard/tenders", label: "Tenderi", icon: Search },
   { href: "/dashboard/bids", label: "Moje ponude", icon: Briefcase },
   { href: "/dashboard/vault", label: "Dokumenti", icon: FileText },
@@ -93,7 +93,7 @@ export function DashboardSidebar({
     ? [
         {
           href: `/dashboard/agency/clients/${activeClient.id}/home`,
-          label: "Početna",
+          label: "PoÄetna",
           icon: LayoutDashboard,
           exact: true,
         },
@@ -153,18 +153,14 @@ export function DashboardSidebar({
 
   return (
     <aside className="fixed inset-y-0 left-0 z-40 flex h-screen w-[244px] flex-col border-r border-slate-800/80 bg-[linear-gradient(180deg,#08111f_0%,#0b1730_52%,#102347_100%)] px-4 py-6 text-white shadow-[20px_0_60px_-40px_rgba(2,6,23,0.85)]">
-      <div className="mb-10 flex items-center gap-3 px-2">
-        <Link href={isAgency ? "/dashboard/agency" : "/"} className="flex items-center gap-3 transition-opacity hover:opacity-90">
-          <div className="flex size-10 items-center justify-center rounded-2xl border border-white/10 bg-white/8 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]">
-            <Box className="size-5" />
-          </div>
-          <div>
-            <p className="font-heading text-lg font-bold tracking-tight text-white">MojaPonuda.ba</p>
-            <p className="text-[11px] uppercase tracking-[0.18em] text-slate-400">
-              {isAdmin ? "Admin" : isAgency ? "Agencija" : "Početna"}
-            </p>
-          </div>
-        </Link>
+      <div className="mb-10 px-2">
+        <TenderSistemLogo
+          href={isAgency ? "/dashboard/agency" : "/"}
+          size="sm"
+          theme="dark"
+          subtitle={isAdmin ? "Admin" : isAgency ? "Agencija" : "Početna"}
+          className="transition-opacity hover:opacity-90"
+        />
       </div>
 
       <nav className="hide-scrollbar min-h-0 flex-1 overflow-y-auto pr-1">
@@ -250,7 +246,7 @@ export function DashboardSidebar({
                 className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-100"
               >
                 <Settings className="size-4" />
-                Račun
+                RaÄun
               </Link>
               <Link
                 href="/dashboard/subscription"
@@ -290,3 +286,4 @@ export function DashboardSidebar({
     </aside>
   );
 }
+

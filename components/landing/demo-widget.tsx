@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,7 @@ import Link from "next/link";
 import { demoAnalyzeTender, type DemoTenderResult } from "@/app/actions/demo-analyze";
 
 function formatValue(value: number | null | undefined): string {
-  if (value === null || value === undefined) return "—";
+  if (value === null || value === undefined) return "â€”";
   return (
     new Intl.NumberFormat("bs-BA", {
       minimumFractionDigits: 2,
@@ -18,7 +18,7 @@ function formatValue(value: number | null | undefined): string {
 }
 
 function formatDate(dateStr: string | null | undefined): string {
-  if (!dateStr) return "—";
+  if (!dateStr) return "â€”";
   return new Date(dateStr).toLocaleDateString("bs-BA", {
     day: "2-digit",
     month: "2-digit",
@@ -30,8 +30,8 @@ function getDaysLeft(dateStr: string | null | undefined): { text: string; color:
   if (!dateStr) return null;
   const diff = Math.ceil((new Date(dateStr).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
   if (diff < 0) return { text: "Rok istekao", color: "text-slate-400" };
-  if (diff <= 7) return { text: `Još ${diff} dana`, color: "text-red-600" };
-  return { text: `Još ${diff} dana`, color: "text-emerald-600" };
+  if (diff <= 7) return { text: `JoÅ¡ ${diff} dana`, color: "text-red-600" };
+  return { text: `JoÅ¡ ${diff} dana`, color: "text-emerald-600" };
 }
 
 export function DemoWidget() {
@@ -109,7 +109,7 @@ export function DemoWidget() {
                 </Button>
               </div>
               <div className="mt-4 flex items-center justify-center gap-4 text-xs text-slate-400">
-                <span>Podržani portal: EJN (ejn.gov.ba)</span>
+                <span>PodrÅ¾ani portal: EJN (ejn.gov.ba)</span>
               </div>
             </div>
 
@@ -136,7 +136,7 @@ export function DemoWidget() {
                 <Loader2 className="size-12 text-primary animate-spin" />
               </div>
             </div>
-            <h3 className="text-xl font-bold text-slate-900 mb-2">Tražim tender u bazi...</h3>
+            <h3 className="text-xl font-bold text-slate-900 mb-2">TraÅ¾im tender u bazi...</h3>
             <div className="space-y-1">
               <p className="text-sm text-slate-500 animate-pulse">Provjeravam EJN identifikator...</p>
             </div>
@@ -148,14 +148,14 @@ export function DemoWidget() {
             <div className="bg-slate-100 p-4 rounded-2xl mb-6">
               <XCircle className="size-12 text-slate-400" />
             </div>
-            <h3 className="text-xl font-bold text-slate-900 mb-2">Tender nije pronađen</h3>
+            <h3 className="text-xl font-bold text-slate-900 mb-2">Tender nije pronaÄ‘en</h3>
             <p className="text-sm text-slate-500 max-w-md mb-6">
-              Nismo pronašli ovaj tender u našoj bazi. Provjerite da li ste zalijepili ispravan EJN link, 
+              Nismo pronaÅ¡li ovaj tender u naÅ¡oj bazi. Provjerite da li ste zalijepili ispravan EJN link, 
               ili se registrujte za pristup kompletnoj bazi tendera.
             </p>
             <div className="flex items-center gap-3">
               <Button variant="outline" onClick={handleReset} className="rounded-xl font-bold">
-                Pokušaj ponovo
+                PokuÅ¡aj ponovo
               </Button>
               <Link href="/signup">
                 <Button className="rounded-xl font-bold bg-primary hover:bg-blue-700">
@@ -203,13 +203,13 @@ export function DemoWidget() {
                 </div>
 
                 <div className="space-y-3">
-                  <h4 className="font-bold text-slate-900 text-sm">Šta MojaPonuda radi za vas</h4>
+                  <h4 className="font-bold text-slate-900 text-sm">Å ta TenderSistem radi za vas</h4>
                   <ul className="space-y-2">
                     {[
                       { name: "Identifikacija svih potrebnih dokumenata", type: "AI" },
                       { name: "Detekcija rizika diskvalifikacije", type: "AI" },
-                      { name: "Automatsko uparivanje s vašim Document Vaultom", type: "Auto" },
-                      { name: "Praćenje rokova i notifikacije", type: "Auto" },
+                      { name: "Automatsko uparivanje s vaÅ¡im Document Vaultom", type: "Auto" },
+                      { name: "PraÄ‡enje rokova i notifikacije", type: "Auto" },
                     ].map((item, i) => (
                       <li key={i} className="flex items-center justify-between p-2 rounded-lg border border-slate-100 bg-white">
                         <div className="flex items-center gap-2">
@@ -225,7 +225,7 @@ export function DemoWidget() {
                 </div>
 
                 <button onClick={handleReset} className="text-sm font-medium text-slate-500 hover:text-slate-700 transition-colors">
-                  ← Analiziraj drugi tender
+                  â† Analiziraj drugi tender
                 </button>
               </div>
 
@@ -235,7 +235,7 @@ export function DemoWidget() {
                 </div>
                 <h4 className="text-lg font-bold">Spremno za pripremu?</h4>
                 <p className="text-sm text-slate-300">
-                  Kreirajte besplatan nalog da sačuvate ovu analizu i započnete pripremu ponude.
+                  Kreirajte besplatan nalog da saÄuvate ovu analizu i zapoÄnete pripremu ponude.
                 </p>
                 <Link href="/signup">
                   <Button className="w-full bg-white text-slate-900 hover:bg-slate-100 font-bold">
@@ -254,3 +254,4 @@ export function DemoWidget() {
     </div>
   );
 }
+

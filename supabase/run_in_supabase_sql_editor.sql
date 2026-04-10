@@ -1,4 +1,4 @@
--- =================================================================
+﻿-- =================================================================
 -- AGENCIJSKI SISTEM - SQL za pokretanje u Supabase SQL Editoru
 -- Pokrenite JEDNOM u: Supabase Dashboard > SQL Editor
 -- =================================================================
@@ -67,7 +67,7 @@ CREATE TRIGGER agency_clients_updated_at
   BEFORE UPDATE ON public.agency_clients
   FOR EACH ROW EXECUTE FUNCTION update_agency_clients_updated_at();
 
--- 5. Dozvoliti agenciji čitanje kompanija klijenata
+-- 5. Dozvoliti agenciji Äitanje kompanija klijenata
 DROP POLICY IF EXISTS "Agency can read managed client companies" ON public.companies;
 CREATE POLICY "Agency can read managed client companies"
   ON public.companies
@@ -79,7 +79,7 @@ CREATE POLICY "Agency can read managed client companies"
     )
   );
 
--- 6. Pretplata za agencija@mojaponuda.ba test nalog
+-- 6. Pretplata za agencija@tendersistem.com test nalog
 -- (Prethodno kreiran nalog u Auth, ovo dodaje pretplatu)
 INSERT INTO public.subscriptions (
   user_id, status, lemonsqueezy_subscription_id, 
@@ -88,7 +88,7 @@ INSERT INTO public.subscriptions (
 SELECT 
   id, 'active', 'test_agency', 'cust_agency', 'agency', '2030-01-01'
 FROM auth.users 
-WHERE email = 'agencija@mojaponuda.ba'
+WHERE email = 'agencija@tendersistem.com'
 AND NOT EXISTS (
   SELECT 1 FROM public.subscriptions WHERE user_id = auth.users.id
 );
@@ -96,3 +96,4 @@ AND NOT EXISTS (
 -- Provjeri rezultat
 SELECT 'agency_clients table created' as status 
 WHERE EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'agency_clients');
+

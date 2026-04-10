@@ -1,4 +1,4 @@
-import "server-only";
+﻿import "server-only";
 import { getOpenAIClient } from "@/lib/openai";
 import { AI_CATEGORY_VALUES } from "@/lib/opportunity-categories";
 import type { HistoricalContext } from "./historical-context-calculator";
@@ -17,26 +17,26 @@ export interface EnhancedOpportunityContent {
 
 // Blacklist of generic phrases to avoid
 const GENERIC_PHRASE_BLACKLIST = [
-  "odlična prilika",
+  "odliÄna prilika",
   "ne propustite",
-  "jedinstvena šansa",
+  "jedinstvena Å¡ansa",
   "izuzetna prilika",
-  "savršena prilika",
+  "savrÅ¡ena prilika",
   "idealna prilika",
 ];
 
-const ENHANCED_SYSTEM_PROMPT = `Ti si SEO stručnjak i savjetnik za poslovne prilike u Bosni i Hercegovini.
-Pišeš sadržaj koji istovremeno rangira na Google.ba I pomaže firmama da donesu prave odluke.
+const ENHANCED_SYSTEM_PROMPT = `Ti si SEO struÄnjak i savjetnik za poslovne prilike u Bosni i Hercegovini.
+PiÅ¡eÅ¡ sadrÅ¾aj koji istovremeno rangira na Google.ba I pomaÅ¾e firmama da donesu prave odluke.
 
-KRITIČNA PRAVILA:
+KRITIÄŒNA PRAVILA:
 1. Jezik: bosanski/hrvatski. Bez anglizama.
-2. Bez generičkih fraza: ${GENERIC_PHRASE_BLACKLIST.join(", ")}
-3. Budi konkretan i informativan - fokusiraj se na ČINJENICE, ne marketing
-4. SEO pravilo br. 1: seo_title MORA biti pretraživački upit, NIKAD prepis naslova dokumenta
-5. SEO pravilo br. 2: Uvijek uključi lokaciju, godinu (2026) i tip poticaja u prvom paragrafu ai_content
+2. Bez generiÄkih fraza: ${GENERIC_PHRASE_BLACKLIST.join(", ")}
+3. Budi konkretan i informativan - fokusiraj se na ÄŒINJENICE, ne marketing
+4. SEO pravilo br. 1: seo_title MORA biti pretraÅ¾ivaÄki upit, NIKAD prepis naslova dokumenta
+5. SEO pravilo br. 2: Uvijek ukljuÄi lokaciju, godinu (2026) i tip poticaja u prvom paragrafu ai_content
 6. Koristi historijske podatke kada su dostupni - konkretni brojevi grade kredibilitet
 7. Dodaj internal linkove ka relevantnim kategorijama
-8. Uključi FAQ sekciju sa long-tail SEO keywords`;
+8. UkljuÄi FAQ sekciju sa long-tail SEO keywords`;
 
 /**
  * Enhanced AI Content Generator with historical context, urgency, SEO long-tail, and internal linking
@@ -83,25 +83,25 @@ export async function generateEnhancedOpportunityContent(
     }
 
     const urgencyPrompt = daysUntilDeadline !== null && daysUntilDeadline > 0 && daysUntilDeadline <= 30
-      ? `\n\nURGENCY: Rok za prijavu je za ${daysUntilDeadline} dana. OBAVEZNO istakni ovo u sekciji "Iznos i rok prijave" sa frazom: "⏰ Rok za prijavu: ${daysUntilDeadline} dana — ne propustite!"`
+      ? `\n\nURGENCY: Rok za prijavu je za ${daysUntilDeadline} dana. OBAVEZNO istakni ovo u sekciji "Iznos i rok prijave" sa frazom: "â° Rok za prijavu: ${daysUntilDeadline} dana â€” ne propustite!"`
       : "";
 
     // Build historical context section for prompt
     let historicalContextPrompt = "";
     if (historicalContext) {
-      historicalContextPrompt = `\n\nHISTORIJSKI KONTEKST (koristi ove podatke u sadržaju):
-- Sličnih poziva u zadnjih 12 mjeseci: ${historicalContext.similar_calls_count}
+      historicalContextPrompt = `\n\nHISTORIJSKI KONTEKST (koristi ove podatke u sadrÅ¾aju):
+- SliÄnih poziva u zadnjih 12 mjeseci: ${historicalContext.similar_calls_count}
 - Poziva od iste institucije: ${historicalContext.issuer_calls_count}
-- Trend kategorije: ${historicalContext.category_trend === "increasing" ? "rastući" : historicalContext.category_trend === "decreasing" ? "opadajući" : "stabilan"}
-${historicalContext.typical_frequency ? `- Učestalost: ${historicalContext.typical_frequency}` : ""}
-${historicalContext.last_similar_call ? `- Prošli sličan poziv: ${historicalContext.last_similar_call.title} (${historicalContext.last_similar_call.value.toLocaleString("bs-BA")} KM)` : ""}
+- Trend kategorije: ${historicalContext.category_trend === "increasing" ? "rastuÄ‡i" : historicalContext.category_trend === "decreasing" ? "opadajuÄ‡i" : "stabilan"}
+${historicalContext.typical_frequency ? `- UÄestalost: ${historicalContext.typical_frequency}` : ""}
+${historicalContext.last_similar_call ? `- ProÅ¡li sliÄan poziv: ${historicalContext.last_similar_call.title} (${historicalContext.last_similar_call.value.toLocaleString("bs-BA")} KM)` : ""}
 
-KORISTI ove podatke u sekciji "Šta ovo znači za vašu firmu?" da daš kontekst o učestalosti i konkurenciji.`;
+KORISTI ove podatke u sekciji "Å ta ovo znaÄi za vaÅ¡u firmu?" da daÅ¡ kontekst o uÄestalosti i konkurenciji.`;
     }
 
     const prompt = `Analiziraj ovu poslovnu priliku i popuni SVA polja u JSON-u.
 CILJ: Stranica treba rangirati na Google.ba za upite poput "poticaji [sektor] [lokacija] 2026".
-Piši isključivo na osnovu dostavljenih podataka — bez izmišljenih iznosa, rokova ili uvjeta.
+PiÅ¡i iskljuÄivo na osnovu dostavljenih podataka â€” bez izmiÅ¡ljenih iznosa, rokova ili uvjeta.
 
 PODATCI O PRILICI:
 Vrsta: ${typeLabel}
@@ -114,16 +114,16 @@ Ciljana publika (signali): ${eligStr ?? "nisu detektirani"}
 Opis: ${rawDesc ?? "nije dostupan"}
 Uvjeti: ${rawReq ?? "nisu navedeni"}${historicalContextPrompt}${urgencyPrompt}
 
-JSON format — sva polja obavezna:
+JSON format â€” sva polja obavezna:
 {
-  "seo_title": "SEO naslov koji cilja PRETRAŽIVANJE — NIKAD ne kopiraj sirovi naziv dokumenta. Format obavezan: '[Vrsta] za [ko] u [lokacija] (2026)'. Primjeri ispravnog: 'Poticaji za mikro firme u Tuzlanskom kantonu (2026)' | 'EU grant za izvoznike u FBiH (2026)' | 'Subvencije za zapošljavanje Kanton Sarajevo (2026)' | 'Grantovi za startuppe u Republici Srpskoj (2026)'. Max 65 znakova.",
-  "seo_description": "Meta opis 140-155 znakova koji uključuje: vrstu poticaja, lokaciju, ko može aplicirati, rok/vrijednost ako su poznati. Počni akcijskom riječju (Prijavite se / Saznajte više / Iskoristite). Uključi ključne pojmove: poticaji, grantovi, ${locationStr}, firme.",
-  "ai_summary": "2 rečenice sažetka koje uključuju: vrstu poticaja/granta, lokaciju (${locationStr}) i konkretnu ciljanu skupinu. Zvuči kao stručni pregled, ne prepis naslova. ${historicalContext ? "Uključi historijski kontekst ako je relevantan." : ""}",
-  "ai_who_should_apply": "Konkretno koje firme, preduzetnici ili organizacije trebaju aplicirati — sektori, veličina, lokacija. ${eligStr ? `Obavezno uključi eligibility signale: ${eligStr}` : ""} 2-3 rečenice.",
+  "seo_title": "SEO naslov koji cilja PRETRAÅ½IVANJE â€” NIKAD ne kopiraj sirovi naziv dokumenta. Format obavezan: '[Vrsta] za [ko] u [lokacija] (2026)'. Primjeri ispravnog: 'Poticaji za mikro firme u Tuzlanskom kantonu (2026)' | 'EU grant za izvoznike u FBiH (2026)' | 'Subvencije za zapoÅ¡ljavanje Kanton Sarajevo (2026)' | 'Grantovi za startuppe u Republici Srpskoj (2026)'. Max 65 znakova.",
+  "seo_description": "Meta opis 140-155 znakova koji ukljuÄuje: vrstu poticaja, lokaciju, ko moÅ¾e aplicirati, rok/vrijednost ako su poznati. PoÄni akcijskom rijeÄju (Prijavite se / Saznajte viÅ¡e / Iskoristite). UkljuÄi kljuÄne pojmove: poticaji, grantovi, ${locationStr}, firme.",
+  "ai_summary": "2 reÄenice saÅ¾etka koje ukljuÄuju: vrstu poticaja/granta, lokaciju (${locationStr}) i konkretnu ciljanu skupinu. ZvuÄi kao struÄni pregled, ne prepis naslova. ${historicalContext ? "UkljuÄi historijski kontekst ako je relevantan." : ""}",
+  "ai_who_should_apply": "Konkretno koje firme, preduzetnici ili organizacije trebaju aplicirati â€” sektori, veliÄina, lokacija. ${eligStr ? `Obavezno ukljuÄi eligibility signale: ${eligStr}` : ""} 2-3 reÄenice.",
   "ai_difficulty": "lako|srednje|tesko",
-  "ai_risks": "Glavni rizici i izazovi prijave — max 2 rečenice.",
-  "ai_competition": "Procjena konkurentnosti: ${historicalContext ? `Na osnovu historijskih podataka (${historicalContext.similar_calls_count} sličnih poziva u zadnjih 12 mjeseci, trend ${historicalContext.category_trend}), ` : ""}koliko je tražen ovaj tip poticaja, realni broj prijavitelja, šanse za uspjeh. Max 2 rečenice.",
-  "ai_content": "FORMAT PRAVILA (strogo obavezno):\\n1. Heading (## Naslov) — UVIJEK na svojoj liniji, odvojen PRAZNOM LINIJOM od teksta.\\n2. NIKAD heading i paragraf na istoj liniji.\\n3. INTERNAL LINKING: Kada spominješ kategorije poticaja (npr. 'poticaji za poljoprivredu', 'grantovi za NVO', 'subvencije za izvoz'), dodaj link u formatu [tekst](/prilike/kategorija/[slug]). Primjeri: [poticaji za poljoprivredu](/prilike/kategorija/poljoprivreda), [grantovi za MSP](/prilike/kategorija/msp), [subvencije za izvoz](/prilike/kategorija/izvoz).\\n\\nStruktura (500-750 riječi):\\n\\n## O ovom pozivu\\n\\n[KRITIČNO: Ovaj paragraf mora sadržavati ključne SEO pojmove. Obavezno uključi: (1) vrstu finansiranja — poticaj/grant/subvencija, (2) lokaciju — ${locationStr}, (3) ciljanu skupinu — firme/poduzetnike, (4) godinu — 2026. Obrazac: '${issuer} raspisao je u 2026. godini [vrstu] namijenjen [kome] u ${locationStr}...' Zatim 1-2 rečenice o svrsi programa i ciljevima.]\\n\\n## Ko treba aplicirati?\\n\\n[Konkretni uvjeti prihvatljivosti — sektori, veličina firme, lokacija, registracija. ${eligStr ? `OBAVEZNO uključi eligibility signale: ${eligStr}.` : ""} Ako uvjeti nisu dostupni, napiši da su detalji u originalnoj dokumentaciji institucije ${issuer}. Dodaj internal linkove gdje je relevantno.]\\n\\n## Šta ovo znači za vašu firmu?\\n\\n[SAVJETODAVNA ANALIZA sa historijskim kontekstom: ${historicalContext ? `(1) Učestalost: ${historicalContext.typical_frequency ?? `${historicalContext.similar_calls_count} sličnih poziva u zadnjih 12 mjeseci`}. (2) Trend: ${historicalContext.category_trend === "increasing" ? "Rastući broj poziva u ovoj kategoriji" : historicalContext.category_trend === "decreasing" ? "Opadajući broj poziva" : "Stabilan broj poziva"}. ` : ""}(3) Isplati li se prijaviti s obzirom na obim dokumentacije? (4) Koliko je realna konkurencija? (5) Za koga je ovo posebno dobra prilika? Nije generično — daj konkretno mišljenje na osnovu tipa poziva i vrijednosti.]\\n\\n## Iznos i rok prijave\\n\\n[Finansijski detalji, način isplate/refundacije i rok. ${urgencyPrompt ? "OBAVEZNO istakni urgency: '⏰ Rok za prijavu: X dana — ne propustite!'" : ""} Ako vrijednost nije navedena — piši da je definisana u pozivu.]\\n\\n## Kako aplicirati?\\n\\n[Konkretni koraci ili: Kompletan postupak i dokumentacija dostupni su na web stranici institucije ${issuer}.]\\n\\n## Često postavljana pitanja\\n\\n[NOVI BLOK za SEO long-tail keywords. Dodaj 2-3 pitanja u formatu:\\n\\n**Kako dobiti ${typeLabel} u ${locationStr}?**\\n[Kratak odgovor sa konkretnim koracima]\\n\\n**Koji su najčešći razlozi odbijanja prijave?**\\n[Lista 2-3 najčešća razloga]\\n\\n**Ko može aplicirati za ovaj ${typeLabel}?**\\n[Kratak pregled eligibility kriterija]\\n]\\n\\nZadnja rečenica: Pratite ove i slične poticaje za firme u BiH na MojaPonuda.ba — baza se ažurira svakodnevno.\\n\\nPIŠI ISKLJUČIVO NA OSNOVU DOSTAVLJENIH PODATAKA. Uključi prirodno: poticaji ${locationStr} 2026, grantovi za firme BiH, ${typeLabel}. NIKAD ne koristi generičke fraze: ${GENERIC_PHRASE_BLACKLIST.join(", ")}. DODAJ internal linkove gdje je relevantno.",
+  "ai_risks": "Glavni rizici i izazovi prijave â€” max 2 reÄenice.",
+  "ai_competition": "Procjena konkurentnosti: ${historicalContext ? `Na osnovu historijskih podataka (${historicalContext.similar_calls_count} sliÄnih poziva u zadnjih 12 mjeseci, trend ${historicalContext.category_trend}), ` : ""}koliko je traÅ¾en ovaj tip poticaja, realni broj prijavitelja, Å¡anse za uspjeh. Max 2 reÄenice.",
+  "ai_content": "FORMAT PRAVILA (strogo obavezno):\\n1. Heading (## Naslov) â€” UVIJEK na svojoj liniji, odvojen PRAZNOM LINIJOM od teksta.\\n2. NIKAD heading i paragraf na istoj liniji.\\n3. INTERNAL LINKING: Kada spominjeÅ¡ kategorije poticaja (npr. 'poticaji za poljoprivredu', 'grantovi za NVO', 'subvencije za izvoz'), dodaj link u formatu [tekst](/prilike/kategorija/[slug]). Primjeri: [poticaji za poljoprivredu](/prilike/kategorija/poljoprivreda), [grantovi za MSP](/prilike/kategorija/msp), [subvencije za izvoz](/prilike/kategorija/izvoz).\\n\\nStruktura (500-750 rijeÄi):\\n\\n## O ovom pozivu\\n\\n[KRITIÄŒNO: Ovaj paragraf mora sadrÅ¾avati kljuÄne SEO pojmove. Obavezno ukljuÄi: (1) vrstu finansiranja â€” poticaj/grant/subvencija, (2) lokaciju â€” ${locationStr}, (3) ciljanu skupinu â€” firme/poduzetnike, (4) godinu â€” 2026. Obrazac: '${issuer} raspisao je u 2026. godini [vrstu] namijenjen [kome] u ${locationStr}...' Zatim 1-2 reÄenice o svrsi programa i ciljevima.]\\n\\n## Ko treba aplicirati?\\n\\n[Konkretni uvjeti prihvatljivosti â€” sektori, veliÄina firme, lokacija, registracija. ${eligStr ? `OBAVEZNO ukljuÄi eligibility signale: ${eligStr}.` : ""} Ako uvjeti nisu dostupni, napiÅ¡i da su detalji u originalnoj dokumentaciji institucije ${issuer}. Dodaj internal linkove gdje je relevantno.]\\n\\n## Å ta ovo znaÄi za vaÅ¡u firmu?\\n\\n[SAVJETODAVNA ANALIZA sa historijskim kontekstom: ${historicalContext ? `(1) UÄestalost: ${historicalContext.typical_frequency ?? `${historicalContext.similar_calls_count} sliÄnih poziva u zadnjih 12 mjeseci`}. (2) Trend: ${historicalContext.category_trend === "increasing" ? "RastuÄ‡i broj poziva u ovoj kategoriji" : historicalContext.category_trend === "decreasing" ? "OpadajuÄ‡i broj poziva" : "Stabilan broj poziva"}. ` : ""}(3) Isplati li se prijaviti s obzirom na obim dokumentacije? (4) Koliko je realna konkurencija? (5) Za koga je ovo posebno dobra prilika? Nije generiÄno â€” daj konkretno miÅ¡ljenje na osnovu tipa poziva i vrijednosti.]\\n\\n## Iznos i rok prijave\\n\\n[Finansijski detalji, naÄin isplate/refundacije i rok. ${urgencyPrompt ? "OBAVEZNO istakni urgency: 'â° Rok za prijavu: X dana â€” ne propustite!'" : ""} Ako vrijednost nije navedena â€” piÅ¡i da je definisana u pozivu.]\\n\\n## Kako aplicirati?\\n\\n[Konkretni koraci ili: Kompletan postupak i dokumentacija dostupni su na web stranici institucije ${issuer}.]\\n\\n## ÄŒesto postavljana pitanja\\n\\n[NOVI BLOK za SEO long-tail keywords. Dodaj 2-3 pitanja u formatu:\\n\\n**Kako dobiti ${typeLabel} u ${locationStr}?**\\n[Kratak odgovor sa konkretnim koracima]\\n\\n**Koji su najÄeÅ¡Ä‡i razlozi odbijanja prijave?**\\n[Lista 2-3 najÄeÅ¡Ä‡a razloga]\\n\\n**Ko moÅ¾e aplicirati za ovaj ${typeLabel}?**\\n[Kratak pregled eligibility kriterija]\\n]\\n\\nZadnja reÄenica: Pratite ove i sliÄne poticaje za firme u BiH na TenderSistem.com â€” baza se aÅ¾urira svakodnevno.\\n\\nPIÅ I ISKLJUÄŒIVO NA OSNOVU DOSTAVLJENIH PODATAKA. UkljuÄi prirodno: poticaji ${locationStr} 2026, grantovi za firme BiH, ${typeLabel}. NIKAD ne koristi generiÄke fraze: ${GENERIC_PHRASE_BLACKLIST.join(", ")}. DODAJ internal linkove gdje je relevantno.",
   "category": "Odaberi JEDNU kategoriju iz liste: ${AI_CATEGORY_VALUES.join(" | ")}"
 }`;
 
@@ -222,3 +222,4 @@ export async function generateEnhancedContentWithRetry(
   console.error(`[EnhancedAI] All ${maxRetries} attempts failed for: ${title}`);
   return null;
 }
+

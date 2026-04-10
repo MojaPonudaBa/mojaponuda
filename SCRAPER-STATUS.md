@@ -1,43 +1,43 @@
-# Scraper System Status Report
+﻿# Scraper System Status Report
 
 ## Current Situation
 
 The comprehensive scraping system has been **fully implemented** but **NOT YET EXECUTED**. This is why you're seeing "No results for 'Prilike' and 'Zakon'" - the database is empty because the scrapers haven't run yet.
 
-## What's Been Implemented ✅
+## What's Been Implemented âœ…
 
 ### 1. Scraper Modules (All Complete)
-- ✅ Content hashing module (`sync/scrapers/content-hasher.ts`)
-- ✅ Quality filter module (`sync/scrapers/quality-filter.ts`)
-- ✅ Federal sources scraper (`sync/scrapers/scraper-federal-sources.ts`)
-- ✅ Cantonal sources scraper (`sync/scrapers/scraper-cantonal-sources.ts`)
-- ✅ Municipal sources scraper (`sync/scrapers/scraper-municipal-sources.ts`)
-- ✅ Enhanced legal sources scraper (`sync/scrapers/scraper-legal-updates.ts`)
-- ✅ Scraper orchestrator (`sync/scrapers/scraper-orchestrator.ts`)
+- âœ… Content hashing module (`sync/scrapers/content-hasher.ts`)
+- âœ… Quality filter module (`sync/scrapers/quality-filter.ts`)
+- âœ… Federal sources scraper (`sync/scrapers/scraper-federal-sources.ts`)
+- âœ… Cantonal sources scraper (`sync/scrapers/scraper-cantonal-sources.ts`)
+- âœ… Municipal sources scraper (`sync/scrapers/scraper-municipal-sources.ts`)
+- âœ… Enhanced legal sources scraper (`sync/scrapers/scraper-legal-updates.ts`)
+- âœ… Scraper orchestrator (`sync/scrapers/scraper-orchestrator.ts`)
 
 ### 2. Pipeline Integration
-- ✅ Layered execution strategy (Layer 1: daily, Layer 2: weekly, Layer 3: monthly)
-- ✅ Quality filtering before processing
-- ✅ Content hashing for change detection
-- ✅ AI content generation integration
-- ✅ Scoring and publishing logic
+- âœ… Layered execution strategy (Layer 1: daily, Layer 2: weekly, Layer 3: monthly)
+- âœ… Quality filtering before processing
+- âœ… Content hashing for change detection
+- âœ… AI content generation integration
+- âœ… Scoring and publishing logic
 
 ### 3. API Endpoints
-- ✅ Cron endpoint: `/api/cron/post-sync` (scheduled for 03:30 daily)
-- ✅ Manual sync endpoint: `/api/admin/trigger-sync` (admin only)
+- âœ… Cron endpoint: `/api/cron/post-sync` (scheduled for 03:30 daily)
+- âœ… Manual sync endpoint: `/api/admin/trigger-sync` (admin only)
 
 ### 4. Frontend Pages
-- ✅ Public opportunities page: `/prilike`
-- ✅ Public legal updates page: `/zakon`
-- ✅ Admin sync button in dashboard
+- âœ… Public opportunities page: `/prilike`
+- âœ… Public legal updates page: `/zakon`
+- âœ… Admin sync button in dashboard
 
 ### 5. Test Coverage
-- ✅ All unit tests passing
-- ✅ Integration tests passing
-- ✅ Bug condition tests passing
-- ✅ Preservation tests passing
+- âœ… All unit tests passing
+- âœ… Integration tests passing
+- âœ… Bug condition tests passing
+- âœ… Preservation tests passing
 
-## What's Missing ❌
+## What's Missing âŒ
 
 ### Critical Issue: Database Schema
 The `content_hash` column is **MISSING** from the `opportunities` table. This will cause the scrapers to fail when trying to insert data.
@@ -78,8 +78,8 @@ The cron job is scheduled to run at **03:30 AM** (3:30 AM) every day.
 After running the scrapers, check:
 
 1. **Public Pages**:
-   - https://mojaponuda.ba/prilike (should show opportunities)
-   - https://mojaponuda.ba/zakon (should show legal updates)
+   - https://tendersistem.com/prilike (should show opportunities)
+   - https://tendersistem.com/zakon (should show legal updates)
 
 2. **Admin Dashboard**:
    - Check scraper logs in `scraper_log` table
@@ -117,7 +117,7 @@ Only items scoring >= 40 (out of 100) get published.
 ### Sources Being Scraped
 
 #### Layer 1 (Daily) - Federal Sources
-- FMRPO (Federalno ministarstvo razvoja, poduzetništva i obrta)
+- FMRPO (Federalno ministarstvo razvoja, poduzetniÅ¡tva i obrta)
 - SERDA, REDAH, AJN (Development agencies)
 - FBiH Vlada (Federal Government)
 - UNDP BiH
@@ -140,9 +140,9 @@ Only items scoring >= 40 (out of 100) get published.
 
 #### Legal Sources (All Layers)
 - Agencija za javne nabavke BiH
-- Službeni glasnik FBiH
+- SluÅ¾beni glasnik FBiH
 - Parlament BiH
-- Vijeće ministara BiH
+- VijeÄ‡e ministara BiH
 
 ## Troubleshooting
 
@@ -229,5 +229,6 @@ If you encounter issues:
 
 ---
 
-**Status**: ✅ Implementation Complete | ⏳ Awaiting First Execution
+**Status**: âœ… Implementation Complete | â³ Awaiting First Execution
 **Last Updated**: 2026-04-02
+

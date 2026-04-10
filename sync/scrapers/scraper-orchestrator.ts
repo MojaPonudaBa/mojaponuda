@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Scraper Orchestrator: Layered Execution Strategy
  * 
  * Implements a three-layer execution strategy for scraping official sources:
@@ -257,7 +257,7 @@ export async function checkRobotsTxt(baseUrl: string): Promise<boolean> {
   try {
     const robotsUrl = new URL("/robots.txt", baseUrl).toString();
     const response = await fetch(robotsUrl, {
-      headers: { "User-Agent": "MojaPonuda-Bot/1.0" },
+      headers: { "User-Agent": "TenderSistem-Bot/1.0" },
     });
     
     if (!response.ok) {
@@ -276,7 +276,7 @@ export async function checkRobotsTxt(baseUrl: string): Promise<boolean> {
       
       if (trimmed.startsWith("User-agent:")) {
         const agent = trimmed.substring(11).trim();
-        isOurAgent = agent === "*" || agent === "MojaPonuda-Bot";
+        isOurAgent = agent === "*" || agent === "TenderSistem-Bot";
       }
       
       if (isOurAgent && trimmed.startsWith("Disallow:")) {
@@ -294,3 +294,4 @@ export async function checkRobotsTxt(baseUrl: string): Promise<boolean> {
     return true;
   }
 }
+

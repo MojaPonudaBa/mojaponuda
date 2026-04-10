@@ -7,8 +7,9 @@ import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, ArrowRight, CheckCircle2 } from "lucide-react";
+import { Loader2, CheckCircle2 } from "lucide-react";
 import { resolveSignupRedirectPath } from "@/lib/agency";
+import { TenderSistemLogo } from "@/components/brand/tender-sistem-logo";
 
 const errorMessages: Record<string, string> = {
   "User already registered": "Korisnik sa ovom email adresom već postoji.",
@@ -37,7 +38,7 @@ function isExistingAccountSignupResponse(data: {
     !data.session &&
       data.user &&
       Array.isArray(data.user.identities) &&
-      data.user.identities.length === 0
+      data.user.identities.length === 0,
   );
 }
 
@@ -76,7 +77,6 @@ export default function SignupPage() {
 
     const supabase = createClient();
 
-    // 1. Registruj korisnika, sačuvaj naziv firme u user_metadata
     const { data, error: signUpError } = await supabase.auth.signUp({
       email,
       password,
@@ -95,7 +95,7 @@ export default function SignupPage() {
 
     if (isExistingAccountSignupResponse(data)) {
       setError(
-        "Račun sa ovom email adresom već postoji. Prijavite se ili resetujte lozinku ako je ne znate."
+        "Račun sa ovom email adresom već postoji. Prijavite se ili resetujte lozinku ako je ne znate.",
       );
       setLoading(false);
       return;
@@ -113,8 +113,8 @@ export default function SignupPage() {
 
   if (success) {
     return (
-      <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-8 sm:p-10 shadow-xl shadow-blue-500/5 text-center">
-        <div className="flex justify-center mb-6">
+      <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-xl shadow-blue-500/5 sm:p-10">
+        <div className="mb-6 flex justify-center">
           <div className="rounded-full bg-emerald-50 p-4">
             <CheckCircle2 className="size-12 text-emerald-500" />
           </div>
@@ -122,13 +122,13 @@ export default function SignupPage() {
         <h2 className="mb-4 font-heading text-2xl font-bold text-slate-900">
           Provjerite Vaš Email
         </h2>
-        <p className="mb-8 text-sm text-slate-500 leading-relaxed">
-          Link za verifikaciju je uspješno poslan na:<br/>
-          <span className="font-semibold text-slate-900 mt-2 block">{email}</span><br/>
+        <p className="mb-8 text-sm leading-relaxed text-slate-500">
+          Link za verifikaciju je uspješno poslan na:<br />
+          <span className="mt-2 block font-semibold text-slate-900">{email}</span><br />
           Molimo potvrdite vašu email adresu kako biste nastavili sa registracijom. Ako poruka ne stigne u narednih 1-2 minute, provjerite spam folder i pokušajte ponovo.
         </p>
         <Link href="/login" className="block">
-          <Button variant="outline" className="w-full h-12 rounded-full border-slate-200 text-slate-700 hover:bg-slate-50 transition-all">
+          <Button variant="outline" className="h-12 w-full rounded-full border-slate-200 text-slate-700 transition-all hover:bg-slate-50">
             Vrati se na prijavu
           </Button>
         </Link>
@@ -137,14 +137,9 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-8 sm:p-10 shadow-xl shadow-blue-500/5">
+    <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-8 shadow-xl shadow-blue-500/5 sm:p-10">
       <div className="mb-10 text-center">
-        <Link href="/" className="inline-flex items-baseline gap-0.5 mb-6">
-          <span className="font-heading text-2xl font-bold tracking-tight text-slate-900">
-            MojaPonuda
-          </span>
-          <span className="font-heading text-2xl font-bold text-primary">.ba</span>
-        </Link>
+        <TenderSistemLogo href="/" size="md" className="mb-6" />
         <h1 className="font-heading text-2xl font-bold text-slate-900">
           Kreirajte Vaš Račun
         </h1>
@@ -172,10 +167,10 @@ export default function SignupPage() {
             onChange={(e) => setCompanyName(e.target.value)}
             required
             disabled={loading}
-            className="rounded-xl border-slate-200 bg-white px-4 py-2 text-sm focus-visible:ring-primary focus-visible:border-primary transition-all"
+            className="rounded-xl border-slate-200 bg-white px-4 py-2 text-sm transition-all focus-visible:border-primary focus-visible:ring-primary"
           />
         </div>
-        
+
         <div className="space-y-2">
           <Label htmlFor="email" className="text-sm font-semibold text-slate-700">
             Email adresa
@@ -188,10 +183,10 @@ export default function SignupPage() {
             onChange={(e) => setEmail(e.target.value)}
             required
             disabled={loading}
-            className="rounded-xl border-slate-200 bg-white px-4 py-2 text-sm focus-visible:ring-primary focus-visible:border-primary transition-all"
+            className="rounded-xl border-slate-200 bg-white px-4 py-2 text-sm transition-all focus-visible:border-primary focus-visible:ring-primary"
           />
         </div>
-        
+
         <div className="space-y-2">
           <Label htmlFor="password" className="text-sm font-semibold text-slate-700">
             Lozinka
@@ -204,7 +199,7 @@ export default function SignupPage() {
             onChange={(e) => setPassword(e.target.value)}
             required
             disabled={loading}
-            className="rounded-xl border-slate-200 bg-white px-4 py-2 text-sm focus-visible:ring-primary focus-visible:border-primary transition-all"
+            className="rounded-xl border-slate-200 bg-white px-4 py-2 text-sm transition-all focus-visible:border-primary focus-visible:ring-primary"
           />
         </div>
 
@@ -220,23 +215,23 @@ export default function SignupPage() {
             onChange={(e) => setConfirmPassword(e.target.value)}
             required
             disabled={loading}
-            className="rounded-xl border-slate-200 bg-white px-4 py-2 text-sm focus-visible:ring-primary focus-visible:border-primary transition-all"
+            className="rounded-xl border-slate-200 bg-white px-4 py-2 text-sm transition-all focus-visible:border-primary focus-visible:ring-primary"
           />
         </div>
 
-        <Button 
-          type="submit" 
-          className="w-full h-12 rounded-full bg-primary text-base font-bold text-white shadow-lg shadow-blue-500/30 transition-all hover:bg-blue-700 hover:shadow-blue-500/40 hover:-translate-y-0.5 mt-2" 
+        <Button
+          type="submit"
+          className="mt-2 h-12 w-full rounded-full bg-primary text-base font-bold text-white shadow-lg shadow-blue-500/30 transition-all hover:-translate-y-0.5 hover:bg-blue-700 hover:shadow-blue-500/40"
           disabled={loading}
         >
           {loading ? <Loader2 className="mr-2 size-5 animate-spin" /> : null}
           Registruj se
         </Button>
 
-        <div className="text-center pt-2">
+        <div className="pt-2 text-center">
           <p className="text-sm text-slate-500">
             Već imate račun?{" "}
-            <Link href="/login" className="font-semibold text-primary hover:text-blue-700 transition-colors">
+            <Link href="/login" className="font-semibold text-primary transition-colors hover:text-blue-700">
               Prijavite se
             </Link>
           </p>

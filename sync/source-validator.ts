@@ -1,4 +1,4 @@
-import "server-only";
+﻿import "server-only";
 
 export interface SourceValidationResult {
   valid: boolean;
@@ -61,7 +61,7 @@ export class SourceValidator {
             signal: controller.signal,
             redirect: "manual", // Handle redirects manually
             headers: {
-              "User-Agent": "MojaPonuda.ba/1.0 (Source Validator)",
+              "User-Agent": "TenderSistem.com/1.0 (Source Validator)",
             },
           });
 
@@ -234,3 +234,4 @@ export class SourceValidator {
  * Singleton instance for reuse
  */
 export const sourceValidator = new SourceValidator();
+

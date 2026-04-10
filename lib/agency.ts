@@ -1,6 +1,6 @@
-import type { Plan } from "@/lib/plans";
+﻿import type { Plan } from "@/lib/plans";
 
-export const COMPLIMENTARY_AGENCY_EMAILS = ["agencija@mojaponuda.ba"];
+export const COMPLIMENTARY_AGENCY_EMAILS = ["agencija@tendersistem.com"];
 
 export function isComplimentaryAgencyEmail(email?: string | null): boolean {
   const normalizedEmail = email?.trim().toLowerCase();
@@ -32,3 +32,4 @@ export function resolveAuthenticatedAppPath({
 export function resolveSignupRedirectPath(email?: string | null): string {
   return isComplimentaryAgencyEmail(email) ? "/dashboard/agency" : "/onboarding";
 }
+

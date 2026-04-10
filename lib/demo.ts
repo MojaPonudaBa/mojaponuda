@@ -1,4 +1,4 @@
-import type {
+﻿import type {
   BidChecklistItemInsert,
   Company,
   Document,
@@ -12,7 +12,7 @@ const configuredDemoUserEmails = (process.env.NEXT_PUBLIC_DEMO_USER_EMAILS ?? ""
   .map((email) => email.trim().toLowerCase())
   .filter(Boolean);
 
-export const DEMO_USER_EMAIL = configuredDemoUserEmails[0] ?? "demo@mojaponuda.ba";
+export const DEMO_USER_EMAIL = configuredDemoUserEmails[0] ?? "demo@tendersistem.com";
 export const ADMIN_TEST_USER_EMAILS = configuredDemoUserEmails;
 
 export function isDemoUser(email?: string | null): boolean {
@@ -31,7 +31,7 @@ export function isCompanyProfileComplete(
 
 export function getDemoCompanyDefaults(companyName?: string) {
   return {
-    name: companyName?.trim() || "MojaPonuda Demo d.o.o.",
+    name: companyName?.trim() || "TenderSistem Demo d.o.o.",
     jib: "420000000001",
     pdv: "200000000001",
     address: "Travnik 72270, Bosna i Hercegovina",
@@ -90,7 +90,7 @@ export function getDemoDocuments(companyId: string): Document[] {
     {
       id: "demo-doc-2",
       company_id: companyId,
-      name: "Rješenje o registraciji",
+      name: "RjeÅ¡enje o registraciji",
       type: "registration",
       file_path: "demo/rjesenje-o-registraciji.pdf",
       expires_at: oneYear,
@@ -127,8 +127,8 @@ export function getDemoChecklistItems(bidId: string, documentIds: string[]): Bid
     {
       id: `${bidId}-item-1`,
       bid_id: bidId,
-      title: "Rješenje o registraciji",
-      description: "Priložite aktuelni izvod iz sudskog registra.",
+      title: "RjeÅ¡enje o registraciji",
+      description: "PriloÅ¾ite aktuelni izvod iz sudskog registra.",
       status: "confirmed",
       document_id: documentIds[1] ?? null,
       risk_note: null,
@@ -141,14 +141,14 @@ export function getDemoChecklistItems(bidId: string, documentIds: string[]): Bid
       description: "Dokaz o izmirenim poreskim obavezama, ne stariji od 30 dana.",
       status: "attached",
       document_id: documentIds[0] ?? null,
-      risk_note: "Provjeriti datum važenja prije finalne predaje.",
+      risk_note: "Provjeriti datum vaÅ¾enja prije finalne predaje.",
       sort_order: 1,
     },
     {
       id: `${bidId}-item-3`,
       bid_id: bidId,
-      title: "Potvrda o tehničkoj sposobnosti",
-      description: "Reference za slične ugovore iz posljednje tri godine.",
+      title: "Potvrda o tehniÄkoj sposobnosti",
+      description: "Reference za sliÄne ugovore iz posljednje tri godine.",
       status: "missing",
       document_id: null,
       risk_note: "Nedostaje potpisana referentna lista.",
@@ -164,8 +164,8 @@ export const demoBidSummaries = [
     created_at: new Date().toISOString(),
     tender: {
       id: "demo-tender-1",
-      title: "Nabavka IT opreme za općinsku upravu",
-      contracting_authority: "Općina Travnik",
+      title: "Nabavka IT opreme za opÄ‡insku upravu",
+      contracting_authority: "OpÄ‡ina Travnik",
       deadline: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
       estimated_value: 85000,
     },
@@ -176,7 +176,7 @@ export const demoBidSummaries = [
     created_at: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString(),
     tender: {
       id: "demo-tender-2",
-      title: "Održavanje mrežne infrastrukture",
+      title: "OdrÅ¾avanje mreÅ¾ne infrastrukture",
       contracting_authority: "JU Dom zdravlja Zenica",
       deadline: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
       estimated_value: 42000,
@@ -198,12 +198,12 @@ export const demoBidSummaries = [
 
 export const demoTopAuthorities = [
   { name: "Grad Sarajevo", jib: null, count: 18 },
-  { name: "Općina Travnik", jib: null, count: 12 },
-  { name: "Klinički centar Tuzla", jib: null, count: 9 },
+  { name: "OpÄ‡ina Travnik", jib: null, count: 12 },
+  { name: "KliniÄki centar Tuzla", jib: null, count: 9 },
 ];
 
 export const demoTopWinners = [
-  { name: "MojaPonuda Demo d.o.o.", jib: "420000000001", wins: 4, total_value: 245000 },
+  { name: "TenderSistem Demo d.o.o.", jib: "420000000001", wins: 4, total_value: 245000 },
   { name: "TechVision d.o.o.", jib: "420000000002", wins: 3, total_value: 183000 },
   { name: "Infodom d.o.o.", jib: "420000000003", wins: 2, total_value: 112000 },
 ];
@@ -212,7 +212,7 @@ export const demoUpcomingProcurements = [
   {
     id: "demo-plan-1",
     portal_id: "demo-plan-1",
-    description: "Nabavka serverske opreme i mrežnih komponenti",
+    description: "Nabavka serverske opreme i mreÅ¾nih komponenti",
     estimated_value: 150000,
     planned_date: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
     contract_type: "Robe",
@@ -223,7 +223,7 @@ export const demoUpcomingProcurements = [
   {
     id: "demo-plan-2",
     portal_id: "demo-plan-2",
-    description: "Održavanje aplikativnih servisa i helpdesk podrška",
+    description: "OdrÅ¾avanje aplikativnih servisa i helpdesk podrÅ¡ka",
     estimated_value: 68000,
     planned_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
     contract_type: "Usluge",
@@ -243,7 +243,7 @@ export const demoRecentProcurements = [
     contract_type: "Robe",
     cpv_code: "48730000",
     contracting_authority_id: null,
-    contracting_authorities: { name: "Općina Travnik", jib: "420000000012" },
+    contracting_authorities: { name: "OpÄ‡ina Travnik", jib: "420000000012" },
   },
 ];
 
@@ -276,3 +276,4 @@ export const demoCompetitors = [
     win_rate: 42,
   },
 ];
+

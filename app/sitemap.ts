@@ -1,7 +1,7 @@
-import type { MetadataRoute } from "next";
+﻿import type { MetadataRoute } from "next";
 import { createClient } from "@/lib/supabase/server";
 
-const BASE_URL = "https://mojaponuda.ba";
+const BASE_URL = "https://tendersistem.com";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const supabase = await createClient();
@@ -28,3 +28,4 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...opportunityUrls,
   ];
 }
+

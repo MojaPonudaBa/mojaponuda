@@ -1,10 +1,10 @@
-/**
+﻿/**
  * Robust HTML fetcher with timeout, retry and robots.txt respect.
  * Only fetches publicly accessible pages.
  */
 
 const DEFAULT_TIMEOUT_MS = 15_000;
-const USER_AGENT = "MojaPonuda.ba/1.0 (javne-nabavke-info; +https://mojaponuda.ba)";
+const USER_AGENT = "TenderSistem.com/1.0 (javne-nabavke-info; +https://tendersistem.com)";
 
 export async function fetchHtml(url: string, timeoutMs = DEFAULT_TIMEOUT_MS): Promise<string | null> {
   try {
@@ -29,7 +29,7 @@ export async function fetchHtml(url: string, timeoutMs = DEFAULT_TIMEOUT_MS): Pr
   }
 }
 
-/** Extract text content from an HTML tag by simple regex — no DOM dependency needed on server */
+/** Extract text content from an HTML tag by simple regex â€” no DOM dependency needed on server */
 export function extractText(html: string, selector: string): string {
   // Simple tag content extraction
   const tagMatch = selector.match(/^([a-z0-9]+)(?:\.[a-z0-9_-]+)?$/i);
@@ -70,7 +70,7 @@ export function stripTags(html: string): string {
 function isGarbageText(text: string): boolean {
   if (text.length < 40) return true;
   if (/^(?:window\.|var |function |document\.|jQuery|\$\(|\/\*)/i.test(text)) return true;
-  if (/^(?:Naslovna|Home|Početna|Vijesti|Kontakt|Menu|Navigation)\b/i.test(text)) return true;
+  if (/^(?:Naslovna|Home|PoÄetna|Vijesti|Kontakt|Menu|Navigation)\b/i.test(text)) return true;
   if (/^(?:Ul\.|Ulica\s|Trg\s|\d{5}\s)/i.test(text)) return true;
   const words = text.split(/\s+/);
   const long = words.filter(w => w.length > 3).length;
@@ -131,7 +131,7 @@ export function parseDate(raw: string | null | undefined): string | null {
   if (!raw) return null;
   const cleaned = raw.trim().replace(/\s+/g, " ");
 
-  // DD.MM.YYYY or DD/MM/YYYY — most common in BiH government sites
+  // DD.MM.YYYY or DD/MM/YYYY â€” most common in BiH government sites
   const dmy = cleaned.match(/\b(\d{1,2})[./](\d{1,2})[./](\d{4})\b/);
   if (dmy) {
     const d = dmy[1].padStart(2, "0");
@@ -218,3 +218,4 @@ export function parseValue(raw: string | null | undefined): number | null {
   const num = parseFloat(digits.replace(/\.(?=\d{3})/g, ""));
   return isNaN(num) ? null : num;
 }
+

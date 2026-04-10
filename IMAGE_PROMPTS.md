@@ -1,17 +1,17 @@
-# Uputstvo za Generisanje i Dostavu Slika za MojaPonuda.ba
+﻿# Uputstvo za Generisanje i Dostavu Slika za TenderSistem.com
 
-Ovaj dokument sadrži listu slika koje su potrebne za Landing Page, zajedno sa preporučenim dimenzijama i detaljnim AI promptovima (za Midjourney, DALL-E 3, itd.).
+Ovaj dokument sadrÅ¾i listu slika koje su potrebne za Landing Page, zajedno sa preporuÄenim dimenzijama i detaljnim AI promptovima (za Midjourney, DALL-E 3, itd.).
 
-Kada generišete slike, možete ih poslati direktno u chat, a ja ću ih integrisati u aplikaciju.
+Kada generiÅ¡ete slike, moÅ¾ete ih poslati direktno u chat, a ja Ä‡u ih integrisati u aplikaciju.
 
 ## 1. Hero Section - Glavni Dashboard Mockup
-Ovo je glavna slika koja se pojavljuje na vrhu naslovne strane. Treba da prikazuje "srce" aplikacije - kontrolnu ploču.
+Ovo je glavna slika koja se pojavljuje na vrhu naslovne strane. Treba da prikazuje "srce" aplikacije - kontrolnu ploÄu.
 
 *   **Lokacija:** Hero sekcija (vrh stranice)
 *   **Dimenzije:** 1920x1080 px (16:9 aspect ratio)
 *   **Naziv fajla:** `hero-dashboard.png`
 *   **AI Prompt:**
-    > Modern SaaS dashboard UI mockup for "MojaPonuda.ba", a public procurement platform. High fidelity, professional interface. 
+    > Modern SaaS dashboard UI mockup for "TenderSistem.com", a public procurement platform. High fidelity, professional interface. 
     > **Visual Style:** Light theme, clean white background, vibrant blue sidebar (#2563eb), Inter font typography. 
     > **Content:** 
     > - Left sidebar with navigation items (Pregled, Tenderi, Trezor, Analitika). 
@@ -21,17 +21,17 @@ Ovo je glavna slika koja se pojavljuje na vrhu naslovne strane. Treba da prikazu
     > - No dark mode, strictly bright and clean professional look.
 
 ## 2. Trezor Dokumenata - Ilustracija
-Ilustracija za sekciju "Trezor Dokumenata" koja objašnjava funkcionalnost čuvanja dokumenata.
+Ilustracija za sekciju "Trezor Dokumenata" koja objaÅ¡njava funkcionalnost Äuvanja dokumenata.
 
-*   **Lokacija:** Sekcija "Rješenja" (Prva kartica)
+*   **Lokacija:** Sekcija "RjeÅ¡enja" (Prva kartica)
 *   **Dimenzije:** 1200x900 px (4:3 aspect ratio)
 *   **Naziv fajla:** `feature-vault.png`
 *   **AI Prompt:**
     > UI mockup of a "Document Vault" feature in a modern SaaS app.
     > **Visual Style:** Clean, light, white and blue color palette.
     > **Content:**
-    > - A clean list/grid of PDF and DOCX files named like "Bilans Stanja 2024", "Sudsko Rješenje".
-    > - Colored status badges next to files indicating validity: Green "Validno", Yellow "Ističe uskoro", Red "Isteklo".
+    > - A clean list/grid of PDF and DOCX files named like "Bilans Stanja 2024", "Sudsko RjeÅ¡enje".
+    > - Colored status badges next to files indicating validity: Green "Validno", Yellow "IstiÄe uskoro", Red "Isteklo".
     > - A filter sidebar on the left.
     > - Soft drop shadows, floating UI elements aesthetic.
     > - Focus on organization and clarity.
@@ -39,7 +39,7 @@ Ilustracija za sekciju "Trezor Dokumenata" koja objašnjava funkcionalnost čuva
 ## 3. AI Radni Prostor - Ilustracija
 Ilustracija za sekciju "AI Radni Prostor" koja prikazuje analizu tendera.
 
-*   **Lokacija:** Sekcija "Rješenja" (Druga kartica)
+*   **Lokacija:** Sekcija "RjeÅ¡enja" (Druga kartica)
 *   **Dimenzije:** 1200x900 px (4:3 aspect ratio)
 *   **Naziv fajla:** `feature-ai-workspace.png`
 *   **AI Prompt:**
@@ -51,10 +51,10 @@ Ilustracija za sekciju "AI Radni Prostor" koja prikazuje analizu tendera.
     > - An "AI Analysis" badge or glowing effect indicating intelligence.
     > - Professional, trustworthy SaaS look.
 
-## 4. Tržišna Inteligencija - Ilustracija
-Ilustracija za sekciju "Tržišna Inteligencija" koja prikazuje grafove i podatke.
+## 4. TrÅ¾iÅ¡na Inteligencija - Ilustracija
+Ilustracija za sekciju "TrÅ¾iÅ¡na Inteligencija" koja prikazuje grafove i podatke.
 
-*   **Lokacija:** Sekcija "Rješenja" (Treća kartica)
+*   **Lokacija:** Sekcija "RjeÅ¡enja" (TreÄ‡a kartica)
 *   **Dimenzije:** 1200x900 px (4:3 aspect ratio)
 *   **Naziv fajla:** `feature-analytics.png`
 *   **AI Prompt:**
@@ -69,7 +69,8 @@ Ilustracija za sekciju "Tržišna Inteligencija" koja prikazuje grafove i podatk
 
 ## Kako dostaviti slike?
 
-1.  Generišite slike koristeći gore navedene promptove (Midjourney v6 ili DALL-E 3 su preporučeni).
-2.  Preuzmite slike (po mogućnosti kao PNG ili JPG visoke kvalitete).
-3.  **Pošaljite ih ovdje u chat.** (Možete ih samo drag-and-drop u prozor chata).
-4.  Ja ću ih preuzeti, optimizovati i postaviti na odgovarajuća mjesta u aplikaciji.
+1.  GeneriÅ¡ite slike koristeÄ‡i gore navedene promptove (Midjourney v6 ili DALL-E 3 su preporuÄeni).
+2.  Preuzmite slike (po moguÄ‡nosti kao PNG ili JPG visoke kvalitete).
+3.  **PoÅ¡aljite ih ovdje u chat.** (MoÅ¾ete ih samo drag-and-drop u prozor chata).
+4.  Ja Ä‡u ih preuzeti, optimizovati i postaviti na odgovarajuÄ‡a mjesta u aplikaciji.
+

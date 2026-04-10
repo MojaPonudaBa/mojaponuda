@@ -7,7 +7,8 @@ import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, ArrowRight } from "lucide-react";
+import { Loader2 } from "lucide-react";
+import { TenderSistemLogo } from "@/components/brand/tender-sistem-logo";
 
 const errorMessages: Record<string, string> = {
   "Invalid login credentials": "Pogrešan email ili lozinka.",
@@ -69,14 +70,9 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-8 sm:p-10 shadow-xl shadow-blue-500/5">
+    <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-8 shadow-xl shadow-blue-500/5 sm:p-10">
       <div className="mb-10 text-center">
-        <Link href="/" className="inline-flex items-baseline gap-0.5 mb-6">
-          <span className="font-heading text-2xl font-bold tracking-tight text-slate-900">
-            MojaPonuda
-          </span>
-          <span className="font-heading text-2xl font-bold text-primary">.ba</span>
-        </Link>
+        <TenderSistemLogo href="/" size="md" className="mb-6" />
         <h1 className="font-heading text-2xl font-bold text-slate-900">
           Dobrodošli nazad
         </h1>
@@ -91,7 +87,7 @@ export default function LoginPage() {
             {error ?? redirectError}
           </div>
         )}
-        
+
         <div className="space-y-2">
           <Label htmlFor="email" className="text-sm font-semibold text-slate-700">
             Email adresa
@@ -104,10 +100,10 @@ export default function LoginPage() {
             onChange={(e) => setEmail(e.target.value)}
             required
             disabled={loading}
-            className="rounded-xl border-slate-200 bg-white px-4 py-2 text-sm focus-visible:ring-primary focus-visible:border-primary transition-all"
+            className="rounded-xl border-slate-200 bg-white px-4 py-2 text-sm transition-all focus-visible:border-primary focus-visible:ring-primary"
           />
         </div>
-        
+
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <Label htmlFor="password" className="text-sm font-semibold text-slate-700">
@@ -115,7 +111,7 @@ export default function LoginPage() {
             </Label>
             <Link
               href="/reset-password"
-              className="text-sm font-semibold text-primary hover:text-blue-700 transition-colors"
+              className="text-sm font-semibold text-primary transition-colors hover:text-blue-700"
             >
               Zaboravili ste lozinku?
             </Link>
@@ -128,23 +124,23 @@ export default function LoginPage() {
             onChange={(e) => setPassword(e.target.value)}
             required
             disabled={loading}
-            className="rounded-xl border-slate-200 bg-white px-4 py-2 text-sm focus-visible:ring-primary focus-visible:border-primary transition-all"
+            className="rounded-xl border-slate-200 bg-white px-4 py-2 text-sm transition-all focus-visible:border-primary focus-visible:ring-primary"
           />
         </div>
 
-        <Button 
-          type="submit" 
-          className="w-full h-12 rounded-full bg-primary text-base font-bold text-white shadow-lg shadow-blue-500/30 transition-all hover:bg-blue-700 hover:shadow-blue-500/40 hover:-translate-y-0.5" 
+        <Button
+          type="submit"
+          className="h-12 w-full rounded-full bg-primary text-base font-bold text-white shadow-lg shadow-blue-500/30 transition-all hover:-translate-y-0.5 hover:bg-blue-700 hover:shadow-blue-500/40"
           disabled={loading}
         >
           {loading ? <Loader2 className="mr-2 size-5 animate-spin" /> : null}
           Prijavi se
         </Button>
 
-        <div className="text-center pt-2">
+        <div className="pt-2 text-center">
           <p className="text-sm text-slate-500">
             Nemate korisnički račun?{" "}
-            <Link href="/signup" className="font-semibold text-primary hover:text-blue-700 transition-colors">
+            <Link href="/signup" className="font-semibold text-primary transition-colors hover:text-blue-700">
               Isprobajte besplatno
             </Link>
           </p>

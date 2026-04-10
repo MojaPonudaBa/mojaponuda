@@ -1,5 +1,5 @@
--- ============================================================
--- MojaPonuda — Complete Database Schema
+﻿-- ============================================================
+-- TenderSistem â€” Complete Database Schema
 -- ============================================================
 
 -- 1. ENUMS
@@ -10,7 +10,7 @@ CREATE TYPE bid_status AS ENUM ('draft', 'in_review', 'submitted', 'won', 'lost'
 -- 2. TABLES
 -- ============================================================
 
--- companies — firma koja koristi platformu
+-- companies â€” firma koja koristi platformu
 CREATE TABLE companies (
   id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id       uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -27,7 +27,7 @@ CREATE TABLE companies (
   created_at    timestamptz NOT NULL DEFAULT now()
 );
 
--- documents — document vault firme
+-- documents â€” document vault firme
 CREATE TABLE documents (
   id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   company_id  uuid NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
@@ -38,7 +38,7 @@ CREATE TABLE documents (
   created_at  timestamptz NOT NULL DEFAULT now()
 );
 
--- tenders — tenderi iz ejn.gov.ba (javni podaci)
+-- tenders â€” tenderi iz ejn.gov.ba (javni podaci)
 CREATE TABLE tenders (
   id                        uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   portal_id                 text NOT NULL UNIQUE,
@@ -56,7 +56,7 @@ CREATE TABLE tenders (
   created_at                timestamptz NOT NULL DEFAULT now()
 );
 
--- bids — projekti pripreme ponuda
+-- bids â€” projekti pripreme ponuda
 CREATE TABLE bids (
   id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   company_id  uuid NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
@@ -67,7 +67,7 @@ CREATE TABLE bids (
   created_at  timestamptz NOT NULL DEFAULT now()
 );
 
--- bid_checklist_items — stavke checklista za pripremu ponude
+-- bid_checklist_items â€” stavke checklista za pripremu ponude
 CREATE TYPE checklist_status AS ENUM ('missing', 'attached', 'confirmed');
 
 CREATE TABLE bid_checklist_items (
@@ -83,7 +83,7 @@ CREATE TABLE bid_checklist_items (
   created_at    timestamptz NOT NULL DEFAULT now()
 );
 
--- bid_documents — koji dokumenti su priloženi uz koju ponudu
+-- bid_documents â€” koji dokumenti su priloÅ¾eni uz koju ponudu
 CREATE TABLE bid_documents (
   id                  uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   bid_id              uuid NOT NULL REFERENCES bids(id) ON DELETE CASCADE,
@@ -92,7 +92,7 @@ CREATE TABLE bid_documents (
   is_confirmed        boolean NOT NULL DEFAULT false
 );
 
--- subscriptions — Lemon Squeezy pretplate
+-- subscriptions â€” Lemon Squeezy pretplate
 CREATE TABLE subscriptions (
   id                            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id                       uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -104,7 +104,7 @@ CREATE TABLE subscriptions (
   created_at                    timestamptz NOT NULL DEFAULT now()
 );
 
--- contracting_authorities — naručioci iz API-ja (javni podaci)
+-- contracting_authorities â€” naruÄioci iz API-ja (javni podaci)
 CREATE TABLE contracting_authorities (
   id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   portal_id       text NOT NULL UNIQUE,
@@ -119,7 +119,7 @@ CREATE TABLE contracting_authorities (
   created_at      timestamptz NOT NULL DEFAULT now()
 );
 
--- market_companies — firme koje učestvuju na tenderima (javni podaci)
+-- market_companies â€” firme koje uÄestvuju na tenderima (javni podaci)
 CREATE TABLE market_companies (
   id                uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   portal_id         text,
@@ -139,7 +139,7 @@ CREATE TABLE market_companies (
   created_at        timestamptz NOT NULL DEFAULT now()
 );
 
--- award_decisions — odluke o dodjeli ugovora (javni podaci)
+-- award_decisions â€” odluke o dodjeli ugovora (javni podaci)
 CREATE TABLE award_decisions (
   id                        uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   portal_award_id           text NOT NULL UNIQUE,
@@ -163,7 +163,7 @@ CREATE TABLE award_decisions (
   created_at                timestamptz NOT NULL DEFAULT now()
 );
 
--- planned_procurements — planirani tenderi (javni podaci)
+-- planned_procurements â€” planirani tenderi (javni podaci)
 CREATE TABLE planned_procurements (
   id                        uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   portal_id                 text NOT NULL UNIQUE,
@@ -176,7 +176,7 @@ CREATE TABLE planned_procurements (
   created_at                timestamptz NOT NULL DEFAULT now()
 );
 
--- authority_requirement_patterns — učestalost dokumentacijskih zahtjeva po naručiocu
+-- authority_requirement_patterns â€” uÄestalost dokumentacijskih zahtjeva po naruÄiocu
 CREATE TABLE authority_requirement_patterns (
   id                        uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   contracting_authority_jib  text NOT NULL,
@@ -187,7 +187,7 @@ CREATE TABLE authority_requirement_patterns (
   UNIQUE (contracting_authority_jib, document_type, tender_id)
 );
 
--- admin_portal_lead_notes — interne admin bilješke za portal leadove
+-- admin_portal_lead_notes â€” interne admin biljeÅ¡ke za portal leadove
 CREATE TABLE admin_portal_lead_notes (
   id                uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   lead_jib          text NOT NULL UNIQUE,
@@ -201,7 +201,7 @@ CREATE TABLE admin_portal_lead_notes (
   updated_at        timestamptz NOT NULL DEFAULT now()
 );
 
--- sync_log — evidencija API sinhronizacije
+-- sync_log â€” evidencija API sinhronizacije
 CREATE TABLE sync_log (
   id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   endpoint        text NOT NULL,
@@ -211,7 +211,7 @@ CREATE TABLE sync_log (
   ran_at          timestamptz NOT NULL DEFAULT now()
 );
 
--- documents_with_expiry — view za računanje is_expired dinamički
+-- documents_with_expiry â€” view za raÄunanje is_expired dinamiÄki
 CREATE VIEW documents_with_expiry AS
 SELECT *,
   (expires_at IS NOT NULL AND expires_at < now()) AS is_expired
@@ -340,7 +340,7 @@ CREATE POLICY "Users can delete own documents"
   ON documents FOR DELETE
   USING (company_id IN (SELECT id FROM companies WHERE user_id = auth.uid()));
 
--- tenders: javni podaci — svi autentificirani korisnici mogu čitati
+-- tenders: javni podaci â€” svi autentificirani korisnici mogu Äitati
 CREATE POLICY "Tenders are publicly readable"
   ON tenders FOR SELECT
   USING (true);
@@ -508,7 +508,7 @@ CREATE POLICY "Service role can manage planned_procurements"
   USING (auth.role() = 'service_role')
   WITH CHECK (auth.role() = 'service_role');
 
--- authority_requirement_patterns: javni za čitanje, service_role za sve
+-- authority_requirement_patterns: javni za Äitanje, service_role za sve
 CREATE POLICY "Authority patterns are publicly readable"
   ON authority_requirement_patterns FOR SELECT
   USING (true);
@@ -527,3 +527,4 @@ CREATE POLICY "Service role can manage sync_log"
   ON sync_log FOR ALL
   USING (auth.role() = 'service_role')
   WITH CHECK (auth.role() = 'service_role');
+

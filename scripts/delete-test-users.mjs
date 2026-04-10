@@ -1,4 +1,4 @@
-import fs from "node:fs";
+﻿import fs from "node:fs";
 import path from "node:path";
 import process from "node:process";
 import { createClient } from "@supabase/supabase-js";
@@ -6,7 +6,7 @@ import { createClient } from "@supabase/supabase-js";
 const projectRoot = process.cwd();
 const targetEmails = [
   "marin.kolenda@outlook.com",
-  "admin@mojaponuda.ba",
+  "admin@tendersistem.com",
   "elektronski.pretinac@gmail.com",
 ];
 
@@ -131,3 +131,4 @@ main().catch((error) => {
   console.error("Failed to delete test users:", error);
   process.exitCode = 1;
 });
+

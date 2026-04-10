@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+﻿import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import type {
   Bid,
@@ -26,7 +26,7 @@ const BID_STATUS_LABELS: Record<string, string> = {
 };
 
 function formatDate(dateStr: string | null): string {
-  if (!dateStr) return "—";
+  if (!dateStr) return "â€”";
   return new Date(dateStr).toLocaleDateString("bs-BA", {
     day: "2-digit",
     month: "2-digit",
@@ -103,7 +103,7 @@ export async function GET(request: NextRequest) {
 
   const checklistItems = (checklistData ?? []) as BidChecklistItem[];
 
-  // Dohvati priložene dokumente
+  // Dohvati priloÅ¾ene dokumente
   const { data: bidDocsData } = await supabase
     .from("bid_documents")
     .select("id, document_id, documents(*)")
@@ -123,7 +123,7 @@ export async function GET(request: NextRequest) {
   // --- Zaglavlje ---
   doc.setFontSize(18);
   doc.setFont("helvetica", "bold");
-  doc.text("MojaPonuda.ba", margin, y);
+  doc.text("TenderSistem.com", margin, y);
   y += 5;
 
   doc.setFontSize(9);
@@ -136,7 +136,7 @@ export async function GET(request: NextRequest) {
   doc.line(margin, y, pageWidth - margin, y);
   y += 8;
 
-  // --- UPOZORENJE ZA NEDOSTAJUĆE STAVKE ---
+  // --- UPOZORENJE ZA NEDOSTAJUÄ†E STAVKE ---
   const missingItems = checklistItems.filter((i) => i.status === "missing");
   if (missingItems.length > 0) {
     doc.setFillColor(254, 242, 242); // Red-50
@@ -158,7 +158,7 @@ export async function GET(request: NextRequest) {
 
     doc.setFontSize(9);
     missingItems.forEach((item) => {
-      doc.text(`• ${item.title}`, margin + 8, y);
+      doc.text(`â€¢ ${item.title}`, margin + 8, y);
       y += 5;
     });
 
@@ -241,7 +241,7 @@ export async function GET(request: NextRequest) {
         String(idx + 1),
         item.title + (item.description ? `\n${item.description}` : ""),
         STATUS_LABELS[item.status],
-        item.risk_note || "—",
+        item.risk_note || "â€”",
       ]),
       styles: { fontSize: 8, cellPadding: 2 },
       headStyles: {
@@ -273,7 +273,7 @@ export async function GET(request: NextRequest) {
   doc.text(`Kompletiranost: ${confirmedCount}/${totalCount} (${pct}%)`, margin, y);
   y += 8;
 
-  // --- Priloženi dokumenti ---
+  // --- PriloÅ¾eni dokumenti ---
   doc.setFontSize(11);
   doc.setFont("helvetica", "bold");
   doc.text("Prilozeni dokumenti", margin, y);
@@ -287,7 +287,7 @@ export async function GET(request: NextRequest) {
       body: attachedDocs.map((d, idx) => [
         String(idx + 1),
         d.name,
-        d.type || "—",
+        d.type || "â€”",
         formatExpiryLabel(d.expires_at),
       ]),
       styles: { fontSize: 8, cellPadding: 2 },
@@ -317,7 +317,7 @@ export async function GET(request: NextRequest) {
 
   y += 4;
 
-  // --- Interne bilješke ---
+  // --- Interne biljeÅ¡ke ---
   if (bid.notes && bid.notes.trim().length > 0) {
     // Provjeri treba li nova stranica
     if (y > 250) {
@@ -333,7 +333,7 @@ export async function GET(request: NextRequest) {
     doc.setFontSize(8);
     doc.setFont("helvetica", "italic");
     doc.setTextColor(180, 0, 0);
-    doc.text("INTERNO — Ne distribuirati", margin, y);
+    doc.text("INTERNO â€” Ne distribuirati", margin, y);
     y += 4;
 
     doc.setTextColor(0, 0, 0);
@@ -354,7 +354,7 @@ export async function GET(request: NextRequest) {
     doc.setFontSize(7);
     doc.setTextColor(150, 150, 150);
     doc.text(
-      `MojaPonuda.ba — Stranica ${i} od ${totalPages}`,
+      `TenderSistem.com â€” Stranica ${i} od ${totalPages}`,
       pageWidth / 2,
       doc.internal.pageSize.getHeight() - 8,
       { align: "center" }
@@ -376,3 +376,4 @@ export async function GET(request: NextRequest) {
     },
   });
 }
+
