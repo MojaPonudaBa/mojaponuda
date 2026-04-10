@@ -24,7 +24,7 @@ import {
   XCircle,
 } from "lucide-react";
 
-interface BidRow {
+export interface BidRow {
   id: string;
   status: BidStatus;
   created_at: string;

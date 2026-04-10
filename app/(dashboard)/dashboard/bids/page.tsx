@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { BidsTable } from "@/components/bids/bids-table";
+import { BidsTable, type BidRow } from "@/components/bids/bids-table";
 import { NewBidModal } from "@/components/bids/new-bid-modal";
 import { Button } from "@/components/ui/button";
 import { demoBidSummaries, isCompanyProfileComplete, isDemoUser } from "@/lib/demo";
@@ -87,14 +87,7 @@ export default async function BidsPage() {
       ]),
     );
 
-    let agencyBids: Array<{
-      id: string;
-      status: BidStatus;
-      created_at: string;
-      tender: { id: string; title: string; contracting_authority: string | null; deadline: string | null };
-      clientName: string;
-      clientId: string;
-    }> = [];
+    let agencyBids: BidRow[] = [];
 
     if (companyIds.length > 0) {
       const { data: bidsData } = await supabase
