@@ -128,9 +128,17 @@ function textMatchesKeyword(text: string, keyword: string): boolean {
 export function buildOpportunityRecommendationContext(
   source: RecommendationCompanySource
 ): RecommendationContext {
-  const baseContext = buildRecommendationContext(source);
+  // Add input validation and safe defaults
+  const safeSource = {
+    industry: source?.industry ?? null,
+    keywords: source?.keywords ?? [],
+    cpv_codes: source?.cpv_codes ?? [],
+    operating_regions: source?.operating_regions ?? [],
+  };
+  
+  const baseContext = buildRecommendationContext(safeSource);
   const explicitKeywords = uniqueStrings(
-    (source.keywords ?? []).map((keyword) => normalizeOpportunityKeyword(keyword))
+    (safeSource.keywords ?? []).map((keyword) => normalizeOpportunityKeyword(keyword))
   );
 
   return {

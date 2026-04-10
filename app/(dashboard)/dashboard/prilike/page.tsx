@@ -50,10 +50,24 @@ export default async function PrilikeDashboardPage() {
     } | null;
   };
 
-  const follows = ((followsRaw ?? []) as unknown as FollowRow[]).filter((follow) => follow.opportunities !== null);
+  // Type guard to ensure opportunity exists and has required properties
+  function isValidFollow(follow: FollowRow): follow is FollowRow & { opportunities: NonNullable<FollowRow['opportunities']> } {
+    return follow.opportunities != null && typeof follow.opportunities === 'object' && !!follow.opportunities.id;
+  }
+
+  const follows = ((followsRaw ?? []) as unknown as FollowRow[]).filter(isValidFollow);
   const activeFollows = follows.filter((follow) => follow.outcome === null);
   const resolvedFollows = follows.filter((follow) => follow.outcome !== null);
   const followedIds = new Set(follows.map((follow) => follow.opportunity_id));
+  
+  // Ensure company data has safe defaults before passing to recommendation function
+  const safeCompanyData = {
+    industry: company?.industry ?? null,
+    keywords: company?.keywords ?? [],
+    cpv_codes: company?.cpv_codes ?? [],
+    operating_regions: company?.operating_regions ?? [],
+  };
+  
   const opportunityRecommendationResult = await getPersonalizedOpportunityRecommendations<{
     id: string;
     slug: string;
@@ -75,12 +89,7 @@ export default async function PrilikeDashboardPage() {
     ai_difficulty: "lako" | "srednje" | "tesko" | null;
     created_at: string;
   }>(supabase, {
-    company: {
-      industry: company?.industry ?? null,
-      keywords: company?.keywords ?? [],
-      cpv_codes: company?.cpv_codes ?? [],
-      operating_regions: company?.operating_regions ?? [],
-    },
+    company: safeCompanyData,
     excludeOpportunityIds: followedIds,
   });
 
