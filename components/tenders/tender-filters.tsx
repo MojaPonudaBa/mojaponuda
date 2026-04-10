@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   CalendarDays,
   Filter,
@@ -30,18 +30,18 @@ const CONTRACT_TYPES = [
 const PROCEDURE_TYPES = [
   { value: "all", label: "Sve procedure" },
   { value: "Otvoreni postupak", label: "Otvoreni" },
-  { value: "Ograni\u010deni postupak", label: "Ograni\u010deni" },
-  { value: "Pregovara\u010dki postupak", label: "Pregovara\u010dki" },
+  { value: "Ograničeni postupak", label: "Ograničeni" },
+  { value: "Pregovarački postupak", label: "Pregovarački" },
   { value: "Konkurentski zahtjev", label: "Konkurentski" },
   { value: "Direktni sporazum", label: "Direktni" },
 ];
 
 const RECOMMENDED_SORT_OPTIONS = [
   { value: "recommended", label: "Najrelevantniji" },
-  { value: "nearest", label: "Najbli\u017ei lokaciji firme" },
+  { value: "nearest", label: "Najbliži lokaciji firme" },
   { value: "deadline_asc", label: "Rok najskoriji" },
   { value: "deadline_desc", label: "Rok najkasniji" },
-  { value: "value_desc", label: "Najve\u0107a vrijednost" },
+  { value: "value_desc", label: "Najveća vrijednost" },
   { value: "value_asc", label: "Najmanja vrijednost" },
   { value: "newest", label: "Najnovije objavljeno" },
 ];
@@ -49,10 +49,146 @@ const RECOMMENDED_SORT_OPTIONS = [
 const ALL_TENDERS_SORT_OPTIONS = [
   { value: "deadline_asc", label: "Rok najskoriji" },
   { value: "deadline_desc", label: "Rok najkasniji" },
-  { value: "value_desc", label: "Najve\u0107a vrijednost" },
+  { value: "value_desc", label: "Najveća vrijednost" },
   { value: "value_asc", label: "Najmanja vrijednost" },
   { value: "newest", label: "Najnovije objavljeno" },
 ];
+
+function formatDateForDisplay(value: string) {
+  if (!value) return "";
+  const [year, month, day] = value.split("-");
+  if (!year || !month || !day) return "";
+  return `${day}/${month}/${year}`;
+}
+
+function formatDateDigits(value: string) {
+  const digits = value.replace(/\D/g, "").slice(0, 8);
+  if (digits.length <= 2) return digits;
+  if (digits.length <= 4) return `${digits.slice(0, 2)}/${digits.slice(2)}`;
+  return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`;
+}
+
+function parseDisplayDate(value: string) {
+  if (!value) return "";
+  const parts = value.split("/");
+  if (parts.length !== 3) return "";
+
+  const [dayRaw, monthRaw, yearRaw] = parts;
+  if (dayRaw.length !== 2 || monthRaw.length !== 2 || yearRaw.length !== 4) return "";
+
+  const day = Number(dayRaw);
+  const month = Number(monthRaw);
+  const year = Number(yearRaw);
+
+  if (!Number.isInteger(day) || !Number.isInteger(month) || !Number.isInteger(year)) return "";
+  if (month < 1 || month > 12 || day < 1 || day > 31) return "";
+
+  const candidate = new Date(year, month - 1, day);
+  if (
+    candidate.getFullYear() !== year ||
+    candidate.getMonth() !== month - 1 ||
+    candidate.getDate() !== day
+  ) {
+    return "";
+  }
+
+  return `${yearRaw}-${monthRaw}-${dayRaw}`;
+}
+
+function LocalizedDateFilter({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const pickerRef = useRef<HTMLInputElement>(null);
+  const [textValue, setTextValue] = useState(() => formatDateForDisplay(value));
+
+  useEffect(() => {
+    setTextValue(formatDateForDisplay(value));
+  }, [value]);
+
+  function handleTextChange(nextValue: string) {
+    const formatted = formatDateDigits(nextValue);
+    setTextValue(formatted);
+
+    if (!formatted) {
+      onChange("");
+      return;
+    }
+
+    const parsed = parseDisplayDate(formatted);
+    if (parsed) onChange(parsed);
+  }
+
+  function handleBlur() {
+    if (!textValue.trim()) {
+      setTextValue("");
+      onChange("");
+      return;
+    }
+
+    const parsed = parseDisplayDate(textValue);
+    if (parsed) {
+      setTextValue(formatDateForDisplay(parsed));
+      onChange(parsed);
+      return;
+    }
+
+    setTextValue(formatDateForDisplay(value));
+  }
+
+  function openPicker() {
+    const picker = pickerRef.current;
+    if (!picker) return;
+    if (typeof picker.showPicker === "function") {
+      picker.showPicker();
+      return;
+    }
+    picker.focus();
+    picker.click();
+  }
+
+  return (
+    <div className="group flex h-11 min-w-[176px] items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-3">
+      <div className="min-w-0 flex-1">
+        <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">
+          {label}
+        </div>
+        <Input
+          type="text"
+          inputMode="numeric"
+          placeholder="dd/mm/yyyy"
+          value={textValue}
+          onChange={(event) => handleTextChange(event.target.value)}
+          onBlur={handleBlur}
+          className="h-5 border-0 bg-transparent px-0 py-0 text-sm text-white placeholder:text-slate-500 focus-visible:border-0 focus-visible:ring-0"
+        />
+      </div>
+      <button
+        type="button"
+        onClick={openPicker}
+        className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-white/8 hover:text-slate-100"
+        aria-label={`${label} - otvori kalendar`}
+      >
+        <CalendarDays className="size-4" />
+      </button>
+      <input
+        ref={pickerRef}
+        type="date"
+        lang="bs-BA"
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="sr-only"
+        tabIndex={-1}
+        aria-hidden="true"
+      />
+    </div>
+  );
+}
 
 export function TenderFilters({ basePath = "/dashboard/tenders" }: { basePath?: string }) {
   const router = useRouter();
@@ -69,16 +205,12 @@ export function TenderFilters({ basePath = "/dashboard/tenders" }: { basePath?: 
   const [procedureType, setProcedureType] = useState(
     searchParams.get("procedure_type") || "all"
   );
-  const [deadlineFrom, setDeadlineFrom] = useState(
-    searchParams.get("deadline_from") || ""
-  );
+  const [deadlineFrom, setDeadlineFrom] = useState(searchParams.get("deadline_from") || "");
   const [deadlineTo, setDeadlineTo] = useState(searchParams.get("deadline_to") || "");
   const [valueMin, setValueMin] = useState(searchParams.get("value_min") || "");
   const [valueMax, setValueMax] = useState(searchParams.get("value_max") || "");
   const [sort, setSort] = useState(searchParams.get("sort") || defaultSort);
-  const [locations, setLocations] = useState<string[]>(
-    searchParams.getAll("location")
-  );
+  const [locations, setLocations] = useState<string[]>(searchParams.getAll("location"));
 
   const applyFilters = useCallback(() => {
     const params = new URLSearchParams();
@@ -136,11 +268,10 @@ export function TenderFilters({ basePath = "/dashboard/tenders" }: { basePath?: 
   const compactTriggerClassName =
     "h-11 min-w-[140px] rounded-2xl border-white/10 bg-white/5 px-3 text-sm text-white hover:bg-white/8";
   const compactContentClassName =
-    "rounded-2xl border border-slate-700 bg-slate-950 text-slate-100 shadow-2xl";
-  const compactItemClassName =
-    "rounded-xl px-3 py-2 text-slate-100 data-[highlighted]:bg-white/10 data-[highlighted]:text-white";
+    "rounded-2xl border border-slate-700 bg-slate-950 text-slate-100 shadow-2xl [&_[data-slot=select-item]]:text-slate-100 [&_[data-slot=select-item]_*]:text-inherit [&_[data-slot=select-item][data-highlighted]]:bg-white/10 [&_[data-slot=select-item][data-highlighted]]:text-white [&_[data-slot=select-item][data-highlighted]_*]:text-white [&_[data-slot=select-item][data-state=checked]]:text-white";
+  const compactItemClassName = "rounded-xl px-3 py-2";
   const locationContentClassName =
-    "rounded-2xl border border-slate-700 bg-slate-950 text-slate-100 shadow-2xl [&_[data-slot=command]]:bg-slate-950 [&_[data-slot=command]]:text-slate-100 [&_[data-slot=command-input-wrapper]]:border-b [&_[data-slot=command-input-wrapper]]:border-white/10 [&_[data-slot=command-input-wrapper]]:bg-slate-950 [&_[data-slot=command-group]]:text-slate-100 [&_[data-slot=command-group]_[cmdk-group-heading]]:text-slate-400 [&_[data-slot=command-input]]:text-slate-100 [&_[data-slot=command-input]::placeholder]:text-slate-500 [&_[data-slot=command-item]]:text-slate-100 [&_[data-slot=command-item][data-selected=true]]:bg-white/10 [&_[data-slot=command-item][data-selected=true]]:text-white";
+    "rounded-2xl border border-slate-700 bg-slate-950 text-slate-100 shadow-2xl [&_[data-slot=command]]:bg-slate-950 [&_[data-slot=command]]:text-slate-100 [&_[data-slot=command-input-wrapper]]:border-b [&_[data-slot=command-input-wrapper]]:border-white/10 [&_[data-slot=command-input-wrapper]]:bg-slate-950 [&_[data-slot=command-group]]:text-slate-100 [&_[data-slot=command-group]_[cmdk-group-heading]]:text-slate-400 [&_[data-slot=command-input]]:text-slate-100 [&_[data-slot=command-input]::placeholder]:text-slate-500 [&_[data-slot=command-item]]:text-slate-100 [&_[data-slot=command-item]_*]:text-inherit [&_[data-slot=command-item][data-selected=true]]:bg-white/10 [&_[data-slot=command-item][data-selected=true]]:text-white [&_[data-slot=command-item][data-selected=true]_*]:text-white";
 
   return (
     <section className="mb-6 rounded-[1.4rem] border border-slate-800 bg-[linear-gradient(180deg,#111827_0%,#0f172a_100%)] p-3.5 text-white shadow-[0_22px_50px_-38px_rgba(2,6,23,0.82)]">
@@ -148,7 +279,7 @@ export function TenderFilters({ basePath = "/dashboard/tenders" }: { basePath?: 
         <div className="relative min-w-[260px] flex-[1_1_340px]">
           <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-500" />
           <Input
-            placeholder="Pretra\u017ei naziv, naru\u010dioca ili opis tendera..."
+            placeholder="Pretraži naziv, naručioca ili opis tendera..."
             value={keyword}
             onChange={(event) => setKeyword(event.target.value)}
             onKeyDown={handleKeyDown}
@@ -210,31 +341,8 @@ export function TenderFilters({ basePath = "/dashboard/tenders" }: { basePath?: 
           </SelectContent>
         </Select>
 
-        <div className="flex h-11 min-w-[172px] items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-3">
-          <CalendarDays className="size-3.5 text-slate-400" />
-          <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">
-            Rok od
-          </span>
-          <Input
-            type="date"
-            value={deadlineFrom}
-            onChange={(event) => setDeadlineFrom(event.target.value)}
-            className="h-9 border-0 bg-transparent px-0 text-sm text-white focus-visible:border-0 focus-visible:ring-0"
-          />
-        </div>
-
-        <div className="flex h-11 min-w-[172px] items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-3">
-          <CalendarDays className="size-3.5 text-slate-400" />
-          <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">
-            Rok do
-          </span>
-          <Input
-            type="date"
-            value={deadlineTo}
-            onChange={(event) => setDeadlineTo(event.target.value)}
-            className="h-9 border-0 bg-transparent px-0 text-sm text-white focus-visible:border-0 focus-visible:ring-0"
-          />
-        </div>
+        <LocalizedDateFilter label="Rok od" value={deadlineFrom} onChange={setDeadlineFrom} />
+        <LocalizedDateFilter label="Rok do" value={deadlineTo} onChange={setDeadlineTo} />
 
         <div className="flex h-11 min-w-[146px] items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-3">
           <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">
