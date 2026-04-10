@@ -159,18 +159,34 @@ export default async function AgencyClientBidsPage({
       throw bidsError;
     }
 
-    console.log("Agency client bids page - bids data:", JSON.stringify(bidsData, null, 2));
+    console.log("Agency client bids page - raw bids data count:", bidsData?.length ?? 0);
 
-    const bids: BidRow[] = ((bidsData as BidWithTender[] | null) ?? [])
-      .filter(isValidBid)
-      .map((bid) => ({
-        id: bid.id,
-        status: bid.status,
-        created_at: bid.created_at,
-        tender: normalizeBidTender(bid.tenders),
-      }));
+    // Safely process bids with extra error handling
+    const bids: BidRow[] = [];
+    const rawBids = (bidsData as BidWithTender[] | null) ?? [];
+    
+    for (const bid of rawBids) {
+      try {
+        if (!isValidBid(bid)) {
+          console.log("Filtered out invalid bid:", bid.id);
+          continue;
+        }
+        
+        const normalizedTender = normalizeBidTender(bid.tenders);
+        bids.push({
+          id: bid.id,
+          status: bid.status,
+          created_at: bid.created_at,
+          tender: normalizedTender,
+        });
+      } catch (bidError) {
+        console.error("Error processing bid:", bid.id, bidError);
+        // Skip this bid and continue with others
+        continue;
+      }
+    }
 
-    console.log("Agency client bids page - normalized bids:", JSON.stringify(bids, null, 2));
+    console.log("Agency client bids page - processed bids count:", bids.length);
 
     const { data: tendersData, error: tendersError } = await supabase
       .from("tenders")
