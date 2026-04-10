@@ -92,11 +92,6 @@ function AgencyBidsShell({ bids }: { bids: BidRow[] }) {
       <BidsTable
         bids={bids}
         showClientColumn
-        getBidHref={(bid) =>
-          bid.clientId
-            ? `/dashboard/agency/clients/${bid.clientId}/bids/${bid.id}`
-            : `/dashboard/bids/${bid.id}`
-        }
       />
     </div>
   );

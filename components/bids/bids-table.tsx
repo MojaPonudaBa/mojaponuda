@@ -41,7 +41,7 @@ export interface BidRow {
 interface BidsTableProps {
   bids: BidRow[];
   showClientColumn?: boolean;
-  getBidHref?: (bid: BidRow) => string;
+  basePath?: string;
 }
 
 function formatDate(dateStr: string | null): string {
@@ -64,7 +64,7 @@ const STATUS_STYLES: Record<string, string> = {
 export function BidsTable({
   bids,
   showClientColumn = false,
-  getBidHref,
+  basePath,
 }: BidsTableProps) {
   const router = useRouter();
   const [statusFilter, setStatusFilter] = useState("all");
@@ -139,7 +139,14 @@ export function BidsTable({
       ) : (
         <div className="space-y-3">
           {filtered.map((bid) => {
-            const bidHref = getBidHref ? getBidHref(bid) : `/dashboard/bids/${bid.id}`;
+            // Construct href based on basePath or use default
+            let bidHref = `/dashboard/bids/${bid.id}`;
+            if (basePath) {
+              bidHref = `${basePath}/${bid.id}`;
+            } else if (bid.clientId) {
+              // For agency view with client context
+              bidHref = `/dashboard/agency/clients/${bid.clientId}/bids/${bid.id}`;
+            }
 
             return (
               <article

@@ -43,27 +43,35 @@ vi.mock('@/lib/subscription', () => ({
 
 // Mock components
 vi.mock('@/components/bids/bids-table', () => ({
-  BidsTable: ({ bids, getBidHref }: any) => (
+  BidsTable: ({ bids, basePath }: any) => (
     <div data-testid="bids-table">
-      {bids.map((bid: any) => (
-        <div key={bid.id} data-testid={`bid-${bid.id}`}>
-          <span data-testid={`bid-${bid.id}-status`}>{bid.status}</span>
-          <span data-testid={`bid-${bid.id}-title`}>
-            {bid.tender?.title ?? 'Tender nije dostupan'}
-          </span>
-          <span data-testid={`bid-${bid.id}-authority`}>
-            {bid.tender?.contracting_authority ?? 'Nepoznat naručilac'}
-          </span>
-          <span data-testid={`bid-${bid.id}-deadline`}>
-            {bid.tender?.deadline ? new Date(bid.tender.deadline).toLocaleDateString('bs-BA') : 'Rok nije objavljen'}
-          </span>
-          {getBidHref && (
-            <a href={getBidHref(bid)} data-testid={`bid-${bid.id}-link`}>
+      {bids.map((bid: any) => {
+        // Construct href based on basePath or use default
+        let bidHref = `/dashboard/bids/${bid.id}`;
+        if (basePath) {
+          bidHref = `${basePath}/${bid.id}`;
+        } else if (bid.clientId) {
+          bidHref = `/dashboard/agency/clients/${bid.clientId}/bids/${bid.id}`;
+        }
+        
+        return (
+          <div key={bid.id} data-testid={`bid-${bid.id}`}>
+            <span data-testid={`bid-${bid.id}-status`}>{bid.status}</span>
+            <span data-testid={`bid-${bid.id}-title`}>
+              {bid.tender?.title ?? 'Tender nije dostupan'}
+            </span>
+            <span data-testid={`bid-${bid.id}-authority`}>
+              {bid.tender?.contracting_authority ?? 'Nepoznat naručilac'}
+            </span>
+            <span data-testid={`bid-${bid.id}-deadline`}>
+              {bid.tender?.deadline ? new Date(bid.tender.deadline).toLocaleDateString('bs-BA') : 'Rok nije objavljen'}
+            </span>
+            <a href={bidHref} data-testid={`bid-${bid.id}-link`}>
               Otvori ponudu
             </a>
-          )}
-        </div>
-      ))}
+          </div>
+        );
+      })}
     </div>
   ),
 }));

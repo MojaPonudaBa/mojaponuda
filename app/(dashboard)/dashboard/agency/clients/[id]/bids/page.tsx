@@ -225,7 +225,7 @@ export default async function AgencyClientBidsPage({
 
           <BidsTable
             bids={bids}
-            getBidHref={(bid) => `/dashboard/agency/clients/${id}/bids/${bid.id}`}
+            basePath={`/dashboard/agency/clients/${id}/bids`}
           />
         </div>
       );
