@@ -172,7 +172,7 @@ export function sortRecommendedTenderItems<
 
 export function sortStandardTenders<TTender extends Pick<Tender, "deadline" | "estimated_value" | "created_at">>(
   tenders: TTender[],
-  sort: Exclude<TenderSortOption, "recommended" | "nearest"> | "recommended"
+  sort: TenderSortOption
 ): TTender[] {
   const sorted = [...tenders];
 
