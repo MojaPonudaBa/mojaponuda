@@ -1,51 +1,66 @@
+import Link from "next/link";
 import { redirect, notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getSubscriptionStatus } from "@/lib/subscription";
 import type { BidStatus } from "@/types/database";
-import { BidsTable } from "@/components/bids/bids-table";
+import { BidsTable, type BidRow } from "@/components/bids/bids-table";
 import { NewBidModal } from "@/components/bids/new-bid-modal";
+import { Button } from "@/components/ui/button";
+
+interface TenderRelation {
+  id: string;
+  title: string;
+  contracting_authority: string | null;
+  deadline: string | null;
+}
+
+interface CompanyRelation {
+  id: string;
+  name: string;
+}
 
 interface BidWithTender {
   id: string;
   status: BidStatus;
   created_at: string;
-  tenders:
-    | {
-        id: string;
-        title: string;
-        contracting_authority: string | null;
-        deadline: string | null;
-      }
-    | {
-        id: string;
-        title: string;
-        contracting_authority: string | null;
-        deadline: string | null;
-      }[]
-    | null;
+  tenders: TenderRelation | TenderRelation[] | null;
 }
 
-function normalizeBidTender(
-  tender:
-    | {
-        id: string;
-        title: string;
-        contracting_authority: string | null;
-        deadline: string | null;
-      }
-    | {
-        id: string;
-        title: string;
-        contracting_authority: string | null;
-        deadline: string | null;
-      }[]
-    | null
-) {
+function normalizeBidTender(tender: TenderRelation | TenderRelation[] | null) {
   if (Array.isArray(tender)) {
     return tender[0] ?? null;
   }
 
   return tender;
+}
+
+function normalizeCompanyRelation(company: CompanyRelation | CompanyRelation[] | null) {
+  if (Array.isArray(company)) {
+    return company[0] ?? null;
+  }
+
+  return company;
+}
+
+function AgencyClientBidsFallback() {
+  return (
+    <div className="space-y-8 max-w-[1200px] mx-auto">
+      <div className="rounded-[1.75rem] border border-amber-200 bg-amber-50 p-6 text-slate-900 shadow-sm">
+        <h1 className="text-2xl font-heading font-bold tracking-tight">
+          Ponude trenutno nisu dostupne
+        </h1>
+        <p className="mt-2 max-w-2xl text-sm leading-7 text-slate-600">
+          Došlo je do problema pri učitavanju ponuda za ovog klijenta. Vratite se
+          na klijenta ili pokušajte ponovo za nekoliko trenutaka.
+        </p>
+        <div className="mt-5">
+          <Button asChild className="rounded-xl bg-slate-950 text-white hover:bg-slate-800">
+            <Link href="/dashboard/agency">Nazad na agenciju</Link>
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export default async function AgencyClientBidsPage({
@@ -55,71 +70,95 @@ export default async function AgencyClientBidsPage({
 }) {
   const { id } = await params;
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
   if (!user) redirect("/login");
 
-  const { plan } = await getSubscriptionStatus(user.id, user.email);
+  const { plan } = await getSubscriptionStatus(user.id, user.email, supabase);
   if (plan.id !== "agency") redirect("/dashboard");
 
-  const { data: agencyClient } = await supabase
+  const { data: agencyClient, error: agencyClientError } = await supabase
     .from("agency_clients")
     .select("id, company_id, companies (id, name)")
     .eq("id", id)
     .eq("agency_user_id", user.id)
     .maybeSingle();
 
+  if (agencyClientError) {
+    console.error("Agency client bids page client lookup error:", agencyClientError);
+    return <AgencyClientBidsFallback />;
+  }
+
   if (!agencyClient) notFound();
 
-  const company = agencyClient.companies as { id: string; name: string } | null;
+  const company = normalizeCompanyRelation(
+    agencyClient.companies as CompanyRelation | CompanyRelation[] | null
+  );
+
   if (!company) notFound();
 
-  const { data: bidsData } = await supabase
-    .from("bids")
-    .select("id, status, created_at, tenders(id, title, contracting_authority, deadline)")
-    .eq("company_id", company.id)
-    .order("created_at", { ascending: false });
+  try {
+    const { data: bidsData, error: bidsError } = await supabase
+      .from("bids")
+      .select("id, status, created_at, tenders(id, title, contracting_authority, deadline)")
+      .eq("company_id", company.id)
+      .order("created_at", { ascending: false });
 
-  const bids = ((bidsData as BidWithTender[] | null) ?? []).map((b) => ({
-    id: b.id,
-    status: b.status,
-    created_at: b.created_at,
-    tender: normalizeBidTender(b.tenders),
-  }));
+    if (bidsError) {
+      throw bidsError;
+    }
 
-  const { data: tendersData } = await supabase
-    .from("tenders")
-    .select("id, title, contracting_authority")
-    .order("created_at", { ascending: false })
-    .limit(500);
+    const bids: BidRow[] = ((bidsData as BidWithTender[] | null) ?? []).map((bid) => ({
+      id: bid.id,
+      status: bid.status,
+      created_at: bid.created_at,
+      tender: normalizeBidTender(bid.tenders),
+    }));
 
-  const tenders = (tendersData ?? []) as {
-    id: string;
-    title: string;
-    contracting_authority: string | null;
-  }[];
+    const { data: tendersData, error: tendersError } = await supabase
+      .from("tenders")
+      .select("id, title, contracting_authority")
+      .order("created_at", { ascending: false })
+      .limit(500);
 
-  return (
-    <div className="space-y-8 max-w-[1200px] mx-auto">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-3xl font-heading font-bold text-slate-900 tracking-tight">
-            Ponude — {company.name}
-          </h1>
-          <p className="mt-1 text-base text-slate-500">
-            Sve ponude ovog klijenta na jednom mjestu.
-          </p>
+    if (tendersError) {
+      throw tendersError;
+    }
+
+    const tenders = (tendersData ?? []) as Array<{
+      id: string;
+      title: string;
+      contracting_authority: string | null;
+    }>;
+
+    return (
+      <div className="space-y-8 max-w-[1200px] mx-auto">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="text-3xl font-heading font-bold text-slate-900 tracking-tight">
+              Ponude — {company.name}
+            </h1>
+            <p className="mt-1 text-base text-slate-500">
+              Sve ponude ovog klijenta na jednom mjestu.
+            </p>
+          </div>
+          <NewBidModal
+            tenders={tenders}
+            agencyClientId={id}
+            bidPathBase={`/dashboard/agency/clients/${id}/bids`}
+          />
         </div>
-        <NewBidModal
-          tenders={tenders}
-          agencyClientId={id}
-          bidPathBase={`/dashboard/agency/clients/${id}/bids`}
+
+        <BidsTable
+          bids={bids}
+          getBidHref={(bid) => `/dashboard/agency/clients/${id}/bids/${bid.id}`}
         />
       </div>
-
-      <BidsTable
-        bids={bids}
-        getBidHref={(bid) => `/dashboard/agency/clients/${id}/bids/${bid.id}`}
-      />
-    </div>
-  );
+    );
+  } catch (error) {
+    console.error("Agency client bids page error:", error);
+    return <AgencyClientBidsFallback />;
+  }
 }
