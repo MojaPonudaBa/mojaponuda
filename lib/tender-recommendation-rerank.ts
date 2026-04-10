@@ -214,10 +214,6 @@ export async function maybeRerankTenderRecommendationsWithAI<
       ...ranked.slice(shortlistSize),
     ];
 
-    // Final sort: distance first (locationPriority = km from anchor, or 9999 if unknown).
-    // Stable sort preserves AI relevance order within the same km distance.
-    finalRanked.sort((a, b) => (a.locationPriority as number) - (b.locationPriority as number));
-
     return applyLimit(finalRanked, limit);
   } catch (error) {
     console.error("Tender recommendation AI rerank error:", error);

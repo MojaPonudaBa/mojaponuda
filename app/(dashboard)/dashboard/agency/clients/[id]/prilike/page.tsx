@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getSubscriptionStatus } from "@/lib/subscription";
 import { OpportunityDashboardCard } from "@/components/dashboard/opportunity-dashboard-card";
 import { Sparkles, Star } from "lucide-react";
-import { scoreOpportunityForCompany, GRANT_MATCH_THRESHOLD } from "@/lib/opportunity-matcher";
+import { getPersonalizedOpportunityRecommendations } from "@/lib/opportunity-recommendations";
 
 export default async function AgencyClientPrilikePage({
   params,
@@ -21,36 +21,53 @@ export default async function AgencyClientPrilikePage({
   // Verify agency client belongs to this user
   const { data: agencyClient } = await supabase
     .from("agency_clients")
-    .select("id, company_id, companies(name, keywords, operating_regions)")
+    .select("id, company_id, companies(name, industry, keywords, cpv_codes, operating_regions)")
     .eq("id", agencyClientId)
     .eq("agency_user_id", user.id)
     .maybeSingle();
 
   if (!agencyClient) notFound();
 
-  type AgencyCompany = { name: string; keywords: string[] | null; operating_regions: string[] | null } | null;
+  type AgencyCompany = {
+    name: string;
+    industry: string | null;
+    keywords: string[] | null;
+    cpv_codes: string[] | null;
+    operating_regions: string[] | null;
+  } | null;
   const clientCompany = agencyClient.companies as AgencyCompany;
   const companyName = clientCompany?.name ?? "Klijent";
+  const opportunityRecommendationResult = await getPersonalizedOpportunityRecommendations<{
+    id: string;
+    slug: string;
+    type: "tender" | "poticaj";
+    title: string;
+    issuer: string;
+    category: string | null;
+    subcategory: string | null;
+    industry: string | null;
+    value: number | null;
+    deadline: string | null;
+    location: string | null;
+    requirements: string | null;
+    eligibility_signals: string[] | null;
+    description: string | null;
+    status: "active" | "expired" | "draft";
+    ai_summary: string | null;
+    ai_who_should_apply: string | null;
+    ai_difficulty: "lako" | "srednje" | "tesko" | null;
+    created_at: string;
+  }>(supabase, {
+    company: {
+      industry: clientCompany?.industry ?? null,
+      keywords: clientCompany?.keywords ?? [],
+      cpv_codes: clientCompany?.cpv_codes ?? [],
+      operating_regions: clientCompany?.operating_regions ?? [],
+    },
+  });
 
-  const { data: opportunities } = await supabase
-    .from("opportunities")
-    .select("id, slug, type, title, issuer, category, value, deadline, location, ai_summary, ai_difficulty")
-    .eq("published", true)
-    .order("created_at", { ascending: false })
-    .limit(60);
-
-  const allPoticaji = ((opportunities ?? []) as {
-    id: string; slug: string; type: string; title: string; issuer: string;
-    category: string | null; value: number | null; deadline: string | null;
-    location: string | null; ai_summary: string | null; ai_difficulty: string | null;
-  }[]).filter((o) => o.type === "poticaj");
-
-  const hasProfile = (clientCompany?.keywords?.length ?? 0) > 0 || (clientCompany?.operating_regions?.length ?? 0) > 0;
-  const forYou = hasProfile && clientCompany
-    ? allPoticaji.filter((o) => scoreOpportunityForCompany(o, clientCompany) >= GRANT_MATCH_THRESHOLD)
-    : [];
-  const forYouIds = new Set(forYou.map((o) => o.id));
-  const poticaji = allPoticaji.filter((o) => !forYouIds.has(o.id));
+  const forYou = opportunityRecommendationResult.personalized.map(({ opportunity }) => opportunity);
+  const poticaji = opportunityRecommendationResult.others;
 
   return (
     <div className="space-y-8 max-w-[1200px] mx-auto">

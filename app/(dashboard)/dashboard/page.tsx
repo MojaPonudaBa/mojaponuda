@@ -9,14 +9,11 @@ import {
 } from "@/lib/demo";
 import { getSubscriptionStatus, isAgencyPlan } from "@/lib/subscription";
 import { createClient } from "@/lib/supabase/server";
-import { maybeRerankTenderRecommendationsWithAI } from "@/lib/tender-recommendation-rerank";
+import { getPersonalizedTenderRecommendations } from "@/lib/personalized-tenders";
 import {
   buildRecommendationContext,
-  fetchRecommendedTenderCandidates,
-  hasRecommendationSignals,
   RECOMMENDATION_SUMMARY_CANDIDATE_LIMIT,
   RECOMMENDATION_SUMMARY_MINIMUM_RESULTS,
-  selectTenderRecommendations,
 } from "@/lib/tender-recommendations";
 import type { BidStatus, Document as DocType } from "@/types/database";
 
@@ -203,7 +200,7 @@ export default async function DashboardPage() {
     missingChecklistCount = checklistOverview?.filter((item) => item.status === "missing").length ?? 0;
   }
 
-  let relevantTenders: Array<{
+  const tenderRecommendationResult = await getPersonalizedTenderRecommendations<{
     id: string;
     title: string;
     deadline: string | null;
@@ -212,40 +209,18 @@ export default async function DashboardPage() {
     contracting_authority_jib: string | null;
     contract_type: string | null;
     raw_description: string | null;
-  }> = [];
+  }>(supabase, {
+    company: resolvedCompany,
+    select: "id, title, deadline, estimated_value, contracting_authority, contracting_authority_jib, contract_type, raw_description",
+    nowIso,
+    candidateLimit: RECOMMENDATION_SUMMARY_CANDIDATE_LIMIT,
+    minimumResults: RECOMMENDATION_SUMMARY_MINIMUM_RESULTS,
+    excludeTenderIds: existingBidTenderIds,
+    limit: 12,
+    shortlistSize: 8,
+  });
 
-  if (hasRecommendationSignals(recommendationContext)) {
-    const relevantRows = await fetchRecommendedTenderCandidates<{
-      id: string;
-      title: string;
-      deadline: string | null;
-      estimated_value: number | null;
-      contracting_authority: string | null;
-      contracting_authority_jib: string | null;
-      contract_type: string | null;
-      raw_description: string | null;
-      authority_city: string | null;
-      authority_municipality: string | null;
-      authority_canton: string | null;
-      authority_entity: string | null;
-    }>(supabase, recommendationContext, {
-      select: "id, title, deadline, estimated_value, contracting_authority, contracting_authority_jib, contract_type, raw_description",
-      nowIso,
-      limit: RECOMMENDATION_SUMMARY_CANDIDATE_LIMIT,
-    });
-
-    const availableRelevantRows = relevantRows.filter((tender) => !existingBidTenderIds.has(tender.id));
-    const rankedRelevantTenders = selectTenderRecommendations(availableRelevantRows, recommendationContext, {
-      minimumResults: RECOMMENDATION_SUMMARY_MINIMUM_RESULTS,
-    });
-
-    relevantTenders = (
-      await maybeRerankTenderRecommendationsWithAI(rankedRelevantTenders, recommendationContext, {
-        limit: 12,
-        shortlistSize: 8,
-      })
-    ).map(({ tender }) => tender);
-  }
+  const relevantTenders = tenderRecommendationResult.recommendations.map(({ tender }) => tender);
 
   const relevantTenderCount = relevantTenders.length;
   const relevantTenderValue = relevantTenders.reduce((sum, tender) => sum + (Number(tender.estimated_value) || 0), 0);

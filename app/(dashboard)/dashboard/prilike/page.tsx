@@ -3,7 +3,7 @@ import { Heart, Sparkles, Star } from "lucide-react";
 import { OpportunityDashboardCard } from "@/components/dashboard/opportunity-dashboard-card";
 import { TrackedOpportunityCard } from "@/components/dashboard/tracked-opportunity-card";
 import { ProGate } from "@/components/subscription/pro-gate";
-import { scoreOpportunityForCompany, GRANT_MATCH_THRESHOLD } from "@/lib/opportunity-matcher";
+import { getPersonalizedOpportunityRecommendations } from "@/lib/opportunity-recommendations";
 import { getSubscriptionStatus } from "@/lib/subscription";
 import { createClient } from "@/lib/supabase/server";
 
@@ -18,13 +18,7 @@ export default async function PrilikeDashboardPage() {
   const { isSubscribed } = await getSubscriptionStatus(user.id, user.email, supabase);
   if (!isSubscribed) return <ProGate />;
 
-  const [{ data: opportunities }, { data: followsRaw }, { data: company }] = await Promise.all([
-    supabase
-      .from("opportunities")
-      .select("id, slug, type, title, issuer, category, value, deadline, location, ai_summary, ai_difficulty")
-      .eq("published", true)
-      .order("created_at", { ascending: false })
-      .limit(60),
+  const [{ data: followsRaw }, { data: company }] = await Promise.all([
     supabase
       .from("opportunity_follows")
       .select("id, outcome, created_at, opportunity_id, opportunities(id, slug, type, title, issuer, deadline, value, location, ai_summary, ai_difficulty)")
@@ -32,7 +26,7 @@ export default async function PrilikeDashboardPage() {
       .order("created_at", { ascending: false }),
     supabase
       .from("companies")
-      .select("id, keywords, operating_regions")
+      .select("id, industry, keywords, cpv_codes, operating_regions")
       .eq("user_id", user.id)
       .maybeSingle(),
   ]);
@@ -60,28 +54,38 @@ export default async function PrilikeDashboardPage() {
   const activeFollows = follows.filter((follow) => follow.outcome === null);
   const resolvedFollows = follows.filter((follow) => follow.outcome !== null);
   const followedIds = new Set(follows.map((follow) => follow.opportunity_id));
-
-  const allOpportunities = (opportunities ?? []) as Array<{
+  const opportunityRecommendationResult = await getPersonalizedOpportunityRecommendations<{
     id: string;
     slug: string;
-    type: string;
+    type: "tender" | "poticaj";
     title: string;
     issuer: string;
     category: string | null;
+    subcategory: string | null;
+    industry: string | null;
     value: number | null;
     deadline: string | null;
     location: string | null;
+    requirements: string | null;
+    eligibility_signals: string[] | null;
+    description: string | null;
+    status: "active" | "expired" | "draft";
     ai_summary: string | null;
-    ai_difficulty: string | null;
-  }>;
+    ai_who_should_apply: string | null;
+    ai_difficulty: "lako" | "srednje" | "tesko" | null;
+    created_at: string;
+  }>(supabase, {
+    company: {
+      industry: company?.industry ?? null,
+      keywords: company?.keywords ?? [],
+      cpv_codes: company?.cpv_codes ?? [],
+      operating_regions: company?.operating_regions ?? [],
+    },
+    excludeOpportunityIds: followedIds,
+  });
 
-  const allPoticaji = allOpportunities.filter((opportunity) => opportunity.type === "poticaj" && !followedIds.has(opportunity.id));
-  const hasProfile = (company?.keywords?.length ?? 0) > 0 || (company?.operating_regions?.length ?? 0) > 0;
-  const forYou = hasProfile
-    ? allPoticaji.filter((opportunity) => scoreOpportunityForCompany(opportunity, company!) >= GRANT_MATCH_THRESHOLD)
-    : [];
-  const forYouIds = new Set(forYou.map((opportunity) => opportunity.id));
-  const poticaji = allPoticaji.filter((opportunity) => !forYouIds.has(opportunity.id));
+  const forYou = opportunityRecommendationResult.personalized.map(({ opportunity }) => opportunity);
+  const poticaji = opportunityRecommendationResult.others;
 
   return (
     <div className="mx-auto max-w-[1200px] space-y-6">

@@ -2,12 +2,8 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getProfileOptionLabel } from "@/lib/company-profile";
 import { formatCurrencyKM } from "@/lib/currency";
-import { maybeRerankTenderRecommendationsWithAI } from "@/lib/tender-recommendation-rerank";
-import {
-  buildRecommendationContext,
-  buildRecommendationSearchCondition,
-  rankTenderRecommendations,
-} from "@/lib/tender-recommendations";
+import { getPersonalizedTenderRecommendations } from "@/lib/personalized-tenders";
+import { buildRecommendationContext } from "@/lib/tender-recommendations";
 import { Sparkles, ArrowRight, Briefcase } from "lucide-react";
 
 interface RecommendationCardTender {
@@ -41,15 +37,15 @@ export async function RecommendedTenders() {
     .single();
 
   const recommendationContext = company ? buildRecommendationContext(company) : null;
-  const searchCondition = recommendationContext
-    ? buildRecommendationSearchCondition(recommendationContext)
-    : "";
-  const hasRecommendationSignals = recommendationContext
-    ? recommendationContext.keywords.length > 0 ||
-      recommendationContext.cpvPrefixes.length > 0 ||
-      recommendationContext.preferredContractTypes.length > 0 ||
-      recommendationContext.regionTerms.length > 0
-    : false;
+  const recommendationResult = company
+    ? await getPersonalizedTenderRecommendations<RecommendationCardTender>(supabase, {
+        company,
+        select: "id, title, deadline, estimated_value, contracting_authority, contracting_authority_jib, contract_type, raw_description",
+        limit: 3,
+        shortlistSize: 6,
+      })
+    : null;
+  const hasRecommendationSignals = recommendationResult?.hasSignals ?? false;
   const focusLabel = recommendationContext?.profile.primaryIndustry
     ? getProfileOptionLabel(recommendationContext.profile.primaryIndustry)
     : null;
@@ -88,70 +84,7 @@ export async function RecommendedTenders() {
     );
   }
 
-  const resolvedRecommendationContext = recommendationContext;
-
-  // Find matching tenders
-  let query = supabase
-    .from("tenders")
-    .select("id, title, deadline, estimated_value, contracting_authority, contracting_authority_jib, contract_type, raw_description")
-    .gt("deadline", new Date().toISOString());
-
-  if (
-    resolvedRecommendationContext.preferredContractTypes.length > 0 &&
-    resolvedRecommendationContext.preferredContractTypes.length < 3
-  ) {
-    query = query.in("contract_type", resolvedRecommendationContext.preferredContractTypes);
-  }
-
-  if (searchCondition) {
-    query = query.or(searchCondition);
-  }
-
-  const { data } = await query
-    .order("deadline", { ascending: true })
-    .limit(72);
-
-  const authorityJibs = [...new Set(((data ?? []) as RecommendationCardTender[])
-    .map((tender) => tender.contracting_authority_jib)
-    .filter(Boolean) as string[])];
-  const { data: authorityRows } = authorityJibs.length > 0
-    ? await supabase
-        .from("contracting_authorities")
-        .select("jib, city, municipality, canton, entity")
-        .in("jib", authorityJibs)
-    : { data: [] };
-
-  const authorityMap = new Map(
-    (authorityRows ?? []).map((authority) => [authority.jib, authority])
-  );
-
-  const scopedTenders = ((data ?? []) as RecommendationCardTender[]).map((tender) => {
-    const authority = tender.contracting_authority_jib
-      ? authorityMap.get(tender.contracting_authority_jib)
-      : null;
-
-    return {
-      ...tender,
-      authority_city: authority?.city ?? null,
-      authority_municipality: authority?.municipality ?? null,
-      authority_canton: authority?.canton ?? null,
-      authority_entity: authority?.entity ?? null,
-    };
-  });
-
-  const rankedTenders = rankTenderRecommendations(
-    scopedTenders,
-    resolvedRecommendationContext
-  );
-
-  const tenders = await maybeRerankTenderRecommendationsWithAI(
-    rankedTenders,
-    resolvedRecommendationContext,
-    {
-      limit: 3,
-      shortlistSize: 6,
-    }
-  );
+  const tenders = recommendationResult?.recommendations ?? [];
 
   if (tenders.length === 0) return null;
 

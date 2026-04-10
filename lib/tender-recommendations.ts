@@ -411,18 +411,16 @@ function compareScoredRecommendations<TTender extends RecommendationTenderInput>
   a: ScoredTenderRecommendation<TTender>,
   b: ScoredTenderRecommendation<TTender>
 ): number {
-  // Primary: distance (closer first). locationPriority = km when anchor set, else 0-3 tier.
-  if (a.locationPriority !== b.locationPriority) {
-    return a.locationPriority - b.locationPriority;
-  }
-
-  // Within same distance: relevance score descending
   if (a.score !== b.score) {
     return b.score - a.score;
   }
 
   if (a.positiveSignalCount !== b.positiveSignalCount) {
     return b.positiveSignalCount - a.positiveSignalCount;
+  }
+
+  if (a.locationPriority !== b.locationPriority) {
+    return a.locationPriority - b.locationPriority;
   }
 
   return new Date(a.tender.deadline ?? 0).getTime() - new Date(b.tender.deadline ?? 0).getTime();
@@ -559,34 +557,58 @@ export async function fetchRecommendedTenderCandidates<
     return [];
   }
 
-  const queryConditions = [
-    ...buildRecommendationSearchCondition(context)
-      .split(",")
-      .filter(Boolean),
-    ...buildCpvSearchConditions(context.cpvPrefixes),
-    ...(context.preferredContractTypes.length > 0 && context.preferredContractTypes.length < 3
-      ? buildContractTypeSearchConditions(context.preferredContractTypes)
-      : []),
-  ];
   const nowIso = options.nowIso ?? new Date().toISOString();
   const limit = options.limit ?? RECOMMENDATION_SUMMARY_CANDIDATE_LIMIT;
+  const select = options.select ?? "*";
+  const keywordConditions = buildRecommendationSearchCondition(context)
+    .split(",")
+    .filter(Boolean);
+  const cpvConditions = buildCpvSearchConditions(context.cpvPrefixes);
+  const contractConditions =
+    context.preferredContractTypes.length > 0 && context.preferredContractTypes.length < 3
+      ? buildContractTypeSearchConditions(context.preferredContractTypes)
+      : [];
+  const conditionGroups = [keywordConditions, cpvConditions, contractConditions].filter(
+    (conditions) => conditions.length > 0
+  );
 
-  let query = supabase
-    .from("tenders")
-    .select(options.select ?? "*")
-    .gt("deadline", nowIso);
+  const runCandidateQuery = async (conditions: string[]): Promise<TTender[]> => {
+    let query = supabase
+      .from("tenders")
+      .select(select)
+      .gt("deadline", nowIso);
 
-  if (queryConditions.length > 0) {
-    query = query.or(queryConditions.join(","));
+    if (conditions.length > 0) {
+      query = query.or(conditions.join(","));
+    }
+
+    const { data } = await query
+      .order("deadline", { ascending: true, nullsFirst: false })
+      .limit(limit);
+
+    return (data ?? []) as unknown as TTender[];
+  };
+
+  const resultGroups =
+    conditionGroups.length > 0
+      ? await Promise.all(conditionGroups.map((conditions) => runCandidateQuery(conditions)))
+      : [await runCandidateQuery([])];
+  const dedupedRows = new Map<string, TTender>();
+
+  for (const rows of resultGroups) {
+    for (const row of rows) {
+      if (!dedupedRows.has(row.id)) {
+        dedupedRows.set(row.id, row);
+      }
+    }
   }
 
-  const { data } = await query
-    .order("deadline", { ascending: true, nullsFirst: false })
-    .limit(limit);
+  const combinedRows = [...dedupedRows.values()].sort(
+    (first, second) =>
+      new Date(first.deadline ?? 0).getTime() - new Date(second.deadline ?? 0).getTime()
+  );
 
-  const rows = (data ?? []) as unknown as TTender[];
-
-  return enrichTendersWithAuthorityGeo(supabase, rows);
+  return enrichTendersWithAuthorityGeo(supabase, combinedRows);
 }
 
 export async function enrichTendersWithAuthorityGeo<
@@ -637,10 +659,6 @@ export function scoreTenderRecommendation<TTender extends RecommendationTenderIn
   const title = normalizeText(tender.title);
   const description = normalizeText(tender.raw_description);
   const authority = normalizeText(tender.contracting_authority);
-  const authorityCity = normalizeText(tender.authority_city);
-  const authorityMunicipality = normalizeText(tender.authority_municipality);
-  const authorityCanton = normalizeText(tender.authority_canton);
-  const authorityEntity = normalizeText(tender.authority_entity);
   const normalizedCpvCode = normalizeCpvCode(tender.cpv_code);
 
   const titleMatches = context.keywords.filter((keyword) => title.includes(keyword.toLowerCase()));
@@ -748,15 +766,23 @@ export function scoreTenderRecommendation<TTender extends RecommendationTenderIn
     contractMatch &&
     (!hasLocationPreference || locationScope !== "broad");
   const blockedByNegativeTitle = negativeTitleMatches.length > 0 && !cpvMatch && titleMatches.length === 0;
+  const strongBusinessSignal =
+    cpvMatch ||
+    titleMatches.length > 0 ||
+    multiWordMatches.length > 0 ||
+    matchedKeywords.length >= 2;
+  const broadLocationBlocked =
+    hasLocationPreference && locationScope === "broad" && !strongBusinessSignal;
   const fallbackEligible =
     !blockedByNegativeTitle &&
     contractMatch &&
+    !broadLocationBlocked &&
     score >= 2 &&
     (cpvMatch || titleMatches.length > 0 || matchedKeywords.length > 0);
   const qualifies =
     ((hasPositiveSignal && score >= (cpvMatch ? 2 : 4)) || fallbackTypeScopedMatch) &&
     contractMatch &&
-    (!hasLocationPreference || locationScope !== "broad") &&
+    !broadLocationBlocked &&
     !blockedByNegativeTitle;
 
   const reasons = [
