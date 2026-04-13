@@ -390,7 +390,7 @@ function HeroSection({ isLoggedIn }: { isLoggedIn?: boolean }) {
           transition={{ duration: 1, delay: 0.6 }}
           className="mx-auto mt-16 max-w-4xl border-t border-slate-200/60 pt-10"
         >
-          <p className="text-[14px] font-bold text-slate-500 uppercase tracking-widest mb-6">Pouzdano praćenje sa svih ključnih bh. izvora</p>
+          <p className="mb-6 text-center text-[14px] font-bold uppercase tracking-widest text-slate-500">Pouzdano praćenje sa svih ključnih bh. izvora</p>
           <div className="flex flex-wrap justify-center gap-x-8 gap-y-4 text-slate-600 font-bold text-[15px]">
             <span className="flex items-center gap-2"><Landmark className="size-5 text-slate-400" /> Portal Javnih Nabavki</span>
             <span className="flex items-center gap-2"><Building className="size-5 text-slate-400" /> Vlada FBiH i RS</span>
@@ -408,9 +408,9 @@ function HeroSection({ isLoggedIn }: { isLoggedIn?: boolean }) {
           className="mt-16 grid gap-5 text-left md:grid-cols-3"
         >
           {[
-            { metric: "3x", title: "više tendera", desc: "Sistem filtrira tržište i izdvaja samo one prilike koje bi vjerovatno propustili ručnim traženjem." },
-            { metric: "10x", title: "brža priprema", desc: "Automatska analiza obimne dokumentacije uklanja desetine sati dosadnog ručnog čitanja." },
-            { metric: "2x", title: "veća potencijalna zarada", desc: "Bez propuštenih prilika i bez odbačenih prijava zbog sitnih grešaka koje bi napravili da radite sami." },
+            { metric: "4-6 sati", title: "toliko traje ručno pretraživanje jednog tendera", desc: "Mi to radimo za vas za 30 sekundi." },
+            { metric: "1 papir", title: "dovoljan da vam odbiju cijelu ponudu", desc: "Sistem provjeri svaki zahtjev prije nego pošaljete." },
+            { metric: "47.000+", title: "tendera godišnje u BiH", desc: "Koliko ste ih propustili jer niste stigli provjeriti portal tog dana?" },
           ].map((item) => (
             <motion.div
               variants={fadeUpItem}
@@ -435,27 +435,27 @@ function HowItWorksSection() {
   const steps = [
     {
       icon: Zap,
-      badge: "SKENIRANJE",
-      title: "Pronalazak tendera",
-      desc: "Skeniramo portale i filtriramo tendere precizno prema vašoj djelatnosti i lokaciji.",
+      badge: "POSTAVLJANJE",
+      title: "Recite nam šta radite",
+      desc: "Unesete djelatnost i lokaciju vaše firme. To je sve.",
     },
     {
       icon: Bell,
-      badge: "OBAVJEŠTAVANJE",
-      title: "Obavijest na email",
-      desc: "Čim se pojavi novi tender za vas — odmah dobijate jasan email sažetak bez logiranja.",
+      badge: "TENDERI",
+      title: "Vaši tenderi su već tu",
+      desc: "Otvorite stranicu i vidite samo tendere koji su za vas. Nema pretraživanja. Nema gubljenja vremena. Novi tenderi stižu i na email čim izađu.",
     },
     {
       icon: FileText,
-      badge: "ANALIZA",
-      title: "Jasni zahtjevi",
-      desc: "Odmah vidite koje tačno dokumente i uvjerenja trebate priložiti za sigurnu prijavu.",
+      badge: "ČITANJE",
+      title: "Priložite dokument — mi čitamo",
+      desc: "Kliknete na tender, priložite dokumentaciju sa portala i sistem vam za tren izvuče listu svega što trebate pripremiti.",
     },
     {
       icon: CheckCircle,
-      badge: "VALIDACIJA",
-      title: "Priprema bez greške",
-      desc: "Sistem vas upozorava na sve papire koji nedostaju prije nego što se ponuda pošalje.",
+      badge: "PRIJAVA",
+      title: "Znate točno šta treba",
+      desc: "Sistem vas upozori šta nedostaje i vodi vas kroz svaki korak — da ponuda bude ispravna kada je pošaljete.",
     },
   ];
 
