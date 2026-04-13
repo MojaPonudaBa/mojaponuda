@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
-import { resolveManagedCompanyAccess } from "@/lib/bids/access";
 import { ensureBidChecklist } from "@/lib/bids/checklist";
+import { resolveManagedCompanyAccess } from "@/lib/bids/access";
+import { claimPreparationAccess } from "@/lib/preparation-credits";
 import { getSubscriptionStatus } from "@/lib/subscription";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 import type { Tender } from "@/types/database";
 
 export async function POST(request: NextRequest) {
@@ -16,7 +17,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Niste prijavljeni." }, { status: 401 });
   }
 
-  const { isSubscribed, plan } = await getSubscriptionStatus(user.id, user.email);
+  const subscriptionStatus = await getSubscriptionStatus(user.id, user.email, supabase);
+  const { isSubscribed, plan, subscription } = subscriptionStatus;
 
   if (!isSubscribed) {
     return NextResponse.json(
@@ -105,27 +107,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Tender nije pronađen." }, { status: 400 });
   }
 
-  if (plan.id === "starter") {
-    const { data: unlockedTender } = await supabase
-      .from("unlocked_tenders")
-      .select("id")
-      .eq("user_id", user.id)
-      .eq("tender_id", resolvedTenderId)
-      .eq("status", "paid")
-      .maybeSingle();
-
-    if (!unlockedTender) {
-      return NextResponse.json(
-        {
-          error: "Priprema ponude za ovaj tender nije otključana.",
-          code: "PAYWALL_REQUIRED",
-          tenderId: resolvedTenderId,
-        },
-        { status: 403 },
-      );
-    }
-  }
-
   const { data: tenderData, error: tenderError } = await supabase
     .from("tenders")
     .select("*")
@@ -136,11 +117,33 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Tender nije pronađen." }, { status: 404 });
   }
 
-  const tender = tenderData as Tender;
+  const bidId = crypto.randomUUID();
+  const claimResult = await claimPreparationAccess(supabase, {
+    userId: user.id,
+    companyId: access.companyId,
+    bidId,
+    tenderId: resolvedTenderId,
+    plan,
+    subscription,
+  });
 
+  if (!claimResult.ok) {
+    return NextResponse.json(
+      {
+        error: claimResult.message,
+        code: claimResult.code,
+        summary: claimResult.summary,
+        agencyClientId: access.agencyClientId,
+      },
+      { status: 403 },
+    );
+  }
+
+  const tender = tenderData as Tender;
   const { data: bid, error: bidError } = await supabase
     .from("bids")
     .insert({
+      id: bidId,
       company_id: access.companyId,
       tender_id: resolvedTenderId,
       status: "draft",
@@ -149,6 +152,10 @@ export async function POST(request: NextRequest) {
     .single();
 
   if (bidError) {
+    if (claimResult.consumptionId) {
+      await supabase.from("preparation_consumptions").delete().eq("id", claimResult.consumptionId);
+    }
+
     console.error("Bid create error:", bidError);
     return NextResponse.json({ error: "Greška pri kreiranju ponude." }, { status: 500 });
   }
@@ -167,10 +174,17 @@ export async function POST(request: NextRequest) {
         checklist_items_added: checklist.checklistItemsAdded,
         auto_attached: checklist.autoAttached,
         checklist_source: checklist.source,
+        preparation_source: claimResult.source,
       },
       { status: 201 },
     );
   }
 
-  return NextResponse.json({ bid }, { status: 201 });
+  return NextResponse.json(
+    {
+      bid,
+      preparation_source: claimResult.source,
+    },
+    { status: 201 },
+  );
 }

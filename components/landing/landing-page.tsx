@@ -482,7 +482,7 @@ function PricingSection({ isLoggedIn }: { isLoggedIn?: boolean }) {
           <div className="absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-blue-100/80 via-white/0 to-transparent" />
           <div className="absolute -left-20 top-20 size-64 rounded-full bg-blue-200/35 blur-3xl" />
           <div className="absolute -right-20 bottom-0 size-72 rounded-full bg-sky-200/30 blur-3xl" />
-          <div className="absolute inset-x-10 top-[9.25rem] h-px bg-gradient-to-r from-transparent via-blue-200/80 to-transparent" />
+          <div className="pointer-events-none absolute inset-x-16 top-[10.5rem] -z-10 h-px bg-gradient-to-r from-transparent via-blue-200/70 to-transparent" />
 
           <div className="relative">
             <div className="mb-12 text-center">
@@ -502,15 +502,15 @@ function PricingSection({ isLoggedIn }: { isLoggedIn?: boolean }) {
               <motion.div variants={fadeUpItem} className="flex h-full flex-col rounded-[1.75rem] border border-white/80 bg-white/92 p-6 shadow-[0_16px_45px_rgba(15,23,42,0.08)] backdrop-blur-md transition-all duration-300 hover:-translate-y-1.5 hover:border-blue-200 hover:shadow-[0_22px_55px_rgba(37,99,235,0.12)] sm:p-8">
                 <div className="inline-flex w-fit rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.24em] text-slate-500">Paket</div>
                 <h3 className="mt-5 font-heading text-xl font-bold text-slate-900 sm:text-2xl">Osnovni</h3>
-                <p className="mt-2 min-h-[52px] text-base leading-relaxed text-slate-600">Praćenje svih tendera. Plaćate jednokratno ako želite pripremu.</p>
+                <p className="mt-2 min-h-[52px] text-base leading-relaxed text-slate-600">Praćenje svih tendera. Plaćate samo kada zaista želite pripremu ponude.</p>
                 <div className="mt-6 flex items-end gap-2">
                   <span className="font-heading text-4xl font-bold text-slate-900">49</span>
                   <span className="pb-1 text-base font-semibold text-slate-500">KM / mj.</span>
                 </div>
-                <p className="mt-2 text-[14px] font-bold tracking-tight text-blue-600">+ 15 KM po svakoj pripremi ponude</p>
+                <p className="mt-2 text-[14px] font-bold tracking-tight text-blue-600">+ 5 KM po svakoj pripremi ponude</p>
                 <div className="mt-6 h-px bg-gradient-to-r from-blue-100 via-slate-100 to-transparent" />
                 <div className="mt-6 space-y-4">
-                  {["Svi tenderi iz vaše djelatnosti", "Email obavijesti i pregledi", "Uvid u relevantnost dokumenta", "Priprema ponude dostupna"].map((f) => (
+                  {["Svi tenderi iz vaše djelatnosti", "Email obavijesti i pregledi", "Uvid u relevantnost dokumenta", "Pripremu kupujete samo kada vam treba"].map((f) => (
                     <div key={f} className="flex items-start gap-3 text-base text-slate-700">
                       <CheckCircle className="mt-0.5 size-5 shrink-0 text-blue-500" />
                       <span className="leading-snug">{f}</span>
@@ -532,15 +532,15 @@ function PricingSection({ isLoggedIn }: { isLoggedIn?: boolean }) {
                 <div className="absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-blue-300/80 to-transparent" />
                 <div className="inline-flex w-fit rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.24em] text-blue-200">Premium</div>
                 <h3 className="mt-5 font-heading text-xl font-bold text-white sm:text-2xl">Puni Paket</h3>
-                <p className="mt-2 min-h-[52px] text-base leading-relaxed text-slate-300">Predajete bez greške. Priprema i pregled uključena potpuno besplatno.</p>
+                <p className="mt-2 min-h-[52px] text-base leading-relaxed text-slate-300">20 besplatnih priprema ponude mjesečno, a dodatne pakete dodajete samo kada zatrebaju.</p>
                 <div className="mt-6 flex items-end gap-2">
                   <span className="font-heading text-5xl font-bold text-white">99</span>
                   <span className="pb-1 text-base font-semibold text-blue-100">KM / mj.</span>
                 </div>
-                <p className="mt-2 text-[14px] font-bold tracking-tight text-blue-300">Konačna cijena, nema doplata</p>
+                <p className="mt-2 text-[14px] font-bold tracking-tight text-blue-300">20 priprema uključeno svakog mjeseca</p>
                 <div className="mt-6 h-px bg-gradient-to-r from-blue-400/40 via-white/10 to-transparent" />
                 <div className="mt-6 flex-grow space-y-4">
-                  {["Sve iz Osnovnog paketa", "Besplatna priprema svake ponude", "Praćenje i provjera dokumentacije", "Aktivno praćenje konkurencije"].map((f, i) => (
+                  {["Sve iz Osnovnog paketa", "20 besplatnih priprema ponude mjesečno", "Praćenje i provjera dokumentacije", "Aktivno praćenje konkurencije"].map((f, i) => (
                     <div key={f} className={`flex items-start gap-3 text-base ${i === 0 ? "font-semibold text-blue-100" : "font-bold text-white"}`}>
                       <CheckCircle className={`mt-0.5 size-5 shrink-0 ${i === 0 ? "text-blue-300" : "text-blue-400"}`} />
                       <span className="leading-snug">{f}</span>
@@ -561,10 +561,10 @@ function PricingSection({ isLoggedIn }: { isLoggedIn?: boolean }) {
                   <span className="font-heading text-4xl font-bold text-slate-900">149+</span>
                   <span className="pb-1 text-base font-semibold text-slate-500">KM / mj.</span>
                 </div>
-                <p className="mt-2 text-[14px] font-bold tracking-tight text-blue-600">+25 KM za svaku dodatnu firmu</p>
+                <p className="mt-2 text-[14px] font-bold tracking-tight text-blue-600">10 besplatnih priprema mjesečno za svakog klijenta</p>
                 <div className="mt-6 h-px bg-gradient-to-r from-blue-100 via-slate-100 to-transparent" />
                 <div className="mt-6 flex-grow space-y-4">
-                  {["Sve pogodnosti Punog paketa", "Vođenje više firmi odjednom", "Zasebni logički profili klijenata", "Uspostavljanje centralne kontrole"].map((f, i) => (
+                  {["Sve pogodnosti Punog paketa", "10 priprema mjesečno za svaku firmu", "Vođenje više firmi odjednom", "Zasebni logički profili klijenata"].map((f, i) => (
                     <div key={f} className={`flex items-start gap-3 text-base ${i === 0 ? "font-semibold text-slate-500" : "text-slate-700"}`}>
                       <CheckCircle className="mt-0.5 size-5 shrink-0 text-blue-500" />
                       <span className="leading-snug">{f}</span>

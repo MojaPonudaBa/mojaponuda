@@ -9,6 +9,7 @@ import {
   RECOMMENDATION_SUMMARY_CANDIDATE_LIMIT,
   RECOMMENDATION_SUMMARY_MINIMUM_RESULTS,
 } from "@/lib/tender-recommendations";
+import { getPreparationUsageSummary } from "@/lib/preparation-credits";
 import type { BidStatus } from "@/types/database";
 
 function formatCompactCurrency(value: number | null | undefined): string {
@@ -35,6 +36,19 @@ function formatDeadlineMeta(days: number | null): string {
   return `${days} dana do roka`;
 }
 
+function buildPreparationStatus(
+  summary: Awaited<ReturnType<typeof getPreparationUsageSummary>>,
+  agencyClientId: string,
+) {
+  return {
+    label: "Pripreme klijenta",
+    value: `${summary.totalRemaining} dostupno`,
+    description: `${summary.includedRemaining} od ${summary.includedLimit} mjesečnih priprema još je slobodno, uz ${summary.purchasedRemaining} kupljenih u rezervi za ovog klijenta.`,
+    href: `/dashboard/subscription?agencyClientId=${agencyClientId}#pripreme`,
+    cta: summary.totalRemaining > 0 ? "Pregledaj stanje" : "Dodaj paket priprema",
+  };
+}
+
 export default async function AgencyClientHomePage({
   params,
 }: {
@@ -48,7 +62,8 @@ export default async function AgencyClientHomePage({
 
   if (!user) redirect("/login");
 
-  const { plan } = await getSubscriptionStatus(user.id, user.email, supabase);
+  const subscriptionStatus = await getSubscriptionStatus(user.id, user.email, supabase);
+  const { plan } = subscriptionStatus;
   if (plan.id !== "agency") redirect("/dashboard");
 
   const { data: agencyClient } = await supabase
@@ -375,6 +390,13 @@ export default async function AgencyClientHomePage({
     },
   ];
 
+  const preparationSummary = await getPreparationUsageSummary(supabase, {
+    userId: user.id,
+    companyId: company.id,
+    plan,
+    subscription: subscriptionStatus.subscription,
+  });
+
   return (
     <DashboardHomeOverview
       companyName={company.name}
@@ -392,6 +414,7 @@ export default async function AgencyClientHomePage({
         contracting_authority: tender.contracting_authority,
       }))}
       quickLinks={quickLinks}
+      preparationStatus={buildPreparationStatus(preparationSummary, agencyClientId)}
       subscriptionActive
       isLocked={false}
       tenderHrefBase={`${clientBase}/tenders`}

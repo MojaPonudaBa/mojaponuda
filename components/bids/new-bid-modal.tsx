@@ -14,7 +14,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, Loader2, Briefcase, Search, ArrowLeft } from "lucide-react";
+import { Plus, Loader2, Briefcase, Search, ArrowLeft, ArrowUpRight } from "lucide-react";
 
 interface Tender {
   id: string;
@@ -41,6 +41,7 @@ export function NewBidModal({
   const [manualAuthority, setManualAuthority] = useState("");
   const [isManual, setIsManual] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [assistAction, setAssistAction] = useState<{ label: string; href: string } | null>(null);
   const [loading, setLoading] = useState(false);
 
   const filteredTenders = tenders.filter((tender) =>
@@ -54,12 +55,14 @@ export function NewBidModal({
     setManualAuthority("");
     setIsManual(false);
     setError(null);
+    setAssistAction(null);
     setLoading(false);
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    setAssistAction(null);
 
     if (!selectedTender && !manualTitle.trim()) {
       setError("Odaberite tender ili unesite naziv rucno.");
@@ -83,6 +86,26 @@ export function NewBidModal({
       const data = await res.json();
 
       if (!res.ok) {
+        if (data.code === "PREPARATION_CREDITS_REQUIRED") {
+          const resolvedAgencyClientId =
+            (data.agencyClientId as string | null | undefined) ?? agencyClientId ?? null;
+          const targetHref = resolvedAgencyClientId
+            ? `/dashboard/subscription?agencyClientId=${resolvedAgencyClientId}#pripreme`
+            : "/dashboard/subscription#pripreme";
+
+          setError(data.error || "Nemate dostupnu pripremu za nastavak.");
+          setAssistAction({ label: "Dopuni pripreme", href: targetHref });
+          setLoading(false);
+          return;
+        }
+
+        if (data.code === "SUBSCRIPTION_REQUIRED" || data.code === "LIMIT_REACHED") {
+          setError(data.error || "Za nastavak je potrebna aktivna pretplata.");
+          setAssistAction({ label: "Pogledaj pakete", href: "/dashboard/subscription" });
+          setLoading(false);
+          return;
+        }
+
         setError(data.error || "Greska pri kreiranju ponude.");
         setLoading(false);
         return;
@@ -136,6 +159,25 @@ export function NewBidModal({
           {error ? (
             <div className="rounded-xl border border-red-100 bg-red-50 p-4 text-sm font-medium text-red-600">
               {error}
+            </div>
+          ) : null}
+
+          {assistAction ? (
+            <div className="rounded-xl border border-blue-100 bg-blue-50 p-4">
+              <p className="text-sm leading-6 text-blue-900">
+                Potrebna vam je još jedna radnja prije otvaranja ponude. Sistem vas vodi direktno na pravo mjesto.
+              </p>
+              <Button
+                type="button"
+                onClick={() => {
+                  setOpen(false);
+                  router.push(assistAction.href);
+                }}
+                className="mt-3 h-10 rounded-xl bg-primary px-4 text-sm font-bold text-white hover:bg-blue-700"
+              >
+                {assistAction.label}
+                <ArrowUpRight className="ml-2 size-4" />
+              </Button>
             </div>
           ) : null}
 

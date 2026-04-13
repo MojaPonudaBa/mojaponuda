@@ -1,5 +1,8 @@
 "use client";
 
+import { useRouter } from "next/navigation";
+import { CheckCircle, Zap } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -7,9 +10,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { CheckCircle, Zap } from "lucide-react";
-import { useRouter } from "next/navigation";
 
 interface PaywallModalProps {
   isOpen: boolean;
@@ -19,27 +19,55 @@ interface PaywallModalProps {
   limitType: "tenders" | "storage" | "members" | "feature";
   isPerTenderUnlock?: boolean;
   tenderId?: string;
+  ctaLabel?: string;
+  ctaHref?: string;
+  featureList?: string[];
 }
+
+const DEFAULT_FEATURES = [
+  "Profesionalnu pripremu ponude kada odlučite aplicirati",
+  "Početnu listu dokumenata i koraka za rad",
+  "Pregled šta još nedostaje prije slanja",
+  "Manje propuštenih detalja i više kontrole nad ponudom",
+];
+
+const CREDIT_FEATURES = [
+  "Pregled koliko vam je priprema ostalo u ovom ciklusu",
+  "Kupovinu dodatnih paketa priprema bez komplikacija",
+  "Jasan pregled potrošnje za račun ili klijenta",
+  "Neprekinut rad na tenderu čim dopunite pripreme",
+];
 
 export function PaywallModal({
   isOpen,
   onClose,
   title,
   description,
-  limitType,
   isPerTenderUnlock,
   tenderId,
+  ctaLabel,
+  ctaHref,
+  featureList,
 }: PaywallModalProps) {
   const router = useRouter();
 
-  const handleUpgrade = () => {
-    if (isPerTenderUnlock && tenderId) {
-      router.push(`/dashboard/subscription/checkout-tender?tenderId=${tenderId}`);
-    } else {
-      router.push("/dashboard/subscription");
-    }
+  const resolvedHref =
+    ctaHref ??
+    (isPerTenderUnlock && tenderId
+      ? `/dashboard/subscription#pripreme`
+      : "/dashboard/subscription");
+
+  const resolvedLabel =
+    ctaLabel ??
+    (isPerTenderUnlock ? "Dopuni pripreme i nastavi" : "Pogledaj pakete");
+
+  const resolvedFeatures =
+    featureList ?? (isPerTenderUnlock ? CREDIT_FEATURES : DEFAULT_FEATURES);
+
+  function handlePrimaryAction() {
+    router.push(resolvedHref);
     onClose();
-  };
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -48,69 +76,31 @@ export function PaywallModal({
           <div className="mx-auto mb-4 flex size-12 items-center justify-center rounded-full bg-blue-100">
             <Zap className="size-6 text-blue-600" />
           </div>
-          <DialogTitle className="text-center text-xl font-bold">
-            {title}
-          </DialogTitle>
-          <DialogDescription className="text-center pt-2">
-            {description}
-          </DialogDescription>
+          <DialogTitle className="text-center text-xl font-bold">{title}</DialogTitle>
+          <DialogDescription className="pt-2 text-center">{description}</DialogDescription>
         </DialogHeader>
 
-        {!isPerTenderUnlock && (
-          <div className="my-4 rounded-xl bg-slate-50 p-4 border border-slate-100">
-            <h4 className="mb-3 font-semibold text-sm text-slate-900">
-              Uz Puni paket dobijate:
-            </h4>
-            <ul className="space-y-2 text-sm">
-              <li className="flex items-center gap-2">
-                <CheckCircle className="size-4 text-emerald-500" />
-                <span>Profesionalnu pripremu ponude kada odlučite aplicirati</span>
-              </li>
-              <li className="flex items-center gap-2">
-                <CheckCircle className="size-4 text-emerald-500" />
-                <span>Početnu listu dokumenata i koraka za rad</span>
-              </li>
-              <li className="flex items-center gap-2">
-                <CheckCircle className="size-4 text-emerald-500" />
-                <span>Pregled šta još nedostaje prije slanja</span>
-              </li>
-              <li className="flex items-center gap-2">
-                <CheckCircle className="size-4 text-emerald-500" />
-                <span>Manje propuštenih detalja i više kontrole nad ponudom</span>
-              </li>
-            </ul>
-          </div>
-        )}
-
-        {isPerTenderUnlock && (
-          <div className="my-4 rounded-xl bg-blue-50/50 p-4 border border-blue-100">
-            <h4 className="mb-3 font-semibold text-sm text-slate-900">
-              Plaćanje po tenderu uključuje:
-            </h4>
-            <ul className="space-y-2 text-sm">
-              <li className="flex items-center gap-2">
+        <div className="my-4 rounded-xl border border-slate-100 bg-slate-50 p-4">
+          <h4 className="mb-3 text-sm font-semibold text-slate-900">
+            {isPerTenderUnlock ? "Ovo dobijate odmah:" : "Uz paket dobijate:"}
+          </h4>
+          <ul className="space-y-2 text-sm">
+            {resolvedFeatures.map((feature) => (
+              <li key={feature} className="flex items-center gap-2">
                 <CheckCircle className="size-4 text-blue-500" />
-                <span>AI analizu kompletne tenderske dokumentacije</span>
+                <span>{feature}</span>
               </li>
-              <li className="flex items-center gap-2">
-                <CheckCircle className="size-4 text-blue-500" />
-                <span>Automatsko kreiranje zadataka i liste zahtjeva</span>
-              </li>
-              <li className="flex items-center gap-2">
-                <CheckCircle className="size-4 text-blue-500" />
-                <span>Trajni pristup ponudi u vašem profilu</span>
-              </li>
-            </ul>
-          </div>
-        )}
+            ))}
+          </ul>
+        </div>
 
         <div className="flex flex-col gap-2">
           <Button
             size="lg"
-            className="w-full font-bold bg-primary hover:bg-blue-700"
-            onClick={handleUpgrade}
+            className="w-full bg-primary font-bold hover:bg-blue-700"
+            onClick={handlePrimaryAction}
           >
-            {isPerTenderUnlock ? "Otključaj pripremu za ovaj tender" : "Pogledaj Puni paket"}
+            {resolvedLabel}
           </Button>
           <Button variant="ghost" onClick={onClose} className="w-full text-slate-500">
             Možda kasnije

@@ -15,6 +15,7 @@ import {
   RECOMMENDATION_SUMMARY_CANDIDATE_LIMIT,
   RECOMMENDATION_SUMMARY_MINIMUM_RESULTS,
 } from "@/lib/tender-recommendations";
+import { getPreparationUsageSummary } from "@/lib/preparation-credits";
 import type { BidStatus, Document as DocType } from "@/types/database";
 
 function formatCompactCurrency(value: number | null | undefined): string {
@@ -39,6 +40,39 @@ function formatDeadlineMeta(days: number | null): string {
   if (days <= 0) return "Rok je danas";
   if (days === 1) return "1 dan do roka";
   return `${days} dana do roka`;
+}
+
+function buildPreparationStatus(summary: Awaited<ReturnType<typeof getPreparationUsageSummary>>) {
+  if (summary.planId === "basic") {
+    return {
+      label: "Pripreme",
+      value: "Zaključano",
+      description: "Za pokretanje pripreme ponude aktivirajte Osnovni paket ili viši.",
+      href: "/dashboard/subscription",
+      cta: "Pogledaj pakete",
+    };
+  }
+
+  if (summary.planId === "starter") {
+    return {
+      label: "Pripreme",
+      value: `${summary.totalRemaining} dostupno`,
+      description:
+        summary.totalRemaining > 0
+          ? `${summary.purchasedRemaining} kupljenih priprema trenutno je spremno. Dodatne pripreme kupujete po ${summary.payAsYouGoPrice ?? 0} KM ili kroz paket.`
+          : `Trenutno nemate dostupnu pripremu. Kupite novu za ${summary.payAsYouGoPrice ?? 0} KM ili uzmite paket priprema.`,
+      href: "/dashboard/subscription#pripreme",
+      cta: summary.totalRemaining > 0 ? "Upravljaj pripremama" : "Dopuni pripreme",
+    };
+  }
+
+  return {
+    label: "Pripreme",
+    value: `${summary.totalRemaining} dostupno`,
+    description: `${summary.includedRemaining} od ${summary.includedLimit} uključenih priprema još je dostupno, uz ${summary.purchasedRemaining} kupljenih u rezervi.`,
+    href: "/dashboard/subscription#pripreme",
+    cta: summary.totalRemaining > 0 ? "Pregledaj potrošnju" : "Dodaj paket priprema",
+  };
 }
 
 export default async function DashboardPage() {
@@ -382,6 +416,13 @@ export default async function DashboardPage() {
     },
   ];
 
+  const preparationSummary = await getPreparationUsageSummary(supabase, {
+    userId: user.id,
+    companyId: resolvedCompany.id,
+    plan: subscriptionStatus.plan,
+    subscription: subscriptionStatus.subscription,
+  });
+
   return (
     <DashboardHomeOverview
       companyName={resolvedCompany.name}
@@ -399,6 +440,7 @@ export default async function DashboardPage() {
         contracting_authority: tender.contracting_authority,
       }))}
       quickLinks={quickLinks}
+      preparationStatus={buildPreparationStatus(preparationSummary)}
       subscriptionActive={subscriptionStatus.isSubscribed}
       isLocked={subscriptionStatus.plan?.id === "basic"}
     />

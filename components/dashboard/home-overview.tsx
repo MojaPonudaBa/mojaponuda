@@ -68,6 +68,14 @@ interface DashboardQuickLink {
   description: string;
 }
 
+interface PreparationStatusCard {
+  label: string;
+  value: string;
+  description: string;
+  href: string;
+  cta: string;
+}
+
 interface DashboardHomeOverviewProps {
   companyName: string;
   currentPlanName: string;
@@ -78,6 +86,7 @@ interface DashboardHomeOverviewProps {
   dashboardBidRows: DashboardBidRow[];
   recommendedTenders: DashboardTenderCard[];
   quickLinks: DashboardQuickLink[];
+  preparationStatus?: PreparationStatusCard | null;
   subscriptionActive: boolean;
   isLocked: boolean;
   tenderHrefBase?: string;
@@ -282,6 +291,7 @@ export function DashboardHomeOverview({
   dashboardBidRows,
   recommendedTenders,
   quickLinks,
+  preparationStatus,
   subscriptionActive,
   isLocked,
   tenderHrefBase = "/dashboard/tenders",
@@ -578,6 +588,24 @@ export function DashboardHomeOverview({
                 <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Paket</p>
                 <p className="mt-2 text-lg font-semibold text-white">{currentPlanName}</p>
               </div>
+              {preparationStatus ? (
+                <Link
+                  href={preparationStatus.href}
+                  className="block rounded-xl border border-blue-400/20 bg-blue-500/10 p-4 transition-all hover:-translate-y-0.5 hover:bg-blue-500/15"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-blue-200">
+                        {preparationStatus.label}
+                      </p>
+                      <p className="mt-2 text-lg font-semibold text-white">{preparationStatus.value}</p>
+                      <p className="mt-2 text-sm leading-6 text-slate-300">{preparationStatus.description}</p>
+                    </div>
+                    <ArrowUpRight className="size-4 shrink-0 text-sky-300" />
+                  </div>
+                  <p className="mt-3 text-sm font-semibold text-sky-300">{preparationStatus.cta}</p>
+                </Link>
+              ) : null}
               <div className="rounded-xl border border-white/10 bg-white/5 p-4">
                 <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Preporuke</p>
                 <p className="mt-2 text-sm leading-6 text-slate-300">

@@ -328,6 +328,119 @@ export interface Database {
         };
         Relationships: [];
       };
+      preparation_credit_purchases: {
+        Row: {
+          id: string;
+          user_id: string;
+          company_id: string;
+          agency_client_id: string | null;
+          pack_id: string;
+          credits_granted: number;
+          price_paid: number;
+          lemonsqueezy_order_id: string | null;
+          lemonsqueezy_variant_id: string | null;
+          status: string;
+          created_at: string;
+          paid_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          company_id: string;
+          agency_client_id?: string | null;
+          pack_id: string;
+          credits_granted: number;
+          price_paid?: number;
+          lemonsqueezy_order_id?: string | null;
+          lemonsqueezy_variant_id?: string | null;
+          status?: string;
+          created_at?: string;
+          paid_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          company_id?: string;
+          agency_client_id?: string | null;
+          pack_id?: string;
+          credits_granted?: number;
+          price_paid?: number;
+          lemonsqueezy_order_id?: string | null;
+          lemonsqueezy_variant_id?: string | null;
+          status?: string;
+          created_at?: string;
+          paid_at?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "preparation_credit_purchases_agency_client_id_fkey";
+            columns: ["agency_client_id"];
+            referencedRelation: "agency_clients";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "preparation_credit_purchases_company_id_fkey";
+            columns: ["company_id"];
+            referencedRelation: "companies";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      preparation_consumptions: {
+        Row: {
+          id: string;
+          user_id: string;
+          company_id: string;
+          bid_id: string;
+          purchase_id: string | null;
+          source: string;
+          billing_cycle_start: string | null;
+          billing_cycle_end: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          company_id: string;
+          bid_id: string;
+          purchase_id?: string | null;
+          source: string;
+          billing_cycle_start?: string | null;
+          billing_cycle_end?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          company_id?: string;
+          bid_id?: string;
+          purchase_id?: string | null;
+          source?: string;
+          billing_cycle_start?: string | null;
+          billing_cycle_end?: string | null;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "preparation_consumptions_bid_id_fkey";
+            columns: ["bid_id"];
+            referencedRelation: "bids";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "preparation_consumptions_company_id_fkey";
+            columns: ["company_id"];
+            referencedRelation: "companies";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "preparation_consumptions_purchase_id_fkey";
+            columns: ["purchase_id"];
+            referencedRelation: "preparation_credit_purchases";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
       contracting_authorities: {
         Row: {
           id: string;
@@ -1078,6 +1191,14 @@ export type BidDocumentUpdate = Database["public"]["Tables"]["bid_documents"]["U
 export type Subscription = Database["public"]["Tables"]["subscriptions"]["Row"];
 export type SubscriptionInsert = Database["public"]["Tables"]["subscriptions"]["Insert"];
 export type SubscriptionUpdate = Database["public"]["Tables"]["subscriptions"]["Update"];
+
+export type PreparationCreditPurchase = Database["public"]["Tables"]["preparation_credit_purchases"]["Row"];
+export type PreparationCreditPurchaseInsert = Database["public"]["Tables"]["preparation_credit_purchases"]["Insert"];
+export type PreparationCreditPurchaseUpdate = Database["public"]["Tables"]["preparation_credit_purchases"]["Update"];
+
+export type PreparationConsumption = Database["public"]["Tables"]["preparation_consumptions"]["Row"];
+export type PreparationConsumptionInsert = Database["public"]["Tables"]["preparation_consumptions"]["Insert"];
+export type PreparationConsumptionUpdate = Database["public"]["Tables"]["preparation_consumptions"]["Update"];
 
 export type ContractingAuthority = Database["public"]["Tables"]["contracting_authorities"]["Row"];
 export type ContractingAuthorityInsert = Database["public"]["Tables"]["contracting_authorities"]["Insert"];

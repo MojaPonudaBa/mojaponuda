@@ -18,6 +18,7 @@ interface CreateCheckoutParams {
   userEmail: string;
   userId: string;
   redirectUrl?: string;
+  customData?: Record<string, string>;
 }
 
 interface CheckoutResponse {
@@ -34,7 +35,15 @@ export async function createCheckout({
   userEmail,
   userId,
   redirectUrl,
+  customData,
 }: CreateCheckoutParams): Promise<string> {
+  const resolvedCustomData = Object.fromEntries(
+    Object.entries({
+      user_id: userId,
+      ...(customData ?? {}),
+    }).filter(([, value]) => Boolean(value)),
+  );
+
   const body = {
     data: {
       type: "checkouts",
@@ -46,9 +55,7 @@ export async function createCheckout({
         },
         checkout_data: {
           email: userEmail,
-          custom: {
-            user_id: userId,
-          },
+          custom: resolvedCustomData,
         },
         product_options: {
           redirect_url: redirectUrl ?? `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/subscription`,

@@ -36,6 +36,7 @@ export function PricingTable({
       {visiblePlans.map((plan) => {
         const isCurrent = currentPlanId === plan.id;
         const isPopular = plan.id === "pro";
+        const requiresPortalDowngrade = plan.id === "basic" && Boolean(currentPlanId) && currentPlanId !== "basic";
         const loading = isLoading || loadingPlan === plan.id;
 
         return (
@@ -85,11 +86,11 @@ export function PricingTable({
                     : "border-white/10 bg-white/5 text-slate-200 hover:bg-white/10 hover:text-white",
               )}
               variant="outline"
-              disabled={isCurrent || loading}
+              disabled={isCurrent || loading || requiresPortalDowngrade}
               onClick={() => handleSelect(plan.id)}
             >
               {loading ? <Loader2 className="mr-2 size-4 animate-spin" /> : null}
-              {isCurrent ? "Trenutni paket" : plan.cta || "Odaberi paket"}
+              {isCurrent ? "Trenutni paket" : requiresPortalDowngrade ? "Downgrade kroz portal" : plan.cta || "Odaberi paket"}
             </Button>
 
             {plan.id === "agency" && !isCurrent ? (
