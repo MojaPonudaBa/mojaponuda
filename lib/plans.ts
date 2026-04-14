@@ -188,7 +188,7 @@ export const PLANS: Record<PlanTier, Plan> = {
       "Dodatne pripreme kupujete samo kada vam stvarno zatrebaju",
       "Vidite sta nedostaje prije predaje",
       "Svi dokumenti i rokovi na jednom mjestu",
-      "Pregled trzista i konkurencije",
+      "Pracenje nadolazecih tendera",
     ],
     cta: "Pocni bez ogranicenja",
     lemonSqueezyVariantId: process.env.NEXT_PUBLIC_LS_VARIANT_PRO || "",

@@ -471,18 +471,17 @@ function MoneySection() {
 // ─── Pricing Section ─────────────────────────────────────────────────────────
 function PricingSection({ isLoggedIn }: { isLoggedIn?: boolean }) {
   return (
-    <section id="cijene" className="relative overflow-hidden border-b border-slate-200 bg-slate-100 px-4 py-16 sm:px-6 sm:py-24">
+    <section id="cijene" className="relative overflow-hidden border-b border-slate-200 bg-slate-100 px-4 py-20 sm:px-6 sm:py-24 lg:px-8">
       <div className="absolute inset-0 -z-20 opacity-60 mix-blend-multiply">
         <Image src="/images/pricing-bg.png" alt="Premium Pricing Abstract Background" fill className="object-cover" />
       </div>
       <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top,_rgba(191,219,254,0.85),_rgba(255,255,255,0.78)_38%,_rgba(248,250,252,0.95)_100%)]" />
 
-      <div className="relative z-10 mx-auto max-w-6xl">
-        <div className="relative overflow-hidden rounded-[2rem] border border-white/70 bg-white/70 px-6 py-10 shadow-[0_30px_90px_rgba(15,23,42,0.12)] backdrop-blur-xl sm:px-10 sm:py-12 lg:px-12">
+      <div className="relative z-10 mx-auto max-w-[1280px]">
+        <div className="relative px-0 py-0 sm:px-0 sm:py-0 lg:px-0">
           <div className="absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-blue-100/80 via-white/0 to-transparent" />
           <div className="absolute -left-20 top-20 size-64 rounded-full bg-blue-200/35 blur-3xl" />
           <div className="absolute -right-20 bottom-0 size-72 rounded-full bg-sky-200/30 blur-3xl" />
-          <div className="pointer-events-none absolute inset-x-16 top-[10.5rem] -z-10 h-px bg-gradient-to-r from-transparent via-blue-200/70 to-transparent" />
 
           <div className="relative">
             <div className="mb-12 text-center">
@@ -497,12 +496,12 @@ function PricingSection({ isLoggedIn }: { isLoggedIn?: boolean }) {
               </motion.p>
             </div>
 
-            <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-50px" }} variants={fadeUpContainer} className="mx-auto grid max-w-5xl gap-6 lg:grid-cols-3 lg:items-start lg:gap-8">
+            <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-50px" }} variants={fadeUpContainer} className="mx-auto grid max-w-[1180px] gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.08fr)_minmax(0,1fr)] lg:items-stretch xl:gap-6">
               {/* Osnovni */}
-              <motion.div variants={fadeUpItem} className="flex h-full flex-col rounded-[1.75rem] border border-white/80 bg-white/92 p-6 shadow-[0_16px_45px_rgba(15,23,42,0.08)] backdrop-blur-md transition-all duration-300 hover:-translate-y-1.5 hover:border-blue-200 hover:shadow-[0_22px_55px_rgba(37,99,235,0.12)] sm:p-8">
+              <motion.div variants={fadeUpItem} className="flex h-full flex-col rounded-[1.9rem] border border-white/80 bg-white/92 p-6 shadow-[0_16px_45px_rgba(15,23,42,0.08)] backdrop-blur-md transition-all duration-300 hover:-translate-y-1.5 hover:border-blue-200 hover:shadow-[0_22px_55px_rgba(37,99,235,0.12)] sm:p-8">
                 <div className="inline-flex w-fit rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.24em] text-slate-500">Paket</div>
                 <h3 className="mt-5 font-heading text-xl font-bold text-slate-900 sm:text-2xl">Osnovni</h3>
-                <p className="mt-2 min-h-[52px] text-base leading-relaxed text-slate-600">Praćenje svih tendera. Plaćate samo kada zaista želite pripremu ponude.</p>
+                <p className="mt-2 min-h-[84px] text-base leading-relaxed text-slate-600">Praćenje svih tendera. Plaćate samo kada zaista želite pripremu ponude.</p>
                 <div className="mt-6 flex items-end gap-2">
                   <span className="font-heading text-4xl font-bold text-slate-900">49</span>
                   <span className="pb-1 text-base font-semibold text-slate-500">KM / mj.</span>
@@ -523,16 +522,15 @@ function PricingSection({ isLoggedIn }: { isLoggedIn?: boolean }) {
               </motion.div>
 
               {/* Puni Paket — highlighted */}
-              <motion.div variants={fadeUpItem} className="relative z-10 flex h-full flex-col rounded-[1.9rem] border border-blue-400/70 bg-[linear-gradient(180deg,rgba(15,23,42,0.96),rgba(15,23,42,0.90))] p-6 text-white shadow-[0_24px_70px_rgba(15,23,42,0.28)] transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_30px_80px_rgba(30,64,175,0.28)] sm:p-8 lg:scale-[1.035]">
-                <div className="absolute inset-x-0 -top-4 flex justify-center">
-                  <span className="rounded-full border border-blue-300/60 bg-blue-500 px-4 py-1.5 text-[12px] font-bold uppercase tracking-wider text-white shadow-[0_8px_24px_rgba(59,130,246,0.35)]">
+              <motion.div variants={fadeUpItem} className="relative z-10 flex h-full flex-col rounded-[2rem] border border-blue-400/70 bg-[linear-gradient(180deg,rgba(15,23,42,0.97),rgba(15,23,42,0.91))] p-6 text-white shadow-[0_24px_70px_rgba(15,23,42,0.28)] transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_30px_80px_rgba(30,64,175,0.28)] sm:p-8 lg:scale-[1.035]">
+                <div className="absolute inset-x-0 -top-5 z-30 flex justify-center">
+                  <span className="relative inline-flex rounded-full border border-blue-300/60 bg-blue-500 px-5 py-1.5 text-[12px] font-bold uppercase tracking-wider text-white shadow-[0_8px_24px_rgba(59,130,246,0.35)]">
                     Najčešći izbor
                   </span>
                 </div>
-                <div className="absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-blue-300/80 to-transparent" />
                 <div className="inline-flex w-fit rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.24em] text-blue-200">Premium</div>
                 <h3 className="mt-5 font-heading text-xl font-bold text-white sm:text-2xl">Puni Paket</h3>
-                <p className="mt-2 min-h-[52px] text-base leading-relaxed text-slate-300">20 besplatnih priprema ponude mjesečno, a dodatne pakete dodajete samo kada zatrebaju.</p>
+                <p className="mt-2 min-h-[84px] text-base leading-relaxed text-slate-300">20 besplatnih priprema ponude mjesečno, a dodatne pakete dodajete samo kada zatrebaju.</p>
                 <div className="mt-6 flex items-end gap-2">
                   <span className="font-heading text-5xl font-bold text-white">99</span>
                   <span className="pb-1 text-base font-semibold text-blue-100">KM / mj.</span>
@@ -540,7 +538,7 @@ function PricingSection({ isLoggedIn }: { isLoggedIn?: boolean }) {
                 <p className="mt-2 text-[14px] font-bold tracking-tight text-blue-300">20 priprema uključeno svakog mjeseca</p>
                 <div className="mt-6 h-px bg-gradient-to-r from-blue-400/40 via-white/10 to-transparent" />
                 <div className="mt-6 flex-grow space-y-4">
-                  {["Sve iz Osnovnog paketa", "20 besplatnih priprema ponude mjesečno", "Praćenje i provjera dokumentacije", "Aktivno praćenje konkurencije"].map((f, i) => (
+                  {["Sve iz Osnovnog paketa", "20 besplatnih priprema ponude mjesečno", "Praćenje i provjera dokumentacije", "Praćenje nadolazećih tendera"].map((f, i) => (
                     <div key={f} className={`flex items-start gap-3 text-base ${i === 0 ? "font-semibold text-blue-100" : "font-bold text-white"}`}>
                       <CheckCircle className={`mt-0.5 size-5 shrink-0 ${i === 0 ? "text-blue-300" : "text-blue-400"}`} />
                       <span className="leading-snug">{f}</span>
@@ -553,10 +551,10 @@ function PricingSection({ isLoggedIn }: { isLoggedIn?: boolean }) {
               </motion.div>
 
               {/* Agencijski */}
-              <motion.div variants={fadeUpItem} className="flex h-full flex-col rounded-[1.75rem] border border-white/80 bg-white/92 p-6 shadow-[0_16px_45px_rgba(15,23,42,0.08)] backdrop-blur-md transition-all duration-300 hover:-translate-y-1.5 hover:border-blue-200 hover:shadow-[0_22px_55px_rgba(37,99,235,0.12)] sm:p-8">
+              <motion.div variants={fadeUpItem} className="flex h-full flex-col rounded-[1.9rem] border border-white/80 bg-white/92 p-6 shadow-[0_16px_45px_rgba(15,23,42,0.08)] backdrop-blur-md transition-all duration-300 hover:-translate-y-1.5 hover:border-blue-200 hover:shadow-[0_22px_55px_rgba(37,99,235,0.12)] sm:p-8">
                 <div className="inline-flex w-fit rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.24em] text-slate-500">Timovi</div>
                 <h3 className="mt-5 font-heading text-xl font-bold text-slate-900 sm:text-2xl">Agencijski</h3>
-                <p className="mt-2 min-h-[52px] text-base leading-relaxed text-slate-600">Za agencije koje profesionalno vode tender apliciranje za klijente.</p>
+                <p className="mt-2 min-h-[84px] text-base leading-relaxed text-slate-600">Za agencije koje profesionalno vode tender apliciranje za klijente.</p>
                 <div className="mt-6 flex items-end gap-2">
                   <span className="font-heading text-4xl font-bold text-slate-900">149+</span>
                   <span className="pb-1 text-base font-semibold text-slate-500">KM / mj.</span>
