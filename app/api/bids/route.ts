@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { ensureBidChecklist } from "@/lib/bids/checklist";
 import { resolveManagedCompanyAccess } from "@/lib/bids/access";
+import { ensureBidChecklist } from "@/lib/bids/checklist";
 import { claimPreparationAccess } from "@/lib/preparation-credits";
 import { getSubscriptionStatus } from "@/lib/subscription";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -117,29 +117,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Tender nije pronađen." }, { status: 404 });
   }
 
-  const bidId = crypto.randomUUID();
-  const claimResult = await claimPreparationAccess(supabase, {
-    userId: user.id,
-    companyId: access.companyId,
-    bidId,
-    tenderId: resolvedTenderId,
-    plan,
-    subscription,
-  });
-
-  if (!claimResult.ok) {
-    return NextResponse.json(
-      {
-        error: claimResult.message,
-        code: claimResult.code,
-        summary: claimResult.summary,
-        agencyClientId: access.agencyClientId,
-      },
-      { status: 403 },
-    );
-  }
-
   const tender = tenderData as Tender;
+  const bidId = crypto.randomUUID();
+
   const { data: bid, error: bidError } = await supabase
     .from("bids")
     .insert({
@@ -152,12 +132,31 @@ export async function POST(request: NextRequest) {
     .single();
 
   if (bidError) {
-    if (claimResult.consumptionId) {
-      await supabase.from("preparation_consumptions").delete().eq("id", claimResult.consumptionId);
-    }
-
     console.error("Bid create error:", bidError);
     return NextResponse.json({ error: "Greška pri kreiranju ponude." }, { status: 500 });
+  }
+
+  const claimResult = await claimPreparationAccess(supabase, {
+    userId: user.id,
+    companyId: access.companyId,
+    bidId,
+    tenderId: resolvedTenderId,
+    plan,
+    subscription,
+  });
+
+  if (!claimResult.ok) {
+    await supabase.from("bids").delete().eq("id", bid.id);
+
+    return NextResponse.json(
+      {
+        error: claimResult.message,
+        code: claimResult.code,
+        summary: claimResult.summary,
+        agencyClientId: access.agencyClientId,
+      },
+      { status: 403 },
+    );
   }
 
   if (auto_generate_checklist) {

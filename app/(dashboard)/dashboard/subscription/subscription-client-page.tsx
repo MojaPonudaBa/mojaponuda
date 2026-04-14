@@ -35,6 +35,7 @@ interface SubscriptionClientPageProps {
 
 function formatCycleDate(dateValue: string | null | undefined) {
   if (!dateValue) return "Nije dostupno";
+
   return new Date(dateValue).toLocaleDateString("bs-Latn-BA", {
     day: "numeric",
     month: "long",
@@ -80,7 +81,11 @@ function PreparationUsagePanel({
       <div className="flex flex-col gap-4 border-b border-white/10 pb-5 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-300">
-            {agencyClientId ? <Building2 className="size-3.5 text-sky-300" /> : <CreditCard className="size-3.5 text-sky-300" />}
+            {agencyClientId ? (
+              <Building2 className="size-3.5 text-sky-300" />
+            ) : (
+              <CreditCard className="size-3.5 text-sky-300" />
+            )}
             {agencyClientId ? "Agency klijent" : "Vaš račun"}
           </div>
           <h3 className="mt-4 font-heading text-2xl font-bold text-white">{companyName}</h3>
@@ -91,9 +96,7 @@ function PreparationUsagePanel({
           <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-blue-200">
             Trenutni ciklus
           </p>
-          <p className="mt-2 text-sm font-semibold text-white">
-            do {formatCycleDate(summary.cycle?.end)}
-          </p>
+          <p className="mt-2 text-sm font-semibold text-white">do {formatCycleDate(summary.cycle?.end)}</p>
         </div>
       </div>
 
@@ -158,7 +161,11 @@ function PreparationUsagePanel({
                   disabled={loading}
                   className="mt-4 h-11 w-full rounded-xl bg-white text-slate-950 hover:bg-slate-100"
                 >
-                  {loading ? <Loader2 className="mr-2 size-4 animate-spin" /> : <ArrowUpRight className="mr-2 size-4" />}
+                  {loading ? (
+                    <Loader2 className="mr-2 size-4 animate-spin" />
+                  ) : (
+                    <ArrowUpRight className="mr-2 size-4" />
+                  )}
                   Kupi paket
                 </Button>
               </div>
@@ -301,8 +308,8 @@ export function SubscriptionClientPage({
       <section id="pripreme" className="scroll-mt-24 space-y-5">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <h2 className="font-heading text-2xl font-bold text-white">Pripreme ponuda</h2>
-            <p className="mt-2 text-sm text-slate-400">
+            <h2 className="font-heading text-2xl font-bold text-slate-900">Pripreme ponuda</h2>
+            <p className="mt-2 text-sm text-slate-600">
               {isAgencyAccount
                 ? "Svaki klijent ima svoj pregled potrošnje i vlastite dodatne pakete priprema."
                 : "Vidite koliko vam je priprema ostalo u ciklusu i dopunite ih kada vam zatreba."}
@@ -353,8 +360,8 @@ export function SubscriptionClientPage({
       ) : (
         <section className="space-y-5">
           <div>
-            <h2 className="font-heading text-2xl font-bold text-white">Odaberite nivo kontrole koji vam treba</h2>
-            <p className="mt-2 text-sm text-slate-400">
+            <h2 className="font-heading text-2xl font-bold text-slate-900">Odaberite nivo kontrole koji vam treba</h2>
+            <p className="mt-2 text-sm text-slate-600">
               Cijeli pricing pregled koristi isti premium vizuelni jezik kao ostatak dashboarda.
             </p>
           </div>

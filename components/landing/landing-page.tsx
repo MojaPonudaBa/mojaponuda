@@ -479,10 +479,6 @@ function PricingSection({ isLoggedIn }: { isLoggedIn?: boolean }) {
 
       <div className="relative z-10 mx-auto max-w-[1280px]">
         <div className="relative px-0 py-0 sm:px-0 sm:py-0 lg:px-0">
-          <div className="absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-blue-100/80 via-white/0 to-transparent" />
-          <div className="absolute -left-20 top-20 size-64 rounded-full bg-blue-200/35 blur-3xl" />
-          <div className="absolute -right-20 bottom-0 size-72 rounded-full bg-sky-200/30 blur-3xl" />
-
           <div className="relative">
             <div className="mb-12 text-center">
               <motion.div initial={{ opacity: 0, scale: 0.9 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }} className="mb-5 inline-flex items-center gap-2 rounded-full border border-blue-200/80 bg-white/90 px-4 py-1.5 shadow-[0_10px_30px_rgba(59,130,246,0.10)]">
