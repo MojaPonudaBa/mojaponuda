@@ -134,8 +134,8 @@ export function DashboardSidebar({
           className={cn(
             "flex items-center gap-3 rounded-2xl px-3.5 py-3 text-[13px] font-medium transition-all duration-200",
             isActive
-              ? "bg-white/12 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_10px_25px_-18px_rgba(15,23,42,0.95)]"
-              : "text-slate-300 hover:bg-white/6 hover:text-white",
+              ? "bg-[linear-gradient(180deg,rgba(59,130,246,0.24),rgba(37,99,235,0.14))] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_18px_28px_-22px_rgba(15,23,42,0.85)] ring-1 ring-white/10"
+              : "text-slate-300 hover:bg-white/8 hover:text-white",
           )}
         >
           <item.icon className={cn("size-4 shrink-0", isActive ? "text-blue-200" : "text-slate-400")} />
@@ -151,7 +151,7 @@ export function DashboardSidebar({
   }
 
   return (
-    <aside className="fixed inset-y-0 left-0 z-40 flex h-screen w-[244px] flex-col border-r border-slate-800/80 bg-[linear-gradient(180deg,#08111f_0%,#0b1730_52%,#102347_100%)] px-4 py-6 text-white shadow-[20px_0_60px_-40px_rgba(2,6,23,0.85)]">
+    <aside className="fixed inset-y-0 left-0 z-40 flex h-screen w-[244px] flex-col border-r border-slate-800/80 bg-[radial-gradient(circle_at_top,rgba(59,130,246,0.16),transparent_22%),linear-gradient(180deg,#071120_0%,#0b1730_52%,#102347_100%)] px-4 py-6 text-white shadow-[20px_0_60px_-40px_rgba(2,6,23,0.85)]">
       <div className="mb-10 px-2">
         <TenderSistemLogo
           href={isAgency ? "/dashboard/agency" : "/"}
@@ -199,7 +199,7 @@ export function DashboardSidebar({
               <button
                 type="button"
                 onClick={() => setClientDropdownOpen((value) => !value)}
-                className="flex w-full items-center gap-3 rounded-2xl px-3.5 py-3 text-[13px] font-medium text-slate-300 transition-all duration-200 hover:bg-white/6 hover:text-white"
+                className="flex w-full items-center gap-3 rounded-2xl px-3.5 py-3 text-[13px] font-medium text-slate-300 transition-all duration-200 hover:bg-white/8 hover:text-white"
               >
                 <Building2 className="size-4 shrink-0 text-slate-400" />
                 <span className="flex-1 truncate">{activeClient?.name ?? "Odaberi klijenta"}</span>
@@ -267,7 +267,7 @@ export function DashboardSidebar({
           <button
             type="button"
             onClick={() => setIsMenuOpen((open) => !open)}
-            className="flex w-full items-center gap-3 rounded-2xl border border-white/8 bg-white/6 px-3 py-3.5 text-left transition-all duration-200 hover:bg-white/10"
+            className="flex w-full items-center gap-3 rounded-2xl border border-white/8 bg-white/[0.07] px-3 py-3.5 text-left transition-all duration-200 hover:bg-white/10"
           >
             <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-white/14 text-sm font-bold text-white">
               {userEmail.charAt(0).toUpperCase()}

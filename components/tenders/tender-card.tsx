@@ -44,7 +44,7 @@ function getDeadlineStatus(deadline: string | null): {
   textClass: string;
 } {
   const baseCardClass =
-    "border-slate-800 bg-[linear-gradient(180deg,#111827_0%,#0f172a_100%)] shadow-[0_24px_60px_-42px_rgba(2,6,23,0.88)]";
+    "border-slate-800/90 bg-[radial-gradient(circle_at_top_right,rgba(59,130,246,0.08),transparent_28%),linear-gradient(180deg,#0f172a_0%,#111827_100%)] shadow-[0_28px_68px_-42px_rgba(2,6,23,0.92)]";
 
   if (!deadline) {
     return {
@@ -99,14 +99,14 @@ export function TenderCard({ tender, locked = false, clientNames, href }: Tender
   return (
     <Link href={resolvedHref} className="group block">
       <article
-        className={`relative overflow-hidden rounded-[1.5rem] border p-5 text-white transition-all hover:-translate-y-0.5 hover:brightness-[1.04] ${deadline.cardClass}`}
+        className={`relative overflow-hidden rounded-[1.6rem] border p-5 text-white transition-all duration-200 hover:-translate-y-0.5 hover:brightness-[1.04] ${deadline.cardClass}`}
       >
         <div className={`absolute inset-y-0 left-0 w-1.5 ${deadline.accentClass}`} />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.06),transparent_34%)] opacity-80" />
         <div className="flex flex-col gap-5 pl-3 lg:flex-row lg:items-start lg:justify-between">
           <div className="min-w-0 flex-1">
             <div className="flex items-start gap-4">
-              <div className="hidden size-11 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/6 text-slate-100 sm:flex">
+              <div className="hidden size-11 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.07] text-slate-100 sm:flex">
                 <FileText className="size-5" />
               </div>
               <div className="min-w-0 flex-1">
@@ -151,11 +151,11 @@ export function TenderCard({ tender, locked = false, clientNames, href }: Tender
             </div>
           </div>
 
-          <div className="flex shrink-0 items-center justify-between gap-3 border-t border-white/10 pt-4 lg:min-w-[118px] lg:flex-col lg:items-end lg:justify-start lg:border-l lg:border-t-0 lg:pt-0 lg:pl-5">
+          <div className="flex shrink-0 items-center justify-between gap-3 border-t border-white/10 pt-4 lg:min-w-[132px] lg:flex-col lg:items-end lg:justify-start lg:border-l lg:border-t-0 lg:pt-0 lg:pl-5">
             <span className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-300">
               Otvori detalje
             </span>
-            <div className="flex size-10 items-center justify-center rounded-2xl border border-white/10 bg-white/6 text-slate-300 transition-colors group-hover:text-white">
+            <div className="flex size-10 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.07] text-slate-300 transition-colors group-hover:bg-white/10 group-hover:text-white">
               {locked ? <Lock className="size-4" /> : <ArrowUpRight className="size-4" />}
             </div>
           </div>

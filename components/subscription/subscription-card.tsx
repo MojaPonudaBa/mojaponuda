@@ -83,7 +83,7 @@ export function SubscriptionCard({
   const displayPlanName = isActive && plan ? plan.name : "Besplatni nalog";
 
   return (
-    <section className="rounded-[1.85rem] border border-slate-800 bg-[linear-gradient(180deg,#111827_0%,#0f172a_100%)] p-8 text-white shadow-[0_28px_65px_-42px_rgba(2,6,23,0.88)]">
+    <section className="rounded-[1.95rem] border border-slate-800 bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.14),transparent_24%),linear-gradient(180deg,#111827_0%,#0f172a_100%)] p-8 text-white shadow-[0_30px_72px_-42px_rgba(2,6,23,0.9)]">
       <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
         <div className="flex items-start gap-4">
           <div
@@ -125,7 +125,7 @@ export function SubscriptionCard({
       </div>
 
       <div className={`mt-6 grid gap-4 ${preparationSummary ? "lg:grid-cols-3" : "lg:grid-cols-2"}`}>
-        <div className="rounded-[1.4rem] border border-white/10 bg-white/5 p-5">
+        <div className="rounded-[1.4rem] border border-white/10 bg-white/[0.07] p-5">
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
             Šta to znači za vaš rad
           </p>
@@ -137,7 +137,7 @@ export function SubscriptionCard({
         </div>
 
         {isActive && currentPeriodEnd ? (
-          <div className="rounded-[1.4rem] border border-white/10 bg-white/5 p-5">
+          <div className="rounded-[1.4rem] border border-white/10 bg-white/[0.07] p-5">
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
               Sljedeća obnova
             </p>
@@ -146,7 +146,7 @@ export function SubscriptionCard({
         ) : null}
 
         {preparationSummary ? (
-          <div className="rounded-[1.4rem] border border-blue-400/15 bg-blue-500/10 p-5">
+          <div className="rounded-[1.4rem] border border-blue-400/20 bg-blue-500/12 p-5">
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-blue-200">
               Pripreme u ciklusu
             </p>

@@ -94,6 +94,7 @@ export function BidWorkspaceLayout({
           fileUrl={`/api/bids/${bidId}/tender-documentation/file`}
           fileName={tenderDocUpload.file_name}
           checklistItems={checklistItems}
+          initialPage={viewerPage}
           onClose={() => setFullViewerOpen(false)}
         />
       )}

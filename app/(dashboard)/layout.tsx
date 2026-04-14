@@ -49,10 +49,11 @@ export default async function DashboardLayout({
   }
 
   return (
-    <div className="relative min-h-screen overflow-x-hidden bg-[linear-gradient(180deg,#f8fafc_0%,#f8fbff_12%,#f1f5f9_100%)]">
-      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,rgba(226,232,240,0.55)_1px,transparent_1px),linear-gradient(to_bottom,rgba(226,232,240,0.55)_1px,transparent_1px)] bg-[size:72px_72px] [mask-image:radial-gradient(circle_at_top_left,#000_15%,transparent_70%)]" />
-      <div className="pointer-events-none absolute -right-32 top-0 h-[420px] w-[420px] rounded-full bg-blue-500/10 blur-[110px]" />
-      <div className="pointer-events-none absolute left-[210px] top-24 h-[280px] w-[280px] rounded-full bg-slate-900/5 blur-[100px]" />
+    <div className="relative min-h-screen overflow-x-hidden bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.09),transparent_28%),radial-gradient(circle_at_top_right,rgba(14,165,233,0.08),transparent_24%),linear-gradient(180deg,#f8fbff_0%,#f3f7fb_42%,#eef3f8_100%)]">
+      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,rgba(148,163,184,0.16)_1px,transparent_1px),linear-gradient(to_bottom,rgba(148,163,184,0.16)_1px,transparent_1px)] bg-[size:88px_88px] [mask-image:radial-gradient(circle_at_top_left,#000_18%,transparent_78%)]" />
+      <div className="pointer-events-none absolute -right-24 top-0 h-[420px] w-[420px] rounded-full bg-blue-500/10 blur-[120px]" />
+      <div className="pointer-events-none absolute left-[220px] top-24 h-[320px] w-[320px] rounded-full bg-sky-300/10 blur-[120px]" />
+      <div className="pointer-events-none absolute bottom-0 right-1/4 h-[260px] w-[260px] rounded-full bg-slate-900/5 blur-[120px]" />
       <DashboardSidebar
         userEmail={user.email ?? ""}
         companyName={company?.name}
@@ -61,7 +62,7 @@ export default async function DashboardLayout({
         agencyClients={agencyClients}
       />
       <main className="relative z-10 min-h-screen pl-[244px]">
-        <div className="mx-auto min-h-screen w-full max-w-[1680px] px-6 py-6 sm:px-8 sm:py-8 lg:px-10 lg:py-10 xl:px-12 xl:py-12">
+        <div className="mx-auto min-h-screen w-full max-w-[1760px] px-6 py-6 sm:px-8 sm:py-8 lg:px-10 lg:py-10 xl:px-14 xl:py-12">
           {children}
         </div>
       </main>

@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { BidStatus } from "@/types/database";
+import type { BidChecklistStateDetail } from "@/lib/bids/checklist-ui";
+import { BID_CHECKLIST_STATE_EVENT } from "@/lib/bids/checklist-ui";
 import { BID_STATUSES, BID_STATUS_LABELS } from "@/lib/bids/constants";
 import {
   Select,
@@ -60,6 +62,24 @@ export function TopBar({
   const [deleting, setDeleting] = useState(false);
   const [riskFlags] = useState<string[]>(initialRiskFlags);
   const [riskDismissed, setRiskDismissed] = useState(false);
+  const [hasOpenChecklistItems, setHasOpenChecklistItems] = useState(hasMissingItems);
+
+  useEffect(() => {
+    setHasOpenChecklistItems(hasMissingItems);
+  }, [hasMissingItems]);
+
+  useEffect(() => {
+    function handleChecklistState(event: Event) {
+      const customEvent = event as CustomEvent<BidChecklistStateDetail>;
+      if (customEvent.detail?.bidId !== bidId) return;
+      setHasOpenChecklistItems(customEvent.detail.missingCount > 0);
+    }
+
+    window.addEventListener(BID_CHECKLIST_STATE_EVENT, handleChecklistState as EventListener);
+    return () => {
+      window.removeEventListener(BID_CHECKLIST_STATE_EVENT, handleChecklistState as EventListener);
+    };
+  }, [bidId]);
 
   async function handleStatusChange(newStatus: string) {
     const nextStatus = newStatus as BidStatus;
@@ -119,9 +139,9 @@ export function TopBar({
   }
 
   function handleDownload() {
-    if (hasMissingItems) {
+    if (hasOpenChecklistItems) {
       const confirmed = window.confirm(
-        "Upozorenje: Nedostaju neki obavezni dokumenti iz liste. Želite li ipak preuzeti paket?"
+        "Upozorenje: Nedostaju neki obavezni dokumenti iz liste. Želite li ipak preuzeti objedinjeni PDF?"
       );
 
       if (!confirmed) {

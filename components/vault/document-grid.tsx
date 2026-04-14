@@ -4,10 +4,7 @@ import { useMemo, useState } from "react";
 import type { Document } from "@/types/database";
 import { DOCUMENT_TYPES, getExpiryStatus } from "@/lib/vault/constants";
 import { DocumentCard } from "@/components/vault/document-card";
-import {
-  AlertTriangle,
-  Database,
-} from "lucide-react";
+import { AlertTriangle, Database } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -54,7 +51,9 @@ export function DocumentGrid({ documents }: DocumentGridProps) {
           </div>
           <div>
             <p className="font-heading text-lg font-bold text-white">
-              {expiringDocs.length === 1 ? "1 dokument ističe uskoro" : `${expiringDocs.length} dokumenta ističu uskoro`}
+              {expiringDocs.length === 1
+                ? "1 dokument ističe uskoro"
+                : `${expiringDocs.length} dokumenta ističu uskoro`}
             </p>
             <p className="mt-1 text-sm text-rose-100/85">
               Obavezno ažurirajte: {expiringDocs.map((document) => document.name).join(", ")}
@@ -63,20 +62,26 @@ export function DocumentGrid({ documents }: DocumentGridProps) {
         </div>
       ) : null}
 
-      <section className="rounded-[1.75rem] border border-slate-800 bg-[linear-gradient(180deg,#111827_0%,#0f172a_100%)] p-5 text-white shadow-[0_24px_60px_-42px_rgba(2,6,23,0.88)]">
+      <section className="rounded-[1.9rem] border border-slate-800/80 bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.15),transparent_28%),linear-gradient(180deg,#0f172a_0%,#111827_100%)] p-5 text-white shadow-[0_28px_70px_-42px_rgba(2,6,23,0.9)]">
         <div className="grid gap-4 lg:grid-cols-2">
           <div className="space-y-2">
-            <label className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
+            <label className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-200">
               Tip dokumenta
             </label>
             <Select value={typeFilter} onValueChange={setTypeFilter}>
-              <SelectTrigger className="h-11 rounded-2xl border-white/10 bg-white/5 text-sm text-white">
+              <SelectTrigger className="h-12 rounded-2xl border-white/12 bg-white/[0.07] text-sm font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] [&_span]:text-white">
                 <SelectValue placeholder="Svi tipovi" />
               </SelectTrigger>
               <SelectContent className="rounded-2xl border-slate-700 bg-slate-950 text-slate-200">
-                <SelectItem value="all" className="rounded-xl focus:bg-white/10 focus:text-white">Svi tipovi</SelectItem>
+                <SelectItem value="all" className="rounded-xl focus:bg-white/10 focus:text-white">
+                  Svi tipovi
+                </SelectItem>
                 {DOCUMENT_TYPES.map((type) => (
-                  <SelectItem key={type} value={type} className="rounded-xl focus:bg-white/10 focus:text-white">
+                  <SelectItem
+                    key={type}
+                    value={type}
+                    className="rounded-xl focus:bg-white/10 focus:text-white"
+                  >
                     {type}
                   </SelectItem>
                 ))}
@@ -85,19 +90,38 @@ export function DocumentGrid({ documents }: DocumentGridProps) {
           </div>
 
           <div className="space-y-2">
-            <label className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
+            <label className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-200">
               Status isteka
             </label>
             <Select value={expiryFilter} onValueChange={setExpiryFilter}>
-              <SelectTrigger className="h-11 rounded-2xl border-white/10 bg-white/5 text-sm text-white">
+              <SelectTrigger className="h-12 rounded-2xl border-white/12 bg-white/[0.07] text-sm font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] [&_span]:text-white">
                 <SelectValue placeholder="Svi statusi" />
               </SelectTrigger>
               <SelectContent className="rounded-2xl border-slate-700 bg-slate-950 text-slate-200">
-                <SelectItem value="all" className="rounded-xl focus:bg-white/10 focus:text-white">Svi statusi</SelectItem>
-                <SelectItem value="danger" className="rounded-xl text-rose-200 focus:bg-white/10 focus:text-white">Kritično (&lt;30 dana)</SelectItem>
-                <SelectItem value="warning" className="rounded-xl text-amber-200 focus:bg-white/10 focus:text-white">Upozorenje (30-60 dana)</SelectItem>
-                <SelectItem value="ok" className="rounded-xl text-emerald-200 focus:bg-white/10 focus:text-white">U redu (&gt;60 dana)</SelectItem>
-                <SelectItem value="none" className="rounded-xl focus:bg-white/10 focus:text-white">Bez roka</SelectItem>
+                <SelectItem value="all" className="rounded-xl focus:bg-white/10 focus:text-white">
+                  Svi statusi
+                </SelectItem>
+                <SelectItem
+                  value="danger"
+                  className="rounded-xl text-rose-200 focus:bg-white/10 focus:text-white"
+                >
+                  Kritično (&lt;30 dana)
+                </SelectItem>
+                <SelectItem
+                  value="warning"
+                  className="rounded-xl text-amber-200 focus:bg-white/10 focus:text-white"
+                >
+                  Upozorenje (30-60 dana)
+                </SelectItem>
+                <SelectItem
+                  value="ok"
+                  className="rounded-xl text-emerald-200 focus:bg-white/10 focus:text-white"
+                >
+                  U redu (&gt;60 dana)
+                </SelectItem>
+                <SelectItem value="none" className="rounded-xl focus:bg-white/10 focus:text-white">
+                  Bez roka
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -105,14 +129,14 @@ export function DocumentGrid({ documents }: DocumentGridProps) {
       </section>
 
       {filtered.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-[1.75rem] border border-dashed border-white/10 bg-white/5 py-24 text-center">
-          <div className="mb-4 flex size-16 items-center justify-center rounded-full border border-white/10 bg-white/5">
-            <Database className="size-6 text-slate-400" />
+        <div className="flex flex-col items-center justify-center rounded-[1.8rem] border border-slate-200/80 bg-white/80 px-6 py-24 text-center shadow-[0_24px_55px_-40px_rgba(15,23,42,0.22)] backdrop-blur-sm">
+          <div className="mb-4 flex size-16 items-center justify-center rounded-full border border-blue-100 bg-blue-50">
+            <Database className="size-6 text-blue-500" />
           </div>
-          <h3 className="mb-2 text-lg font-heading font-bold text-white">
+          <h3 className="mb-2 text-lg font-heading font-bold text-slate-950">
             {documents.length === 0 ? "Vaš trezor je prazan" : "Nema rezultata za odabrane filtere"}
           </h3>
-          <p className="max-w-sm text-sm text-slate-400">
+          <p className="max-w-sm text-sm leading-6 text-slate-600">
             {documents.length === 0
               ? "Dodajte prvi dokument klikom na dugme iznad kako biste započeli."
               : "Pokušajte sa drugačijim filterima ili dodajte novi dokument."}

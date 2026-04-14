@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { BidChecklistItem, ChecklistStatus, Document } from "@/types/database";
+import { BID_CHECKLIST_STATE_EVENT } from "@/lib/bids/checklist-ui";
 import {
   AI_TO_VAULT_TYPE_MAP,
   formatExpiryText,
@@ -19,8 +20,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
-  AlertTriangle,
   Check,
+  ChevronRight,
   FileText,
   Link2,
   ListTodo,
@@ -39,12 +40,6 @@ const STATUS_LABELS: Record<ChecklistStatus, string> = {
   confirmed: "Potvrđeno",
 };
 
-const STATUS_CLASSES: Record<ChecklistStatus, string> = {
-  missing: "bg-red-50 text-red-600 border-red-100",
-  attached: "bg-amber-50 text-amber-600 border-amber-100",
-  confirmed: "bg-emerald-50 text-emerald-600 border-emerald-100",
-};
-
 interface ChecklistPanelProps {
   bidId: string;
   items: BidChecklistItem[];
@@ -54,12 +49,6 @@ interface ChecklistPanelProps {
 
 function sortChecklistItems(items: BidChecklistItem[]) {
   return [...items].sort((left, right) => left.sort_order - right.sort_order);
-}
-
-function getNextChecklistStatus(status: ChecklistStatus): ChecklistStatus {
-  if (status === "missing") return "attached";
-  if (status === "attached") return "confirmed";
-  return "missing";
 }
 
 export function ChecklistPanel({ bidId, items, vaultDocuments, onViewPage }: ChecklistPanelProps) {
@@ -78,6 +67,10 @@ export function ChecklistPanel({ bidId, items, vaultDocuments, onViewPage }: Che
   const [attachModalOpen, setAttachModalOpen] = useState(false);
   const [attachItemId, setAttachItemId] = useState<string | null>(null);
   const [savingItemIds, setSavingItemIds] = useState<string[]>([]);
+  const [attentionItemIds, setAttentionItemIds] = useState<string[]>([]);
+  const [finishWarningOpen, setFinishWarningOpen] = useState(false);
+  const [finishReadyOpen, setFinishReadyOpen] = useState(false);
+  const firstAttentionRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     setChecklistItems(sortChecklistItems(items));
@@ -87,12 +80,47 @@ export function ChecklistPanel({ bidId, items, vaultDocuments, onViewPage }: Che
     setDocuments(vaultDocuments);
   }, [vaultDocuments]);
 
+  const resolvedCount = useMemo(
+    () => checklistItems.filter((item) => item.status !== "missing").length,
+    [checklistItems]
+  );
   const confirmedCount = useMemo(
     () => checklistItems.filter((item) => item.status === "confirmed").length,
     [checklistItems]
   );
+  const missingItems = useMemo(
+    () => checklistItems.filter((item) => item.status === "missing"),
+    [checklistItems]
+  );
+  const missingCount = missingItems.length;
   const totalCount = checklistItems.length;
-  const progressPct = totalCount > 0 ? Math.round((confirmedCount / totalCount) * 100) : 0;
+  const progressPct = totalCount > 0 ? Math.round((resolvedCount / totalCount) * 100) : 0;
+  const readyToFinish = totalCount > 0 && missingCount === 0;
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    window.dispatchEvent(
+      new CustomEvent(BID_CHECKLIST_STATE_EVENT, {
+        detail: {
+          bidId,
+          totalCount,
+          resolvedCount,
+          missingCount,
+          readyToFinish,
+        },
+      })
+    );
+  }, [bidId, missingCount, readyToFinish, resolvedCount, totalCount]);
+
+  useEffect(() => {
+    if (missingCount === 0) {
+      setAttentionItemIds([]);
+      return;
+    }
+
+    setAttentionItemIds((current) => current.filter((itemId) => missingItems.some((item) => item.id === itemId)));
+  }, [missingCount, missingItems]);
 
   function setItemSaving(itemId: string, saving: boolean) {
     setSavingItemIds((current) =>
@@ -237,7 +265,12 @@ export function ChecklistPanel({ bidId, items, vaultDocuments, onViewPage }: Che
   }
 
   async function cycleItemStatus(item: BidChecklistItem) {
-    const nextStatus = getNextChecklistStatus(item.status);
+    const nextStatus: ChecklistStatus =
+      item.status === "confirmed"
+        ? item.document_id
+          ? "attached"
+          : "missing"
+        : "confirmed";
     const previousItem = item;
 
     mergeUpdatedItem({ ...item, status: nextStatus });
@@ -269,26 +302,77 @@ export function ChecklistPanel({ bidId, items, vaultDocuments, onViewPage }: Che
     setAttachModalOpen(true);
   }
 
+  function getCardClasses(item: BidChecklistItem) {
+    const needsAttention = attentionItemIds.includes(item.id) && item.status === "missing";
+
+    if (needsAttention) {
+      return "border-rose-200 bg-rose-50 shadow-[0_18px_40px_-28px_rgba(244,63,94,0.28)]";
+    }
+
+    if (item.status === "confirmed") {
+      return "border-emerald-200 bg-emerald-50 shadow-[0_18px_40px_-28px_rgba(34,197,94,0.22)]";
+    }
+
+    if (item.status === "attached") {
+      return "border-blue-200 bg-blue-50 shadow-[0_18px_40px_-28px_rgba(59,130,246,0.22)]";
+    }
+
+    return "border-slate-200 bg-white hover:border-slate-300 hover:shadow-md";
+  }
+
+  function openFinishFlow() {
+    if (!readyToFinish) {
+      firstAttentionRef.current = null;
+      const nextAttentionIds = missingItems.map((item) => item.id);
+      setAttentionItemIds(nextAttentionIds);
+      setFinishWarningOpen(true);
+
+      requestAnimationFrame(() => {
+        firstAttentionRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      });
+      return;
+    }
+
+    setAttentionItemIds([]);
+    setFinishReadyOpen(true);
+  }
+
+  function handleDownloadPackage() {
+    window.open(`/api/bids/package?bid_id=${bidId}`, "_blank");
+    setFinishReadyOpen(false);
+  }
+
   return (
-    <div className="flex flex-col gap-6 rounded-[1.5rem] border border-slate-100 bg-white p-6 shadow-sm">
-      <div className="flex items-center justify-between">
+    <div className="flex flex-col gap-6 rounded-[1.6rem] border border-slate-200 bg-white/95 p-6 shadow-[0_24px_55px_-38px_rgba(15,23,42,0.18)] backdrop-blur-sm">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2.5 text-slate-900">
           <div className="flex size-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
             <ListTodo className="size-5" />
           </div>
           <h3 className="font-heading text-lg font-bold">Lista zahtjeva</h3>
         </div>
-        <Button size="sm" onClick={() => setAddOpen(true)} className="rounded-xl font-bold shadow-md shadow-blue-500/20">
-          <Plus className="mr-2 size-3.5" />
-          Dodaj stavku
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={openFinishFlow}
+            className="rounded-xl border-slate-200 bg-slate-950 font-bold text-white hover:bg-slate-800"
+          >
+            Završi pripremu
+            <ChevronRight className="ml-2 size-4" />
+          </Button>
+          <Button size="sm" onClick={() => setAddOpen(true)} className="rounded-xl font-bold shadow-md shadow-blue-500/20">
+            <Plus className="mr-2 size-3.5" />
+            Dodaj stavku
+          </Button>
+        </div>
       </div>
 
-      <div className="space-y-2 rounded-xl border border-slate-100 bg-slate-50 p-4">
+      <div className="space-y-3 rounded-[1.2rem] border border-slate-100 bg-slate-50 p-4">
         <div className="flex items-center justify-between text-sm">
           <span className="font-bold text-slate-700">Napredak pripreme</span>
           <span className="font-mono font-medium text-slate-500">
-            {confirmedCount}/{totalCount} ({progressPct}%)
+            {resolvedCount}/{totalCount} ({progressPct}%)
           </span>
         </div>
         <div className="h-3 overflow-hidden rounded-full bg-slate-200">
@@ -296,6 +380,17 @@ export function ChecklistPanel({ bidId, items, vaultDocuments, onViewPage }: Che
             className="h-full rounded-full bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.5)] transition-all duration-300 ease-out"
             style={{ width: `${progressPct}%` }}
           />
+        </div>
+        <div className="flex flex-wrap items-center gap-2 text-xs font-medium">
+          <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-emerald-700">
+            Potvrđeno: {confirmedCount}
+          </span>
+          <span className="rounded-full bg-blue-100 px-2.5 py-1 text-blue-700">
+            Priloženo: {resolvedCount - confirmedCount}
+          </span>
+          <span className="rounded-full bg-slate-200 px-2.5 py-1 text-slate-700">
+            Otvoreno: {missingCount}
+          </span>
         </div>
       </div>
 
@@ -317,7 +412,15 @@ export function ChecklistPanel({ bidId, items, vaultDocuments, onViewPage }: Che
             return (
               <div
                 key={item.id}
-                className="group relative rounded-xl border border-slate-200 bg-white p-4 transition-all hover:border-blue-200 hover:shadow-md"
+                ref={(element) => {
+                  if (attentionItemIds.includes(item.id) && !firstAttentionRef.current && element) {
+                    firstAttentionRef.current = element;
+                  }
+                  if (!attentionItemIds.includes(item.id) && firstAttentionRef.current === element) {
+                    firstAttentionRef.current = null;
+                  }
+                }}
+                className={`group relative rounded-[1.15rem] border p-4 transition-all ${getCardClasses(item)}`}
               >
                 {editingId === item.id ? (
                   <div className="space-y-3">
@@ -366,13 +469,13 @@ export function ChecklistPanel({ bidId, items, vaultDocuments, onViewPage }: Che
                         item.status === "confirmed"
                           ? "scale-110 border-emerald-500 bg-emerald-500 text-white shadow-sm"
                           : item.status === "attached"
-                            ? "border-amber-400 bg-amber-50 text-amber-500"
+                            ? "border-blue-500 bg-blue-500 text-white shadow-sm"
                             : "border-slate-300 bg-slate-50 hover:border-blue-400"
                       } ${isSaving ? "cursor-wait opacity-70" : ""}`}
                     >
                       {isSaving ? <Loader2 className="size-3.5 animate-spin" /> : null}
                       {!isSaving && item.status === "confirmed" ? <Check className="size-3.5 stroke-[3]" /> : null}
-                      {!isSaving && item.status === "attached" ? <div className="size-2 rounded-full bg-amber-400" /> : null}
+                      {!isSaving && item.status === "attached" ? <Check className="size-3.5 stroke-[3]" /> : null}
                     </button>
 
                     <div className="min-w-0 flex-1 pt-0.5">
@@ -381,17 +484,13 @@ export function ChecklistPanel({ bidId, items, vaultDocuments, onViewPage }: Che
                           className={`text-sm font-bold transition-colors ${
                             item.status === "confirmed"
                               ? "text-emerald-700 line-through decoration-emerald-300"
+                              : item.status === "attached"
+                                ? "text-blue-800"
                               : "text-slate-900"
                           }`}
                         >
                           {item.title}
                         </span>
-                        {item.risk_note ? (
-                          <div className="flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-bold text-red-600">
-                            <AlertTriangle className="size-3" />
-                            Rizik
-                          </div>
-                        ) : null}
                       </div>
 
                       {(item.page_reference || item.description || item.source_text) ? (
@@ -425,7 +524,13 @@ export function ChecklistPanel({ bidId, items, vaultDocuments, onViewPage }: Che
 
                       <div className="mt-2 flex flex-wrap items-center gap-2">
                         <span
-                          className={`inline-flex items-center rounded-md border px-2 py-1 text-[10px] font-bold uppercase tracking-wider ${STATUS_CLASSES[item.status]}`}
+                          className={`inline-flex items-center rounded-md border px-2 py-1 text-[10px] font-bold uppercase tracking-wider ${
+                            item.status === "confirmed"
+                              ? "border-emerald-200 bg-emerald-100 text-emerald-700"
+                              : item.status === "attached"
+                                ? "border-blue-200 bg-blue-100 text-blue-700"
+                                : "border-slate-200 bg-white text-slate-700"
+                          }`}
                         >
                           {STATUS_LABELS[item.status]}
                         </span>
@@ -440,7 +545,7 @@ export function ChecklistPanel({ bidId, items, vaultDocuments, onViewPage }: Che
                             <Button
                               size="sm"
                               variant="outline"
-                              className="h-7 rounded-lg border-dashed border-slate-300 px-2 text-[10px] hover:border-primary hover:bg-blue-50 hover:text-primary"
+                              className="h-8 rounded-lg border-dashed border-slate-300 bg-white/70 px-2.5 text-[10px] font-semibold hover:border-primary hover:bg-blue-50 hover:text-primary"
                               onClick={() => openAttachModal(item.id)}
                               disabled={isSaving}
                             >
@@ -450,6 +555,7 @@ export function ChecklistPanel({ bidId, items, vaultDocuments, onViewPage }: Che
 
                             <AddDocumentModal
                               initialType={item.document_type ? AI_TO_VAULT_TYPE_MAP[item.document_type] : undefined}
+                              refreshOnSuccess={false}
                               onSuccess={(document) => {
                                 setDocuments((current) =>
                                   current.some((entry) => entry.id === document.id)
@@ -462,7 +568,7 @@ export function ChecklistPanel({ bidId, items, vaultDocuments, onViewPage }: Che
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  className="h-7 rounded-lg border-dashed border-slate-300 px-2 text-[10px] hover:border-primary hover:bg-blue-50 hover:text-primary"
+                                  className="h-8 rounded-lg border-dashed border-slate-300 bg-white/70 px-2.5 text-[10px] font-semibold hover:border-primary hover:bg-blue-50 hover:text-primary"
                                   disabled={isSaving}
                                 >
                                   <Plus className="mr-1.5 size-3" />
@@ -550,6 +656,77 @@ export function ChecklistPanel({ bidId, items, vaultDocuments, onViewPage }: Che
             >
               {loading ? <Loader2 className="mr-2 size-4 animate-spin" /> : null}
               Dodaj stavku
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={finishWarningOpen} onOpenChange={setFinishWarningOpen}>
+        <DialogContent className="rounded-2xl border-rose-100 bg-white p-6 shadow-xl sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="font-heading text-xl font-bold text-slate-900">
+              Još nije sve spremno
+            </DialogTitle>
+            <DialogDescription className="text-slate-600">
+              Označili smo stavke koje još traže dokument ili potvrdu. Vratite se na pripremu ili nastavite kasnije.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="rounded-[1.1rem] border border-rose-100 bg-rose-50 p-4 text-sm text-rose-700">
+            Otvoreno je još {missingCount} stavki. Crvene kartice pokazuju šta još treba zatvoriti prije završetka pripreme.
+          </div>
+          <DialogFooter className="gap-2 sm:gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setFinishWarningOpen(false)}
+              className="rounded-xl border-slate-200 bg-white font-semibold text-slate-700"
+            >
+              Nastavi kasnije
+            </Button>
+            <Button
+              type="button"
+              onClick={() => {
+                setFinishWarningOpen(false);
+                requestAnimationFrame(() => {
+                  firstAttentionRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+                });
+              }}
+              className="rounded-xl bg-slate-950 font-semibold text-white hover:bg-slate-800"
+            >
+              Vrati se na pripremu
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={finishReadyOpen} onOpenChange={setFinishReadyOpen}>
+        <DialogContent className="rounded-2xl border-slate-100 bg-white p-6 shadow-xl sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="font-heading text-xl font-bold text-slate-900">
+              Priprema je spremna
+            </DialogTitle>
+            <DialogDescription className="text-slate-600">
+              Sve stavke su zatvorene. Sada preuzmite objedinjeni PDF priložene dokumentacije, pregledajte ga i pripremite ga za završnu provjeru i štampu.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="rounded-[1.1rem] border border-blue-100 bg-blue-50 p-4 text-sm text-blue-800">
+            Dugme <strong>Preuzmi</strong> skinut će jedan PDF sa svim trenutno priloženim dokumentima. Ako neki prilog nije moguće spojiti automatski, u PDF ćemo dodati jasnu napomenu šta još treba priložiti ručno.
+          </div>
+          <DialogFooter className="gap-2 sm:gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setFinishReadyOpen(false)}
+              className="rounded-xl border-slate-200 bg-white font-semibold text-slate-700"
+            >
+              Vrati se
+            </Button>
+            <Button
+              type="button"
+              onClick={handleDownloadPackage}
+              className="rounded-xl bg-slate-950 font-semibold text-white hover:bg-slate-800"
+            >
+              Preuzmi
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -22,6 +22,7 @@ import {
   selectTenderRecommendations,
   type RecommendationContext,
 } from "@/lib/tender-recommendations";
+import { tenderMatchesClientFilters } from "@/lib/tender-client-filters";
 import { TenderFilters } from "@/components/tenders/tender-filters";
 import { TenderCard } from "@/components/tenders/tender-card";
 import { Pagination } from "@/components/tenders/pagination";
@@ -118,14 +119,17 @@ async function TendersContent({ agencyClientId, companyId, recommendationContext
       minimumResults: RECOMMENDATION_FULL_PAGE_MINIMUM_RESULTS,
     });
 
-    if (keywordParam) {
-      const term = keywordParam.toLowerCase();
-      ranked = ranked.filter(({ tender }) =>
-        [tender.title, tender.raw_description, tender.contracting_authority]
-          .filter(Boolean)
-          .some((v) => v!.toLowerCase().includes(term))
-      );
-    }
+    ranked = ranked.filter(({ tender }) =>
+      tenderMatchesClientFilters(tender, {
+        keyword: keywordParam,
+        contractType: contractTypeParam,
+        procedureType: procedureTypeParam,
+        deadlineFrom: deadlineFromParam,
+        deadlineTo: deadlineToParam,
+        valueMin: valueMinParam,
+        valueMax: valueMaxParam,
+      })
+    );
 
     ranked = await maybeRerankTenderRecommendationsWithAI(ranked, recommendationContext, {
       limit: Math.max(ranked.length, 10),

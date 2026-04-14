@@ -30,9 +30,15 @@ interface AddDocumentModalProps {
   onSuccess?: (document: Document) => void;
   trigger?: React.ReactNode;
   initialType?: string;
+  refreshOnSuccess?: boolean;
 }
 
-export function AddDocumentModal({ onSuccess, trigger, initialType }: AddDocumentModalProps) {
+export function AddDocumentModal({
+  onSuccess,
+  trigger,
+  initialType,
+  refreshOnSuccess = true,
+}: AddDocumentModalProps) {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -112,8 +118,10 @@ export function AddDocumentModal({ onSuccess, trigger, initialType }: AddDocumen
       if (onSuccess && data.document) {
         onSuccess(data.document);
       }
-      
-      router.refresh();
+
+      if (refreshOnSuccess) {
+        router.refresh();
+      }
     } catch {
       setError("Greška pri uploadu. Pokušajte ponovo.");
       setLoading(false);

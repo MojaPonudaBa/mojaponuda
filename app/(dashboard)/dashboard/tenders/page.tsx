@@ -25,6 +25,7 @@ import {
   type RecommendationContext,
   type RecommendationTenderInput,
 } from "@/lib/tender-recommendations";
+import { tenderMatchesClientFilters } from "@/lib/tender-client-filters";
 import { TenderFilters } from "@/components/tenders/tender-filters";
 import { TenderCard } from "@/components/tenders/tender-card";
 import { Pagination } from "@/components/tenders/pagination";
@@ -186,15 +187,17 @@ async function TendersContent({ searchParams }: TendersPageProps) {
       );
 
       // Apply keyword filter if present
-      let filtered = sorted;
-      if (keywordParam) {
-        const term = keywordParam.toLowerCase();
-        filtered = sorted.filter(({ tender }) =>
-          [tender.title, tender.raw_description, tender.contracting_authority]
-            .filter(Boolean)
-            .some((v) => v!.toLowerCase().includes(term))
-        );
-      }
+      let filtered = sorted.filter(({ tender }) =>
+        tenderMatchesClientFilters(tender, {
+          keyword: keywordParam,
+          contractType: contractTypeParam,
+          procedureType: procedureTypeParam,
+          deadlineFrom: deadlineFromParam,
+          deadlineTo: deadlineToParam,
+          valueMin: valueMinParam,
+          valueMax: valueMaxParam,
+        })
+      );
 
       if (locationFilterTerms.length > 0) {
         filtered = filtered.filter(({ tender }) =>
@@ -347,14 +350,17 @@ async function TendersContent({ searchParams }: TendersPageProps) {
       }
     );
 
-    if (keywordParam) {
-      const searchTerm = keywordParam.toLowerCase();
-      rankedRecommendations = rankedRecommendations.filter(({ tender }) =>
-        [tender.title, tender.raw_description, tender.contracting_authority]
-          .filter(Boolean)
-          .some((value) => value!.toLowerCase().includes(searchTerm))
-      );
-    }
+    rankedRecommendations = rankedRecommendations.filter(({ tender }) =>
+      tenderMatchesClientFilters(tender, {
+        keyword: keywordParam,
+        contractType: contractTypeParam,
+        procedureType: procedureTypeParam,
+        deadlineFrom: deadlineFromParam,
+        deadlineTo: deadlineToParam,
+        valueMin: valueMinParam,
+        valueMax: valueMaxParam,
+      })
+    );
 
     rankedRecommendations = await maybeRerankTenderRecommendationsWithAI(
       rankedRecommendations,

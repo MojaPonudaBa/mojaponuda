@@ -1,17 +1,17 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
 import "react-pdf/dist/Page/TextLayer.css";
 import { Button } from "@/components/ui/button";
 import {
   ChevronLeft,
   ChevronRight,
-  X,
+  FileText,
   Loader2,
   Minus,
   Plus,
-  FileText,
+  X,
 } from "lucide-react";
 import type { BidChecklistItem } from "@/types/database";
 
@@ -21,6 +21,7 @@ interface TenderDocFullViewerProps {
   fileUrl: string;
   fileName: string;
   checklistItems: BidChecklistItem[];
+  initialPage?: number;
   onClose: () => void;
 }
 
@@ -28,16 +29,17 @@ export function TenderDocFullViewer({
   fileUrl,
   fileName,
   checklistItems,
+  initialPage = 1,
   onClose,
 }: TenderDocFullViewerProps) {
   const [numPages, setNumPages] = useState(0);
-  const [pageNumber, setPageNumber] = useState(1);
-  const [scale, setScale] = useState(1.0);
+  const [pageNumber, setPageNumber] = useState(initialPage);
+  const [manualScale, setManualScale] = useState<number | null>(null);
+  const [fitScale, setFitScale] = useState(1);
   const [loading, setLoading] = useState(true);
-  const pageElementRefs = useRef<Map<number, HTMLDivElement>>(new Map());
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [pageSize, setPageSize] = useState<{ width: number; height: number } | null>(null);
+  const viewportRef = useRef<HTMLDivElement>(null);
 
-  // Prevent body scroll when modal is open
   useEffect(() => {
     document.body.style.overflow = "hidden";
     return () => {
@@ -45,197 +47,235 @@ export function TenderDocFullViewer({
     };
   }, []);
 
-  // Collect all checklist items that have page references
-  const pageRefs = checklistItems
-    .filter((item) => item.page_number && item.page_number > 0)
-    .sort((a, b) => (a.page_number ?? 0) - (b.page_number ?? 0));
+  useEffect(() => {
+    setPageNumber(initialPage);
+  }, [initialPage]);
 
-  const onDocumentLoadSuccess = useCallback(({ numPages: total }: { numPages: number }) => {
-    setNumPages(total);
-    setLoading(false);
-  }, []);
+  useEffect(() => {
+    if (!viewportRef.current || !pageSize) return;
 
-  const goToPage = useCallback((page: number) => {
-    const targetPage = Math.max(1, Math.min(page, numPages));
-    setPageNumber(targetPage);
-    
-    // Scroll to the target page
-    const pageElement = pageElementRefs.current.get(targetPage);
-    if (pageElement) {
-      pageElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-  }, [numPages]);
+    const viewport = viewportRef.current;
+    const resizeObserver = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (!entry) return;
 
-  // Items on the current page
-  const currentPageItems = pageRefs.filter((item) => item.page_number === pageNumber);
+      const widthScale = Math.max((entry.contentRect.width - 48) / pageSize.width, 0.45);
+      const heightScale = Math.max((entry.contentRect.height - 48) / pageSize.height, 0.45);
+      setFitScale(Math.min(widthScale, heightScale, 1.15));
+    });
 
-  // Unique pages that have references
-  const referencedPages = [...new Set(pageRefs.map((item) => item.page_number!))].sort((a, b) => a - b);
+    resizeObserver.observe(viewport);
+    return () => resizeObserver.disconnect();
+  }, [pageSize]);
+
+  const pageRefs = useMemo(
+    () =>
+      checklistItems
+        .filter((item) => item.page_number && item.page_number > 0)
+        .sort((left, right) => (left.page_number ?? 0) - (right.page_number ?? 0)),
+    [checklistItems],
+  );
+
+  const referencedPages = useMemo(
+    () => [...new Set(pageRefs.map((item) => item.page_number!))].sort((left, right) => left - right),
+    [pageRefs],
+  );
+
+  const currentPageItems = useMemo(
+    () => pageRefs.filter((item) => item.page_number === pageNumber),
+    [pageNumber, pageRefs],
+  );
+
+  const onDocumentLoadSuccess = useCallback(
+    ({ numPages: total }: { numPages: number }) => {
+      setNumPages(total);
+      setLoading(false);
+      setPageNumber((current) => Math.max(1, Math.min(current, total)));
+    },
+    [],
+  );
+
+  const currentScale = manualScale ?? fitScale;
+
+  function goToPage(nextPage: number) {
+    setPageNumber(Math.max(1, Math.min(nextPage, numPages)));
+  }
 
   return (
-    <div className="fixed inset-0 z-50 flex bg-black/70 backdrop-blur-sm">
-      {/* Left sidebar: page reference list */}
-      <div className="w-72 flex-shrink-0 bg-white border-r border-slate-200 flex flex-col overflow-hidden">
-        <div className="px-4 py-3 border-b border-slate-100 bg-slate-50">
-          <h3 className="text-sm font-bold text-slate-800">Zahtjevi po stranicama</h3>
-          <p className="text-[10px] text-slate-500 mt-0.5">
-            {pageRefs.length} stavki sa referencama
+    <div className="fixed inset-0 z-50 flex bg-slate-950/80 backdrop-blur-sm">
+      <aside className="hidden w-[320px] shrink-0 border-r border-white/10 bg-[linear-gradient(180deg,#0f172a_0%,#111827_100%)] text-white lg:flex lg:flex-col">
+        <div className="border-b border-white/10 px-5 py-4">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+            Brzi pregled
+          </p>
+          <h3 className="mt-2 font-heading text-xl font-bold text-white">Zahtjevi po stranicama</h3>
+          <p className="mt-2 text-sm leading-6 text-slate-300">
+            Kliknite na stranicu ili zahtjev i dokument se otvara tačno tamo gdje treba.
           </p>
         </div>
-        <div className="flex-1 overflow-y-auto">
+
+        <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
           {referencedPages.length === 0 ? (
-            <p className="p-4 text-xs text-slate-400 italic">
-              Nema stavki sa referencama na stranice.
-            </p>
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-slate-300">
+              Još nema stavki sa vezanom stranicom iz dokumentacije.
+            </div>
           ) : (
-            referencedPages.map((pg) => {
-              const items = pageRefs.filter((item) => item.page_number === pg);
-              return (
-                <div key={pg} className="border-b border-slate-100">
-                  <button
-                    onClick={() => goToPage(pg)}
-                    className={`w-full text-left px-4 py-2 text-[11px] font-bold transition-colors ${
-                      pg === pageNumber
-                        ? "bg-blue-50 text-blue-700"
-                        : "text-slate-600 hover:bg-slate-50"
-                    }`}
-                  >
-                    Stranica {pg}
-                  </button>
-                  {items.map((item) => (
+            <div className="space-y-2">
+              {referencedPages.map((page) => {
+                const items = pageRefs.filter((item) => item.page_number === page);
+                return (
+                  <div key={page} className="rounded-2xl border border-white/10 bg-white/5 p-2">
                     <button
-                      key={item.id}
-                      onClick={() => goToPage(item.page_number!)}
-                      className={`w-full text-left px-4 py-2 pl-6 flex items-start gap-2 transition-colors ${
-                        item.page_number === pageNumber
-                          ? "bg-blue-50/50"
-                          : "hover:bg-slate-50"
+                      type="button"
+                      onClick={() => goToPage(page)}
+                      className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm font-semibold transition-colors ${
+                        page === pageNumber
+                          ? "bg-blue-500 text-white"
+                          : "text-slate-200 hover:bg-white/10 hover:text-white"
                       }`}
                     >
-                      <FileText className="size-3 mt-0.5 shrink-0 text-slate-400" />
-                      <div className="min-w-0">
-                        <p className="text-[11px] font-medium text-slate-700 leading-tight truncate">
-                          {item.title}
-                        </p>
-                        {item.page_reference && (
-                          <p className="text-[10px] text-slate-400 mt-0.5">
-                            {item.page_reference}
-                          </p>
-                        )}
-                      </div>
+                      <span>Stranica {page}</span>
+                      <span className="text-xs opacity-80">{items.length}</span>
                     </button>
-                  ))}
-                </div>
-              );
-            })
+                    <div className="mt-2 space-y-1">
+                      {items.map((item) => (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => goToPage(page)}
+                          className={`flex w-full items-start gap-2 rounded-xl px-3 py-2 text-left transition-colors ${
+                            page === pageNumber ? "bg-blue-500/10" : "hover:bg-white/8"
+                          }`}
+                        >
+                          <FileText className="mt-0.5 size-3.5 shrink-0 text-slate-400" />
+                          <div className="min-w-0">
+                            <p className="line-clamp-2 text-xs font-medium text-slate-100">{item.title}</p>
+                            {item.page_reference ? (
+                              <p className="mt-1 text-[11px] text-slate-400">{item.page_reference}</p>
+                            ) : null}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           )}
         </div>
-      </div>
+      </aside>
 
-      {/* Main PDF area */}
-      <div className="flex-1 flex flex-col min-w-0">
-        {/* Toolbar */}
-        <div className="flex items-center justify-between bg-white border-b border-slate-200 px-4 py-2.5 shadow-sm">
-          <div className="flex items-center gap-3 min-w-0">
-            <FileText className="size-4 text-slate-400 shrink-0" />
-            <span className="text-sm font-bold text-slate-900 truncate">{fileName}</span>
-            {currentPageItems.length > 0 && (
-              <span className="shrink-0 rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-bold text-blue-700">
-                {currentPageItems.length} zahtjev{currentPageItems.length > 1 ? "a" : ""} na ovoj stranici
-              </span>
-            )}
+      <div className="flex min-w-0 flex-1 flex-col">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 bg-white/95 px-4 py-3 backdrop-blur-sm">
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold text-slate-900" title={fileName}>
+              {fileName}
+            </p>
+            <p className="mt-1 text-xs text-slate-500">
+              Stranica {pageNumber} od {numPages || 1}
+            </p>
           </div>
 
-          <div className="flex items-center gap-2">
-            {/* Page navigation */}
-            <div className="flex items-center gap-1 bg-slate-50 rounded-lg border border-slate-200 px-1">
-              <Button variant="ghost" size="icon" className="size-8"
-                onClick={() => goToPage(pageNumber - 1)} disabled={pageNumber <= 1}>
-                <ChevronLeft className="size-4" />
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-1 rounded-2xl border border-slate-200 bg-white px-1 py-1 shadow-sm">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="rounded-xl px-3 text-slate-700"
+                onClick={() => goToPage(pageNumber - 1)}
+                disabled={pageNumber <= 1}
+              >
+                <ChevronLeft className="mr-1 size-4" />
+                Nazad
               </Button>
-              <span className="text-xs font-bold text-slate-700 min-w-[64px] text-center tabular-nums">
-                {pageNumber} / {numPages}
-              </span>
-              <Button variant="ghost" size="icon" className="size-8"
-                onClick={() => goToPage(pageNumber + 1)} disabled={pageNumber >= numPages}>
-                <ChevronRight className="size-4" />
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="rounded-xl px-3 text-slate-700"
+                onClick={() => goToPage(pageNumber + 1)}
+                disabled={pageNumber >= numPages}
+              >
+                Naprijed
+                <ChevronRight className="ml-1 size-4" />
               </Button>
             </div>
 
-            {/* Zoom controls */}
-            <div className="flex items-center gap-1 bg-slate-50 rounded-lg border border-slate-200 px-1">
-              <Button variant="ghost" size="icon" className="size-8"
-                onClick={() => setScale((s) => Math.max(0.5, s - 0.15))}>
+            <div className="flex items-center gap-1 rounded-2xl border border-slate-200 bg-white px-1 py-1 shadow-sm">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="size-9 rounded-xl text-slate-700"
+                onClick={() => setManualScale((current) => Math.max((current ?? currentScale) - 0.1, 0.45))}
+              >
                 <Minus className="size-4" />
               </Button>
-              <span className="text-xs font-mono text-slate-500 min-w-[36px] text-center">
-                {Math.round(scale * 100)}%
-              </span>
-              <Button variant="ghost" size="icon" className="size-8"
-                onClick={() => setScale((s) => Math.min(3, s + 0.15))}>
+              <button
+                type="button"
+                onClick={() => setManualScale(null)}
+                className="rounded-xl px-3 py-2 text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900"
+              >
+                Cijela stranica {Math.round(currentScale * 100)}%
+              </button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="size-9 rounded-xl text-slate-700"
+                onClick={() => setManualScale((current) => Math.min((current ?? currentScale) + 0.1, 2))}
+              >
                 <Plus className="size-4" />
               </Button>
             </div>
 
-            <Button variant="ghost" size="icon" className="size-8 text-slate-500 hover:text-slate-900"
-              onClick={onClose}>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="size-9 rounded-xl text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+              onClick={onClose}
+            >
               <X className="size-5" />
             </Button>
           </div>
         </div>
 
-        {/* Badges for current page items */}
-        {currentPageItems.length > 0 && (
-          <div className="flex flex-wrap gap-1.5 px-4 py-2 bg-blue-50/80 border-b border-blue-100">
+        {currentPageItems.length > 0 ? (
+          <div className="flex flex-wrap gap-2 border-b border-white/10 bg-blue-50 px-4 py-2">
             {currentPageItems.map((item) => (
-              <span key={item.id}
-                className="inline-flex items-center gap-1 rounded-md bg-white px-2 py-1 text-[10px] font-bold text-blue-700 border border-blue-200 shadow-sm">
-                <FileText className="size-3" />
-                {item.title.length > 40 ? item.title.slice(0, 40) + "…" : item.title}
+              <span
+                key={item.id}
+                className="inline-flex items-center gap-1.5 rounded-full border border-blue-200 bg-white px-3 py-1 text-xs font-semibold text-blue-700"
+              >
+                <FileText className="size-3.5" />
+                {item.title}
               </span>
             ))}
           </div>
-        )}
+        ) : null}
 
-        {/* PDF content */}
-        <div 
-          ref={scrollContainerRef}
-          className="flex-1 overflow-auto flex justify-center bg-slate-100 p-4"
-        >
-          {loading && (
-            <div className="flex items-center gap-3 text-slate-500">
+        <div ref={viewportRef} className="flex min-h-0 flex-1 items-center justify-center overflow-auto bg-slate-100/90 p-6">
+          {loading ? (
+            <div className="flex items-center gap-3 rounded-2xl border border-white/70 bg-white px-5 py-4 text-slate-600 shadow-sm">
               <Loader2 className="size-5 animate-spin" />
               <span className="text-sm font-medium">Učitavam dokument...</span>
             </div>
-          )}
-          <Document
-            file={fileUrl}
-            onLoadSuccess={onDocumentLoadSuccess}
-            loading={null}
-            className="shadow-2xl rounded-lg overflow-hidden"
-          >
-            <div className="flex flex-col gap-4">
-              {Array.from({ length: numPages }, (_, i) => i + 1).map((page) => (
-                <div
-                  key={page}
-                  ref={(el) => {
-                    if (el) {
-                      pageElementRefs.current.set(page, el);
-                    } else {
-                      pageElementRefs.current.delete(page);
-                    }
-                  }}
-                >
-                  <Page
-                    pageNumber={page}
-                    scale={scale}
-                    renderAnnotationLayer={false}
-                    renderTextLayer={true}
-                    className="bg-white"
-                  />
-                </div>
-              ))}
-            </div>
+          ) : null}
+
+          <Document file={fileUrl} onLoadSuccess={onDocumentLoadSuccess} loading={null}>
+            <Page
+              pageNumber={pageNumber}
+              scale={currentScale}
+              renderAnnotationLayer={false}
+              renderTextLayer
+              className="overflow-hidden rounded-[1.4rem] bg-white shadow-[0_28px_65px_-38px_rgba(15,23,42,0.32)]"
+              onLoadSuccess={(page) => {
+                const viewport = page.getViewport({ scale: 1 });
+                setPageSize({ width: viewport.width, height: viewport.height });
+              }}
+            />
           </Document>
         </div>
       </div>

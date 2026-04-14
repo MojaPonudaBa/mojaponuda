@@ -43,16 +43,16 @@ export function PricingTable({
           <article
             key={plan.id}
             className={cn(
-              "relative flex flex-col rounded-[1.85rem] border p-7 text-white shadow-[0_28px_65px_-42px_rgba(2,6,23,0.88)]",
+              "relative flex flex-col rounded-[1.95rem] border p-7 text-white shadow-[0_30px_72px_-42px_rgba(2,6,23,0.9)]",
               isPopular
-                ? "border-sky-400/35 bg-[linear-gradient(180deg,#172554_0%,#111827_100%)]"
-                : "border-slate-800 bg-[linear-gradient(180deg,#111827_0%,#0f172a_100%)]",
+                ? "border-sky-400/35 bg-[radial-gradient(circle_at_top_right,rgba(59,130,246,0.18),transparent_28%),linear-gradient(180deg,#172554_0%,#111827_100%)]"
+                : "border-slate-800 bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.08),transparent_24%),linear-gradient(180deg,#111827_0%,#0f172a_100%)]",
               isCurrent && "ring-1 ring-white/10",
             )}
           >
             {isPopular ? (
               <div className="absolute inset-x-0 -top-5 z-20 flex justify-center">
-                <span className="rounded-full border border-blue-300/40 bg-[#1d4ed8] px-4 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-white shadow-[0_14px_30px_-18px_rgba(37,99,235,0.85)]">
+                <span className="rounded-full border border-blue-200/60 bg-blue-600 px-4 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-white shadow-[0_14px_30px_-18px_rgba(37,99,235,0.85)]">
                   Najbolji odnos cijene i onoga što dobijate
                 </span>
               </div>

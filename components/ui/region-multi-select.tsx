@@ -59,14 +59,20 @@ export function RegionMultiSelect({
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className={cn("w-full justify-between h-auto min-h-10 px-3 py-2 rounded-xl", triggerClassName)}
+          className={cn(
+            "h-auto min-h-10 w-full justify-between rounded-xl px-3 py-2 text-white [&_svg]:text-slate-300",
+            triggerClassName
+          )}
         >
           <div className="flex flex-wrap gap-1">
             {selectionLabels.length > 0 ? (
               selectionLabels.map((region) => (
                 <div
                   key={region}
-                  className={cn("flex items-center gap-1 bg-blue-50 text-blue-700 px-2 py-0.5 rounded-md text-xs", chipClassName)}
+                  className={cn(
+                    "flex items-center gap-1 rounded-md bg-blue-50 px-2 py-0.5 text-xs text-blue-700",
+                    chipClassName
+                  )}
                 >
                   {region}
                   <div
@@ -99,10 +105,12 @@ export function RegionMultiSelect({
                 </div>
               ))
             ) : (
-              <span className={cn("text-muted-foreground font-normal", placeholderClassName)}>{placeholder}</span>
+              <span className={cn("font-normal text-slate-200", placeholderClassName)}>
+                {placeholder}
+              </span>
             )}
           </div>
-          <ChevronsUpDown className="ml-2 size-4 shrink-0 opacity-50" />
+          <ChevronsUpDown className="ml-2 size-4 shrink-0 opacity-80" />
         </Button>
       </PopoverTrigger>
       <PopoverContent className={cn("w-[440px] p-0", contentClassName)} align="start">
