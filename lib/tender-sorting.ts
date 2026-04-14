@@ -1,4 +1,9 @@
 import type { RecommendationTenderInput } from "@/lib/tender-recommendations";
+import {
+  getAnchorCoords,
+  getCoordsForPlace,
+  haversineKm,
+} from "@/lib/constants/municipality-coordinates";
 import type { Tender } from "@/types/database";
 
 export type TenderSortOption =
@@ -15,6 +20,14 @@ export interface SortableRecommendedTender<TTender extends RecommendationTenderI
   score: number;
   locationPriority: number;
   positiveSignalCount?: number;
+}
+
+export interface TenderWithComputedLocation {
+  contracting_authority?: string | null;
+  authority_city?: string | null;
+  authority_municipality?: string | null;
+  authority_canton?: string | null;
+  locationPriority?: number | null;
 }
 
 function compareNullableNumber(
@@ -67,6 +80,73 @@ function compareNullableDate(
     : normalizedSecond - normalizedFirst;
 }
 
+function getLocationCandidates(tender: TenderWithComputedLocation): string[] {
+  return [
+    tender.authority_municipality,
+    tender.authority_city,
+    tender.authority_canton,
+    tender.contracting_authority,
+  ].filter((value): value is string => Boolean(value?.trim()));
+}
+
+export function computeTenderLocationPriority(
+  tender: TenderWithComputedLocation,
+  selectedRegions: string[]
+): number {
+  const anchor = getAnchorCoords(selectedRegions);
+  if (!anchor) {
+    return Number.POSITIVE_INFINITY;
+  }
+
+  let bestDistance = Number.POSITIVE_INFINITY;
+
+  for (const candidate of getLocationCandidates(tender)) {
+    const direct = getCoordsForPlace(candidate);
+    if (direct) {
+      bestDistance = Math.min(
+        bestDistance,
+        haversineKm(anchor.lat, anchor.lng, direct.lat, direct.lng)
+      );
+      continue;
+    }
+
+    const pieces = candidate.split(/[\s,().\-–/]+/).filter((piece) => piece.length >= 4);
+    for (let index = 0; index < pieces.length; index += 1) {
+      const single = getCoordsForPlace(pieces[index]);
+      if (single) {
+        bestDistance = Math.min(
+          bestDistance,
+          haversineKm(anchor.lat, anchor.lng, single.lat, single.lng)
+        );
+      }
+
+      if (index < pieces.length - 1) {
+        const combined = getCoordsForPlace(`${pieces[index]} ${pieces[index + 1]}`);
+        if (combined) {
+          bestDistance = Math.min(
+            bestDistance,
+            haversineKm(anchor.lat, anchor.lng, combined.lat, combined.lng)
+          );
+        }
+      }
+    }
+  }
+
+  return bestDistance;
+}
+
+export function attachTenderLocationPriority<
+  TTender extends TenderWithComputedLocation,
+>(tenders: TTender[], selectedRegions: string[]): Array<TTender & { locationPriority: number }> {
+  return tenders.map((tender) => ({
+    ...tender,
+    locationPriority:
+      typeof tender.locationPriority === "number"
+        ? tender.locationPriority
+        : computeTenderLocationPriority(tender, selectedRegions),
+  }));
+}
+
 export function resolveTenderSort(
   value: string | null | undefined,
   tab: "recommended" | "all"
@@ -82,9 +162,9 @@ export function resolveTenderSort(
     case "newest":
       return normalized;
     case "recommended":
-      return tab === "recommended" ? "recommended" : "deadline_asc";
+      return tab === "recommended" ? "recommended" : "nearest";
     default:
-      return tab === "recommended" ? "recommended" : "deadline_asc";
+      return "nearest";
   }
 }
 
@@ -170,14 +250,27 @@ export function sortRecommendedTenderItems<
   return sorted;
 }
 
-export function sortStandardTenders<TTender extends Pick<Tender, "deadline" | "estimated_value" | "created_at">>(
+export function sortStandardTenders<
+  TTender extends Pick<Tender, "deadline" | "estimated_value" | "created_at"> & {
+    locationPriority?: number | null;
+  },
+>(
   tenders: TTender[],
   sort: TenderSortOption
 ): TTender[] {
   const sorted = [...tenders];
 
   sorted.sort((first, second) => {
-    if (sort === "value_desc") {
+    if (sort === "nearest") {
+      const firstPriority =
+        typeof first.locationPriority === "number" ? first.locationPriority : Number.POSITIVE_INFINITY;
+      const secondPriority =
+        typeof second.locationPriority === "number" ? second.locationPriority : Number.POSITIVE_INFINITY;
+
+      if (firstPriority !== secondPriority) {
+        return firstPriority - secondPriority;
+      }
+    } else if (sort === "value_desc") {
       const valueCompare = compareNullableNumber(
         first.estimated_value,
         second.estimated_value,
@@ -222,6 +315,11 @@ export function sortStandardTenders<TTender extends Pick<Tender, "deadline" | "e
       if (deadlineCompare !== 0) {
         return deadlineCompare;
       }
+    }
+
+    const deadlineCompare = compareNullableDate(first.deadline, second.deadline, "asc");
+    if (deadlineCompare !== 0) {
+      return deadlineCompare;
     }
 
     return compareNullableDate(first.created_at, second.created_at, "desc");

@@ -5,7 +5,12 @@ import { getSubscriptionStatus } from "@/lib/subscription";
 import type { Tender } from "@/types/database";
 import { buildRegionSearchTerms } from "@/lib/constants/regions";
 import { maybeRerankTenderRecommendationsWithAI } from "@/lib/tender-recommendation-rerank";
-import { resolveTenderSort, sortRecommendedTenderItems, sortStandardTenders } from "@/lib/tender-sorting";
+import {
+  attachTenderLocationPriority,
+  resolveTenderSort,
+  sortRecommendedTenderItems,
+  sortStandardTenders,
+} from "@/lib/tender-sorting";
 import {
   buildRecommendationContext,
   enrichTendersWithAuthorityGeo,
@@ -45,10 +50,11 @@ function getMultiParam(value: SearchParamValue): string[] {
   return typeof value === "string" && value.trim().length > 0 ? [value] : [];
 }
 
-async function TendersContent({ agencyClientId, companyId, recommendationContext, searchParams }: {
+async function TendersContent({ agencyClientId, companyId, recommendationContext, selectedRegions, searchParams }: {
   agencyClientId: string;
   companyId: string;
   recommendationContext: RecommendationContext;
+  selectedRegions: string[];
   searchParams: Promise<{ [key: string]: SearchParamValue }>;
 }) {
   const params = await searchParams;
@@ -80,7 +86,7 @@ async function TendersContent({ agencyClientId, companyId, recommendationContext
     valueMinParam ||
     valueMaxParam ||
     locationFilterValues.length > 0 ||
-    (activeTab === "recommended" ? sortParam !== "recommended" : sortParam !== "deadline_asc");
+    sortParam !== "nearest";
 
   let tenders: Tender[] = [];
   let totalCount = 0;
@@ -173,10 +179,46 @@ async function TendersContent({ agencyClientId, companyId, recommendationContext
         (data ?? []) as Array<Tender & { authority_city: string | null; authority_municipality: string | null; authority_canton: string | null; authority_entity: string | null }>
       );
       const filtered = enriched.filter((t) => matchesTenderLocationTerms(t, locationFilterTerms));
-      const sorted = sortStandardTenders(filtered, sortParam);
+      const sorted = sortStandardTenders(
+        attachTenderLocationPriority(filtered, selectedRegions),
+        sortParam
+      );
       totalCount = sorted.length;
       tenders = sorted.slice(offset, offset + PAGE_SIZE).map((t) => t as Tender);
     } else {
+      const shouldSortByNearest = sortParam === "nearest";
+
+      if (shouldSortByNearest) {
+        let query = supabase
+          .from("tenders")
+          .select("*");
+
+        if (keywordParam) {
+          const kw = `%${keywordParam}%`;
+          query = query.or(`title.ilike.${kw},raw_description.ilike.${kw}`);
+        }
+        if (contractTypeParam !== "all") query = query.ilike("contract_type", `%${contractTypeParam}%`);
+        if (procedureTypeParam !== "all") query = query.ilike("procedure_type", `%${procedureTypeParam}%`);
+        if (deadlineFromParam) query = query.gte("deadline", new Date(deadlineFromParam).toISOString());
+        if (deadlineToParam) query = query.lte("deadline", new Date(`${deadlineToParam}T23:59:59`).toISOString());
+        if (valueMinParam) query = query.gte("estimated_value", parseFloat(valueMinParam));
+        if (valueMaxParam) query = query.lte("estimated_value", parseFloat(valueMaxParam));
+
+        const { data } = await query
+          .order("deadline", { ascending: true, nullsFirst: false })
+          .range(0, 2499);
+
+        const enriched = await enrichTendersWithAuthorityGeo(
+          supabase,
+          (data ?? []) as Array<Tender & { authority_city: string | null; authority_municipality: string | null; authority_canton: string | null; authority_entity: string | null }>
+        );
+        const sorted = sortStandardTenders(
+          attachTenderLocationPriority(enriched, selectedRegions),
+          sortParam
+        );
+        totalCount = sorted.length;
+        tenders = sorted.slice(offset, offset + PAGE_SIZE).map((t) => t as Tender);
+      } else {
       let query = supabase
         .from("tenders")
         .select("*", { count: "exact" });
@@ -210,6 +252,7 @@ async function TendersContent({ agencyClientId, companyId, recommendationContext
 
       tenders = (data ?? []) as Tender[];
       totalCount = count ?? 0;
+      }
     }
   }
 
@@ -317,10 +360,10 @@ export default async function AgencyClientTendersPage({ params, searchParams }: 
           </div>
           <h3 className="mb-2 text-xl font-bold text-slate-900">Profil nije dovoljno popunjen</h3>
           <p className="mb-6 max-w-md text-slate-500">
-            Da bi sistem mogao preporučiti tendere, profil klijenta mora imati djelatnosti, lokaciju ili opis.
+            Da bi sistem mogao preporučiti tendere, profil klijenta mora imati djelatnost, lokaciju ili opis.
           </p>
           <Button asChild>
-            <Link href={`/dashboard/agency/clients/${agencyClientId}`}>Nazad na klijenta</Link>
+            <Link href={`/dashboard/agency/clients/${agencyClientId}`}>Nazad na pregled klijenta</Link>
           </Button>
         </div>
       </div>
@@ -373,6 +416,7 @@ export default async function AgencyClientTendersPage({ params, searchParams }: 
               agencyClientId={agencyClientId}
               companyId={company.id}
               recommendationContext={recommendationContext}
+              selectedRegions={company.operating_regions ?? []}
               searchParams={searchParams}
             />
           </Suspense>

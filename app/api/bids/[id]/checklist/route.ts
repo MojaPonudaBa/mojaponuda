@@ -18,7 +18,7 @@ export async function GET(
 
   const access = await resolveBidAccess(supabase, user.id, id);
   if (!access) {
-    return NextResponse.json({ error: "Ponuda nije pronadjena." }, { status: 404 });
+    return NextResponse.json({ error: "Ponuda nije pronađena." }, { status: 404 });
   }
 
   const { data: items } = await supabase
@@ -46,7 +46,7 @@ export async function POST(
 
   const access = await resolveBidAccess(supabase, user.id, id);
   if (!access) {
-    return NextResponse.json({ error: "Ponuda nije pronadjena." }, { status: 404 });
+    return NextResponse.json({ error: "Ponuda nije pronađena." }, { status: 404 });
   }
 
   const body = await request.json();
@@ -79,7 +79,7 @@ export async function POST(
 
   if (error) {
     console.error("Checklist insert error:", error);
-    return NextResponse.json({ error: "Greska pri dodavanju stavke." }, { status: 500 });
+    return NextResponse.json({ error: "Greška pri dodavanju stavke." }, { status: 500 });
   }
 
   return NextResponse.json({ item }, { status: 201 });

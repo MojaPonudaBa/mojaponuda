@@ -62,7 +62,7 @@ export default async function VaultPage() {
             <div>
               <h1 className="text-3xl font-heading font-bold tracking-tight text-white sm:text-4xl">Dokumenti klijenata</h1>
               <p className="mt-2 max-w-3xl text-sm leading-7 text-slate-300 sm:text-base">
-                Dokumenti svih klijenata, organizovani po folderima i spremljeni u uredan premium pregled bez gužve i prelamanja.
+                Dokumenti svih klijenata složeni su pregledno, po firmama i bez nepotrebne gužve.
               </p>
             </div>
             <AddDocumentModal />

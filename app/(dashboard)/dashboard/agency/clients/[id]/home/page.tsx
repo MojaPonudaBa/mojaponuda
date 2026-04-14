@@ -279,12 +279,12 @@ export default async function AgencyClientHomePage({
               meta: `${relevantTenderCount} relevantnih tendera`,
               tone: "opportunity" as const,
             }
-          : {
-              title: "Otvorite tendere klijenta",
-              description: "Provjerite tender feed i odmah otvorite najzanimljivije prilike za ovog klijenta.",
-              href: `${clientBase}/tenders`,
-              cta: "Idi na tendere",
-              meta: "Nema hitnih blokera",
+            : {
+                title: "Otvorite tendere klijenta",
+                description: "Provjerite tendere i odmah otvorite najzanimljivije prilike za ovog klijenta.",
+                href: `${clientBase}/tenders`,
+                cta: "Idi na tendere",
+                meta: "Nema hitnih blokera",
               tone: "neutral" as const,
             };
 

@@ -17,7 +17,7 @@ import { parseCompanyProfile, getProfileOptionLabel } from "@/lib/company-profil
 
 const CRM_STAGE_CONFIG: Record<string, { label: string; color: string }> = {
   lead: { label: "Potencijalni", color: "bg-amber-50 text-amber-700 border-amber-200" },
-  onboarding: { label: "Onboarding", color: "bg-blue-50 text-blue-700 border-blue-200" },
+  onboarding: { label: "Postavljanje", color: "bg-blue-50 text-blue-700 border-blue-200" },
   active: { label: "Aktivan", color: "bg-emerald-50 text-emerald-700 border-emerald-200" },
   paused: { label: "Pauziran", color: "bg-slate-100 text-slate-600 border-slate-200" },
   churned: { label: "Otkazan", color: "bg-red-50 text-red-700 border-red-200" },
@@ -151,7 +151,7 @@ export function AgencyClientDetail({
 
   const tabs = [
     { id: "overview", label: "Pregled" },
-    { id: "crm", label: "CRM" },
+    { id: "crm", label: "Podaci" },
   ] as const;
 
   return (
@@ -194,7 +194,7 @@ export function AgencyClientDetail({
               className="inline-flex h-10 items-center gap-2 rounded-xl bg-slate-950 px-4 text-sm font-semibold text-white hover:bg-blue-700"
             >
               <ArrowUpRight className="size-4" />
-              Otvori dashboard
+              Otvori pregled
             </Link>
           </div>
         </div>
@@ -302,10 +302,10 @@ export function AgencyClientDetail({
                   type="button"
                   onClick={() => setActiveTab("crm")}
                   className="inline-flex items-center gap-1 text-sm font-semibold text-blue-600 hover:text-blue-800"
-                >
-                  <Pencil className="size-3.5" />
-                  Uredi CRM podatke
-                </button>
+                  >
+                    <Pencil className="size-3.5" />
+                    Uredi podatke
+                  </button>
               </div>
             </div>
           </div>
@@ -332,9 +332,9 @@ export function AgencyClientDetail({
                     <p className="mt-1 text-xs text-slate-400">{formatDate(n.created_at)}</p>
                   </div>
                 ))}
-                {notes.length === 0 && (
-                  <p className="text-sm text-slate-400">Još nema bilješki. Dodajte u CRM tabu.</p>
-                )}
+                  {notes.length === 0 && (
+                    <p className="text-sm text-slate-400">Još nema bilješki. Dodajte ih u tabu Podaci.</p>
+                  )}
               </div>
               <button onClick={() => setActiveTab("crm")} className="mt-3 text-xs font-semibold text-blue-600 hover:text-blue-800">
                 + Dodaj bilješku →
@@ -346,9 +346,9 @@ export function AgencyClientDetail({
 
       {activeTab === "crm" && (
         <div className="grid gap-6 lg:grid-cols-2">
-          {/* CRM Settings */}
-          <div className="rounded-[1.5rem] border border-slate-200 bg-white p-6 shadow-sm">
-            <h2 className="font-heading text-lg font-bold text-slate-900">CRM status</h2>
+            {/* Podaci klijenta */}
+            <div className="rounded-[1.5rem] border border-slate-200 bg-white p-6 shadow-sm">
+              <h2 className="font-heading text-lg font-bold text-slate-900">Status klijenta</h2>
             <div className="mt-4 space-y-4">
               <div>
                 <label className="mb-2 block text-sm font-semibold text-slate-700">Faza suradnje</label>

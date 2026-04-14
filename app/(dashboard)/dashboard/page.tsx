@@ -305,12 +305,12 @@ export default async function DashboardPage() {
               meta: `${relevantTenderCount} relevantnih tendera`,
               tone: "opportunity" as const,
             }
-          : {
-              title: "Otvorite preporuke",
-              description: "Pregledajte tender feed i provjerite da li se pojavilo nešto što vrijedi otvoriti danas.",
-              href: "/dashboard/tenders?tab=recommended",
-              cta: "Idi na preporuke",
-              meta: "Nema hitnih blokera",
+            : {
+                title: "Otvorite preporuke",
+                description: "Pregledajte preporučene tendere i provjerite da li se pojavilo nešto što vrijedi otvoriti danas.",
+                href: "/dashboard/tenders?tab=recommended",
+                cta: "Idi na preporuke",
+                meta: "Nema hitnih blokera",
               tone: "neutral" as const,
             };
 

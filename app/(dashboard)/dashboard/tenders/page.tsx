@@ -4,7 +4,12 @@ import { isAdminEmail } from "@/lib/admin";
 import type { Tender } from "@/types/database";
 import { buildRegionSearchTerms } from "@/lib/constants/regions";
 import { maybeRerankTenderRecommendationsWithAI } from "@/lib/tender-recommendation-rerank";
-import { resolveTenderSort, sortRecommendedTenderItems, sortStandardTenders } from "@/lib/tender-sorting";
+import {
+  attachTenderLocationPriority,
+  resolveTenderSort,
+  sortRecommendedTenderItems,
+  sortStandardTenders,
+} from "@/lib/tender-sorting";
 import { getSubscriptionStatus } from "@/lib/subscription";
 import {
   buildRecommendationContext,
@@ -93,6 +98,13 @@ async function TendersContent({ searchParams }: TendersPageProps) {
   let agencyTotalCount = 0;
 
   let recommendationContext: RecommendationContext | null = null;
+  let companyProfile: {
+    id: string;
+    industry: string | null;
+    keywords: string[] | null;
+    cpv_codes: string[] | null;
+    operating_regions: string[] | null;
+  } | null = null;
   let hasProfile = false;
   let hasRecommendationSignalsForProfile = false;
   let existingBidTenderIds = new Set<string>();
@@ -204,22 +216,24 @@ async function TendersContent({ searchParams }: TendersPageProps) {
         operating_regions: agencyClients[0].operating_regions,
       });
     }
-  } else if (activeTab === "recommended" && user) {
+  } else if (user && !isAgency) {
     const { data: company } = await supabase
       .from("companies")
       .select("id, industry, keywords, cpv_codes, operating_regions")
       .eq("user_id", user.id)
       .single();
 
-    if (company) {
+    companyProfile = company;
+
+    if (activeTab === "recommended" && companyProfile) {
       hasProfile = true;
-      recommendationContext = buildRecommendationContext(company);
+      recommendationContext = buildRecommendationContext(companyProfile);
       hasRecommendationSignalsForProfile = hasRecommendationSignals(recommendationContext);
 
       const { data: bidRows } = await supabase
         .from("bids")
         .select("tender_id")
-        .eq("company_id", company.id);
+        .eq("company_id", companyProfile.id);
 
       existingBidTenderIds = new Set(
         (bidRows ?? [])
@@ -280,7 +294,7 @@ async function TendersContent({ searchParams }: TendersPageProps) {
             Dodajte klijente
           </h3>
           <p className="mb-6 max-w-md text-slate-500">
-            Dodajte klijente u svoj agencijski panel da biste vidjeli preporučene tendere za svaku firmu koju vodite.
+            Dodajte klijente u svoj agencijski račun da biste vidjeli preporučene tendere za svaku firmu koju vodite.
           </p>
           <Button asChild>
             <Link href="/dashboard/agency">Idi na klijente</Link>
@@ -299,7 +313,7 @@ async function TendersContent({ searchParams }: TendersPageProps) {
     valueMinParam ||
     valueMaxParam ||
     locationFilterValues.length > 0 ||
-    (activeTab === "recommended" ? sortParam !== "recommended" : sortParam !== "deadline_asc");
+    sortParam !== "nearest";
 
   let tenders: Tender[] = [];
   let totalCount = 0;
@@ -427,10 +441,70 @@ async function TendersContent({ searchParams }: TendersPageProps) {
         matchesTenderLocationTerms(tender, locationFilterTerms)
       );
 
-      const sortedRows = sortStandardTenders(filteredRows, sortParam);
+      const sortedRows = sortStandardTenders(
+        attachTenderLocationPriority(filteredRows, companyProfile?.operating_regions ?? []),
+        sortParam
+      );
       totalCount = sortedRows.length;
       tenders = sortedRows.slice(offset, offset + PAGE_SIZE).map((tender) => tender as Tender);
     } else {
+      const shouldSortByNearest = sortParam === "nearest";
+
+      if (shouldSortByNearest) {
+        let query = supabase
+          .from("tenders")
+          .select("*");
+
+        if (keywordParam) {
+          const kw = `%${keywordParam}%`;
+          query = query.or(`title.ilike.${kw},raw_description.ilike.${kw}`);
+        }
+
+        if (contractTypeParam !== "all") {
+          query = query.ilike("contract_type", `%${contractTypeParam}%`);
+        }
+
+        if (procedureTypeParam !== "all") {
+          query = query.ilike("procedure_type", `%${procedureTypeParam}%`);
+        }
+
+        if (deadlineFromParam) {
+          query = query.gte("deadline", new Date(deadlineFromParam).toISOString());
+        }
+        if (deadlineToParam) {
+          query = query.lte("deadline", new Date(`${deadlineToParam}T23:59:59`).toISOString());
+        }
+
+        if (valueMinParam) {
+          query = query.gte("estimated_value", parseFloat(valueMinParam));
+        }
+        if (valueMaxParam) {
+          query = query.lte("estimated_value", parseFloat(valueMaxParam));
+        }
+
+        const { data } = await query
+          .order("deadline", { ascending: true, nullsFirst: false })
+          .range(0, 2499);
+
+        const enrichedRows = await enrichTendersWithAuthorityGeo(
+          supabase,
+          ((data ?? []) as Array<
+            Tender & {
+              authority_city: string | null;
+              authority_municipality: string | null;
+              authority_canton: string | null;
+              authority_entity: string | null;
+            }
+          >)
+        );
+
+        const sortedRows = sortStandardTenders(
+          attachTenderLocationPriority(enrichedRows, companyProfile?.operating_regions ?? []),
+          sortParam
+        );
+        totalCount = sortedRows.length;
+        tenders = sortedRows.slice(offset, offset + PAGE_SIZE).map((tender) => tender as Tender);
+      } else {
       let query = supabase
         .from("tenders")
         .select("*", { count: "exact" });
@@ -480,6 +554,7 @@ async function TendersContent({ searchParams }: TendersPageProps) {
 
       tenders = (data ?? []) as Tender[];
       totalCount = count ?? 0;
+      }
     }
   }
 
@@ -530,9 +605,9 @@ async function TendersContent({ searchParams }: TendersPageProps) {
                       <Lock className="size-5 text-blue-400" />
                       Ovo je samo pregled dostupnih prilika
                     </h3>
-                    <p className="text-slate-300 text-sm leading-relaxed max-w-xl">
-                      Pronašli smo stvarne prilike za vas. Međutim, kao korisnik Besplatnog naloga možete vidjeti samo signale da ponude postoje.
-                    </p>
+                      <p className="text-slate-300 text-sm leading-relaxed max-w-xl">
+                      Pronašli smo stvarne prilike za vas. Kao korisnik besplatnog naloga trenutno možete vidjeti samo signal da ponude postoje.
+                      </p>
                   </div>
                   <UpgradeButton 
                     eventName="CLICK_UPGRADE_FEED" 
@@ -591,7 +666,7 @@ export default async function TendersPage(props: TendersPageProps) {
           </h1>
           <p className="mt-1.5 text-base text-slate-500">
             {isAgencyOuter
-              ? "Preporučeni tenderi za sve klijente koje vodite, sa oznakom za kojeg klijenta je svaki tender."
+              ? "Preporučeni tenderi za sve klijente koje vodite, sa oznakom za koga je svaki tender."
               : "Pregledajte sve aktivne tendere ili otvorite one koji se najbolje uklapaju u vaš profil i lokaciju firme."}
           </p>
         </div>

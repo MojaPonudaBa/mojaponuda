@@ -51,15 +51,15 @@ function BidsPageFallback() {
         <h1 className="text-2xl font-heading font-bold tracking-tight">
           Ponude trenutno nisu dostupne
         </h1>
-        <p className="mt-2 max-w-2xl text-sm leading-7 text-slate-600 sm:text-base">
-          Došlo je do problema pri učitavanju ponuda. Pokušajte ponovo za nekoliko
-          trenutaka ili se vratite na dashboard dok provjerimo podatke u pozadini.
-        </p>
-        <div className="mt-5">
-          <Button asChild className="rounded-xl bg-slate-950 text-white hover:bg-slate-800">
-            <Link href="/dashboard">Nazad na dashboard</Link>
-          </Button>
-        </div>
+          <p className="mt-2 max-w-2xl text-sm leading-7 text-slate-600 sm:text-base">
+            Došlo je do problema pri učitavanju ponuda. Pokušajte ponovo za nekoliko
+            trenutaka ili se vratite na početnu stranicu dok provjerimo podatke u pozadini.
+          </p>
+          <div className="mt-5">
+            <Button asChild className="rounded-xl bg-slate-950 text-white hover:bg-slate-800">
+              <Link href="/dashboard">Nazad na početnu</Link>
+            </Button>
+          </div>
       </section>
     </div>
   );
@@ -82,10 +82,10 @@ function AgencyBidsShell({ bids }: { bids: BidRow[] }) {
           </div>
           <Button
             asChild
-            className="h-11 rounded-xl bg-white px-6 font-bold text-slate-950 shadow-lg shadow-slate-950/20 transition-all hover:-translate-y-0.5 hover:bg-slate-100"
-          >
-            <Link href="/dashboard/agency">Odaberi klijenta za novu ponudu</Link>
-          </Button>
+              className="h-11 rounded-xl bg-white px-6 font-bold text-slate-950 shadow-lg shadow-slate-950/20 transition-all hover:-translate-y-0.5 hover:bg-slate-100"
+            >
+              <Link href="/dashboard/agency">Odaberi klijenta za novu ponudu</Link>
+            </Button>
         </div>
       </section>
 
@@ -112,11 +112,10 @@ function PersonalBidsShell({
           <div>
             <h1 className="text-3xl font-heading font-bold tracking-tight text-white sm:text-4xl">
               Moje ponude
-            </h1>
-            <p className="mt-2 max-w-3xl text-sm leading-7 text-slate-300 sm:text-base">
-              Sve aktivne i zavrsene ponude na jednom premium pregledu, sa jasnim
-              statusom i akcijama koje ne pucaju na manjim sirinama.
-            </p>
+              </h1>
+              <p className="mt-2 max-w-3xl text-sm leading-7 text-slate-300 sm:text-base">
+                Sve aktivne i završene ponude na jednom mjestu, sa jasnim statusom i brzim akcijama.
+              </p>
           </div>
           <NewBidModal tenders={tenders} />
         </div>

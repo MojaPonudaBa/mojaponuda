@@ -8,7 +8,7 @@ import type { Plan } from "@/lib/plans";
 
 const STATUS_LABELS: Record<string, string> = {
   active: "Aktivna",
-  past_due: "Dospjela uplata",
+  past_due: "Uplata kasni",
   cancelled: "Otkazana",
   paused: "Pauzirana",
   unpaid: "Neplaćena",
@@ -67,7 +67,7 @@ export function SubscriptionCard({
       const data = await response.json();
 
       if (!response.ok) {
-        setError(data.error || "Greška pri otvaranju portala.");
+        setError(data.error || "Greška pri otvaranju korisničkog portala.");
         return;
       }
 
@@ -131,8 +131,8 @@ export function SubscriptionCard({
           </p>
           <p className="mt-3 text-sm leading-7 text-slate-300">
             {isActive
-              ? `Trenutno koristite paket ${displayPlanName}. To vam daje pregledan operativni dashboard i veći nivo kontrole prije slanja ponuda.`
-              : "Trenutno ste na besplatnom nivou: možete pratiti prilike za svoju firmu, a puni pristup i pripremu ponuda otključavate kada vam zatreba."}
+              ? `Trenutno koristite paket ${displayPlanName}. U njemu imate pristup alatima i pripremama koje su uključene u vaš paket.`
+              : "Trenutno ste na besplatnom nivou. Možete pratiti prilike za svoju firmu, a puni rad na ponudama uključujete kada vam zatreba."}
           </p>
         </div>
 
@@ -154,8 +154,7 @@ export function SubscriptionCard({
               {preparationSummary.totalRemaining} dostupno
             </p>
             <p className="mt-2 text-sm leading-7 text-slate-300">
-              {preparationSummary.includedRemaining} uključenih i{" "}
-              {preparationSummary.purchasedRemaining} kupljenih priprema trenutno je spremno za rad.
+              {preparationSummary.includedRemaining} uključenih i {preparationSummary.purchasedRemaining} kupljenih priprema spremno je za rad.
             </p>
             <p className="mt-2 text-xs font-medium text-slate-400">
               Ciklus traje do {formatLongDate(preparationSummary.cycle?.end ?? currentPeriodEnd)}

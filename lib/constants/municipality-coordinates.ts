@@ -13,6 +13,21 @@ export interface MunicipalityCoords {
   lng: number;
 }
 
+function repairCommonMojibake(value: string): string {
+  return value
+    .replace(/Ä/g, "č")
+    .replace(/Ä‡/g, "ć")
+    .replace(/Å¡/g, "š")
+    .replace(/Å¾/g, "ž")
+    .replace(/Ä‘/g, "đ")
+    .replace(/Ä/g, "Đ")
+    .replace(/Â·/g, "·")
+    .replace(/â€“/g, "-")
+    .replace(/â€”/g, "-")
+    .replace(/â€ž|â€œ/g, "\"")
+    .replace(/â€™/g, "'");
+}
+
 // Primary lookup: exact name → coords
 export const MUNICIPALITY_COORDS: Record<string, MunicipalityCoords> = {
   // Canton / region centroids (for when operating_regions stores canton names)
@@ -232,10 +247,14 @@ export function haversineKm(
  * lowercase, strip common diacritics, trim.
  */
 function normalizeName(name: string): string {
-  return name
+  return repairCommonMojibake(name)
+    .trim()
     .toLowerCase()
-    .replace(/š/g, "s").replace(/č/g, "c").replace(/ć/g, "c")
-    .replace(/ž/g, "z").replace(/đ/g, "d").replace(/dž/g, "dz")
+    .replace(/đ/g, "dj")
+    .replace(/dž/g, "dz")
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, " ")
     .trim();
 }
 
@@ -247,6 +266,29 @@ const NORMALIZED_LOOKUP = new Map<string, MunicipalityCoords>(
   ])
 );
 
+const NORMALIZED_ALIASES = new Map<string, string>([
+  ["banjaluka", "banja luka"],
+  ["grad banja luka", "banja luka"],
+  ["grad sarajevo", "sarajevo"],
+  ["brcko", "brcko"],
+  ["brcko distrikt bih", "brcko distrikt"],
+  ["brcko distrikt bosne i hercegovine", "brcko distrikt"],
+  ["sarajevo centar", "centar sarajevo"],
+  ["sarajevo novi grad", "novi grad sarajevo"],
+  ["sarajevo stari grad", "stari grad sarajevo"],
+  ["sarajevo novo", "novo sarajevo"],
+  ["istocna ilidza", "istocna ilidza"],
+  ["istocno novo sarajevo", "istocno novo sarajevo"],
+  ["istocni stari grad", "istocni stari grad"],
+  ["domaljevac samac", "domaljevac samac"],
+  ["trnovo fbih", "trnovo fbih"],
+  ["trnovo rs", "trnovo rs"],
+]);
+
+const NORMALIZED_ENTRIES = [...NORMALIZED_LOOKUP.entries()].sort(
+  (left, right) => right[0].length - left[0].length
+);
+
 /**
  * Look up coordinates for a place name string.
  * Tries exact match first, then normalized fuzzy match.
@@ -254,12 +296,25 @@ const NORMALIZED_LOOKUP = new Map<string, MunicipalityCoords>(
  */
 export function getCoordsForPlace(name: string | null | undefined): MunicipalityCoords | null {
   if (!name?.trim()) return null;
-  const trimmed = name.trim();
+  const trimmed = repairCommonMojibake(name.trim());
   // Exact match
   if (MUNICIPALITY_COORDS[trimmed]) return MUNICIPALITY_COORDS[trimmed];
   // Normalized match
   const norm = normalizeName(trimmed);
-  return NORMALIZED_LOOKUP.get(norm) ?? null;
+  const aliased = NORMALIZED_ALIASES.get(norm) ?? norm;
+  const direct = NORMALIZED_LOOKUP.get(aliased);
+  if (direct) {
+    return direct;
+  }
+
+  for (const [candidate, coords] of NORMALIZED_ENTRIES) {
+    if (candidate.length < 4) continue;
+    if (aliased.includes(candidate)) {
+      return coords;
+    }
+  }
+
+  return null;
 }
 
 /**

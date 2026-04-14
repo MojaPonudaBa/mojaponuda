@@ -45,14 +45,14 @@ const coreItems: NavItem[] = [
 ];
 
 const adminItems: NavItem[] = [
-  { href: "/dashboard/admin", label: "Overview", icon: Shield, exact: true },
+  { href: "/dashboard/admin", label: "Pregled", icon: Shield, exact: true },
   { href: "/dashboard/admin/agencies", label: "Agencije", icon: Users },
-  { href: "/dashboard/admin/leads", label: "Leads", icon: Target },
-  { href: "/dashboard/admin/financials", label: "Financials", icon: CircleDollarSign },
-  { href: "/dashboard/admin/prilike", label: "Prilike & Scraperi", icon: Sparkles },
+  { href: "/dashboard/admin/leads", label: "Upiti", icon: Target },
+  { href: "/dashboard/admin/financials", label: "Prihodi", icon: CircleDollarSign },
+  { href: "/dashboard/admin/prilike", label: "Prilike i izvori", icon: Sparkles },
   { href: "/dashboard/admin/posts", label: "Postovi", icon: FileText },
   { href: "/dashboard/admin/zakon", label: "Zakon", icon: Scale },
-  { href: "/dashboard/admin/system", label: "System", icon: Wrench },
+  { href: "/dashboard/admin/system", label: "Sistem", icon: Wrench },
 ];
 
 export interface AgencyClientNavItem {
@@ -121,7 +121,6 @@ export function DashboardSidebar({
     const supabase = createClient();
     await supabase.auth.signOut();
     router.push("/login");
-    router.refresh();
   }
 
   function NavLink({ item }: { item: NavItem }) {

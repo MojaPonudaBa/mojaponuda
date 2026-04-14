@@ -60,4 +60,17 @@ describe("tender sorting", () => {
 
     expect(sorted.map((item) => item.id)).toEqual(["high", "mid", "unknown"]);
   });
+
+  it("sorts standard tenders by nearest location when priorities are available", () => {
+    const sorted = sortStandardTenders(
+      [
+        { ...createTender({ id: "far" }), locationPriority: 250 },
+        { ...createTender({ id: "near" }), locationPriority: 25 },
+        { ...createTender({ id: "unknown" }), locationPriority: Number.POSITIVE_INFINITY },
+      ],
+      "nearest"
+    );
+
+    expect(sorted.map((item) => item.id)).toEqual(["near", "far", "unknown"]);
+  });
 });

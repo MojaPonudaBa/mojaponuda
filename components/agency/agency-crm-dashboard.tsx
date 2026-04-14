@@ -24,7 +24,7 @@ const GRANT_PREVIEW_REFERENCE_TIME = Date.now();
 
 const CRM_STAGE_CONFIG: Record<string, { label: string; tone: string }> = {
   lead: { label: "Potencijalni", tone: "border-amber-500/30 bg-amber-500/10 text-amber-100" },
-  onboarding: { label: "Onboarding", tone: "border-sky-500/30 bg-sky-500/10 text-sky-100" },
+  onboarding: { label: "Postavljanje", tone: "border-sky-500/30 bg-sky-500/10 text-sky-100" },
   active: { label: "Aktivan", tone: "border-emerald-500/30 bg-emerald-500/10 text-emerald-100" },
   paused: { label: "Pauziran", tone: "border-slate-500/30 bg-slate-500/10 text-slate-200" },
   churned: { label: "Otkazan", tone: "border-rose-500/30 bg-rose-500/10 text-rose-100" },
@@ -184,20 +184,16 @@ export function AgencyCRMDashboard({
             <div className="flex flex-wrap items-center gap-2">
               <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-200">
                 <Users className="size-3.5 text-sky-300" />
-                Agency dashboard
-              </span>
-              <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-300">
-                <Sparkles className="size-3.5 text-emerald-300" />
-                Premium workflow
+                Agencijski pregled
               </span>
             </div>
 
             <div className="space-y-3">
               <h1 className="max-w-4xl font-heading text-3xl font-bold tracking-tight text-white sm:text-4xl lg:text-[2.9rem]">
-                Klijenti, alerti i operativni signal na jednom premium pregledu.
+                Klijenti, upozorenja i važni zadaci na jednom mjestu.
               </h1>
               <p className="max-w-3xl text-sm leading-7 text-slate-300 sm:text-base lg:text-lg">
-                Agency paket sada koristi isti tamni, polished dashboard jezik kao homepage preview, tako da odmah vidite šta je hitno, šta je stabilno i gdje vrijedi otvoriti klijenta.
+                Odmah vidite kome treba pažnja, gdje ima posla i kojeg klijenta vrijedi otvoriti prvo.
               </p>
             </div>
 
@@ -205,20 +201,20 @@ export function AgencyCRMDashboard({
               <div className="rounded-[1.35rem] border border-white/10 bg-white/5 p-5">
                 <p className="text-sm font-medium text-slate-400">Aktivni klijenti</p>
                 <p className="mt-2 font-heading text-3xl font-bold text-white">{activeClientsCount}</p>
-                <p className="mt-2 text-sm text-slate-300">{onboardingClientsCount} u onboardingu</p>
+                <p className="mt-2 text-sm text-slate-300">{onboardingClientsCount} u postavljanju</p>
               </div>
               <div className="rounded-[1.35rem] border border-white/10 bg-white/5 p-5">
-                <p className="text-sm font-medium text-slate-400">Hitni alerti</p>
+                <p className="text-sm font-medium text-slate-400">Hitna upozorenja</p>
                 <p className="mt-2 font-heading text-3xl font-bold text-white">{criticalCount}</p>
                 <p className="mt-2 text-sm text-slate-300">{warningCount} dodatnih upozorenja</p>
               </div>
               <div className="rounded-[1.35rem] border border-white/10 bg-white/5 p-5">
-                <p className="text-sm font-medium text-slate-400">Aktivne ponude</p>
-                <p className="mt-2 font-heading text-3xl font-bold text-white">{totalActiveBids}</p>
-                <p className="mt-2 text-sm text-slate-300">Radni prostor preko svih klijenata</p>
+              <p className="text-sm font-medium text-slate-400">Aktivne ponude</p>
+              <p className="mt-2 font-heading text-3xl font-bold text-white">{totalActiveBids}</p>
+              <p className="mt-2 text-sm text-slate-300">Ukupno preko svih klijenata</p>
               </div>
               <div className="rounded-[1.35rem] border border-white/10 bg-white/5 p-5">
-                <p className="text-sm font-medium text-slate-400">Mjesečni retainer</p>
+              <p className="text-sm font-medium text-slate-400">Mjesečni iznos</p>
                 <p className="mt-2 font-heading text-3xl font-bold text-white">{formatCurrency(totalMonthlyFees)}</p>
                 <p className="mt-2 text-sm text-slate-300">{clients.length} ukupno klijenata</p>
               </div>
@@ -227,9 +223,9 @@ export function AgencyCRMDashboard({
 
           <div className="rounded-[1.75rem] border border-white/10 bg-white/5 p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Brza akcija</p>
-            <h2 className="mt-3 font-heading text-2xl font-bold text-white">Dodajte novog klijenta bez napuštanja dashboarda</h2>
+            <h2 className="mt-3 font-heading text-2xl font-bold text-white">Dodajte novog klijenta bez izlaska iz pregleda</h2>
             <p className="mt-3 text-sm leading-6 text-slate-300">
-              Novi klijent odmah ulazi u isti polished pregled sa tenderima, ponudama, dokumentima i operativnim signalima.
+              Novi klijent odmah dobija svoj pregled sa tenderima, ponudama, dokumentima i važnim obavijestima.
             </p>
             <button
               onClick={() => setShowAddModal(true)}
@@ -247,7 +243,7 @@ export function AgencyCRMDashboard({
           <div className="flex items-center justify-between gap-4 border-b border-white/10 pb-5">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Kontrola</p>
-              <h2 className="mt-2 font-heading text-2xl font-bold text-white">Operativni signal</h2>
+              <h2 className="mt-2 font-heading text-2xl font-bold text-white">Važna upozorenja</h2>
             </div>
             <Bell className="size-5 text-sky-300" />
           </div>
@@ -276,7 +272,7 @@ export function AgencyCRMDashboard({
               })
             ) : (
               <div className="rounded-xl border border-white/10 bg-white/5 p-5 text-sm leading-6 text-slate-300">
-                Trenutno nema hitnih signala. Dashboard ostaje čist dok se ne pojavi stvaran operativni razlog za reakciju.
+                Trenutno nema hitnih upozorenja. Ovdje će se pojaviti samo ono što traži reakciju.
               </div>
             )}
           </div>
@@ -331,7 +327,7 @@ export function AgencyCRMDashboard({
               })
             ) : (
               <div className="rounded-xl border border-white/10 bg-white/5 p-5 text-sm leading-6 text-slate-300">
-                Trenutno nema objavljenih grantova u previewu. Čim se pojave nove prilike, dobićete ih u istom premium formatu.
+                Trenutno nema objavljenih grantova. Čim se pojave nove prilike, vidjet ćete ih ovdje.
               </div>
             )}
           </div>
@@ -342,14 +338,14 @@ export function AgencyCRMDashboard({
         <div className="flex flex-col gap-4 border-b border-white/10 pb-5 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Klijenti</p>
-            <h2 className="mt-2 font-heading text-2xl font-bold text-white">Premium CRM pregled</h2>
+            <h2 className="mt-2 font-heading text-2xl font-bold text-white">Pregled klijenata</h2>
           </div>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <div className="relative min-w-[260px] flex-1">
               <Search className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-500" />
               <input
                 type="text"
-                placeholder="Pretraži po imenu ili JIB-u..."
+                placeholder="Pretraži po imenu ili JIB-u"
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 className="h-11 w-full rounded-xl border border-white/10 bg-white/5 pl-10 pr-4 text-sm text-white placeholder:text-slate-500 focus:border-sky-400/40 focus:outline-none focus:ring-2 focus:ring-sky-400/15"
@@ -378,7 +374,7 @@ export function AgencyCRMDashboard({
             <Users className="mx-auto mb-4 size-12 text-slate-500" />
             <p className="font-semibold text-white">{clients.length === 0 ? "Još nema klijenata" : "Nema rezultata pretrage"}</p>
             <p className="mt-2 text-sm text-slate-400">
-              {clients.length === 0 ? "Dodajte prvog klijenta da otvorite agency workflow." : "Pokušajte drugu pretragu ili filter."}
+              {clients.length === 0 ? "Dodajte prvog klijenta da otvorite agencijski pregled." : "Pokušajte drugu pretragu ili filter."}
             </p>
             {clients.length === 0 ? (
               <button
@@ -450,7 +446,7 @@ export function AgencyCRMDashboard({
                         <p className="mt-1 text-sm font-semibold text-white">{docs}</p>
                       </div>
                       <div className="rounded-xl border border-white/10 bg-black/10 px-4 py-3">
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Signal</p>
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Stanje</p>
                         <p className="mt-1 text-sm font-semibold text-white">
                           {criticalAlerts > 0 ? `${criticalAlerts} hitno` : warningAlerts > 0 ? `${warningAlerts} upozorenja` : "Stabilno"}
                         </p>

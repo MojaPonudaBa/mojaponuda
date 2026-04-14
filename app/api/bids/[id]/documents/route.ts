@@ -18,7 +18,7 @@ export async function POST(
 
   const access = await resolveBidAccess(supabase, user.id, id);
   if (!access) {
-    return NextResponse.json({ error: "Ponuda nije pronadjena." }, { status: 404 });
+    return NextResponse.json({ error: "Ponuda nije pronađena." }, { status: 404 });
   }
 
   const body = await request.json();
@@ -36,7 +36,7 @@ export async function POST(
     .maybeSingle();
 
   if (!document) {
-    return NextResponse.json({ error: "Dokument nije pronadjen." }, { status: 404 });
+    return NextResponse.json({ error: "Dokument nije pronađen." }, { status: 404 });
   }
 
   const { data: existing } = await supabase
@@ -47,7 +47,7 @@ export async function POST(
     .maybeSingle();
 
   if (existing) {
-    return NextResponse.json({ error: "Dokument je vec prilozen." }, { status: 409 });
+    return NextResponse.json({ error: "Dokument je već priložen." }, { status: 409 });
   }
 
   const { data: bidDoc, error } = await supabase
@@ -62,7 +62,7 @@ export async function POST(
 
   if (error) {
     console.error("Bid document insert error:", error);
-    return NextResponse.json({ error: "Greska pri prilaganju dokumenta." }, { status: 500 });
+    return NextResponse.json({ error: "Greška pri prilaganju dokumenta." }, { status: 500 });
   }
 
   return NextResponse.json({ bidDoc }, { status: 201 });

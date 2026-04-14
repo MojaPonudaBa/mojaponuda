@@ -86,7 +86,7 @@ function PreparationUsagePanel({
             ) : (
               <CreditCard className="size-3.5 text-sky-300" />
             )}
-            {agencyClientId ? "Agency klijent" : "Vaš račun"}
+            {agencyClientId ? "Klijent" : "Vaš račun"}
           </div>
           <h3 className="mt-4 font-heading text-2xl font-bold text-white">{companyName}</h3>
           <p className="mt-2 text-sm leading-6 text-slate-300">{buildPreparationIntro(summary)}</p>
@@ -287,10 +287,10 @@ export function SubscriptionClientPage({
             Paketi i pripreme ponuda
           </div>
           <h1 className="mt-4 font-heading text-3xl font-bold tracking-tight text-white sm:text-4xl">
-            Pretplata, potrošnja i dodatne pripreme na jednom mjestu
+            Pretplata, paketi i pripreme na jednom mjestu
           </h1>
           <p className="mt-3 text-sm leading-7 text-slate-300 sm:text-base">
-            Ovdje birate paket, pratite koliko je priprema ostalo i odmah dopunjujete račun ili klijenta bez napuštanja workflowa.
+            Ovdje birate paket, pratite koliko priprema je ostalo i po potrebi odmah dopunjujete račun ili klijenta.
           </p>
         </div>
       </section>
@@ -305,13 +305,39 @@ export function SubscriptionClientPage({
         preparationSummary={!isAgencyAccount ? primaryPreparationSummary?.summary ?? null : null}
       />
 
+      {isAgencyAccount ? (
+        <section className="rounded-[1.85rem] border border-slate-800 bg-[linear-gradient(180deg,#111827_0%,#0f172a_100%)] p-6 text-white shadow-[0_28px_65px_-42px_rgba(2,6,23,0.88)]">
+          <h2 className="font-heading text-2xl font-bold text-white">
+            Agencijski paket se uređuje kroz podršku
+          </h2>
+          <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-300">
+            Ako želite promjenu paketa ili drugačiji broj firmi, javite nam se i mi ćemo to urediti za vas.
+          </p>
+        </section>
+      ) : (
+        <section className="space-y-5">
+          <div>
+            <h2 className="font-heading text-2xl font-bold text-slate-900">Odaberite paket</h2>
+            <p className="mt-2 text-sm text-slate-600">
+              Odmah vidite šta dobijate u svakom paketu i lako birate ono što vam najviše odgovara.
+            </p>
+          </div>
+          <PricingTable
+            currentPlanId={initialStatus.plan.id}
+            onSelectPlan={handleSelectPlan}
+            isLoading={loadingPlan !== null}
+            visiblePlanIds={["basic", "starter", "pro"]}
+          />
+        </section>
+      )}
+
       <section id="pripreme" className="scroll-mt-24 space-y-5">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <h2 className="font-heading text-2xl font-bold text-slate-900">Pripreme ponuda</h2>
             <p className="mt-2 text-sm text-slate-600">
               {isAgencyAccount
-                ? "Svaki klijent ima svoj pregled potrošnje i vlastite dodatne pakete priprema."
+                ? "Svaki klijent ima svoj pregled potrošnje i svoje dodatne pakete priprema."
                 : "Vidite koliko vam je priprema ostalo u ciklusu i dopunite ih kada vam zatreba."}
             </p>
           </div>
@@ -332,7 +358,7 @@ export function SubscriptionClientPage({
             </div>
           ) : (
             <div className="rounded-[1.65rem] border border-slate-800 bg-[linear-gradient(180deg,#111827_0%,#0f172a_100%)] p-6 text-white">
-              Još nema klijenata na agencijskom računu. Dodajte klijenta i ovdje će se automatski pojaviti njegov fond priprema.
+              Još nema klijenata na agencijskom računu. Dodajte klijenta i ovdje će se pojaviti njegov pregled priprema.
             </div>
           )
         ) : primaryPreparationSummary ? (
@@ -343,36 +369,10 @@ export function SubscriptionClientPage({
           />
         ) : (
           <div className="rounded-[1.65rem] border border-slate-800 bg-[linear-gradient(180deg,#111827_0%,#0f172a_100%)] p-6 text-white">
-            Čim završite onboarding firme, ovdje će se pojaviti pregled mjesečnih i kupljenih priprema.
+            Čim završite postavljanje firme, ovdje će se pojaviti pregled mjesečnih i kupljenih priprema.
           </div>
         )}
       </section>
-
-      {isAgencyAccount ? (
-        <section className="rounded-[1.85rem] border border-slate-800 bg-[linear-gradient(180deg,#111827_0%,#0f172a_100%)] p-6 text-white shadow-[0_28px_65px_-42px_rgba(2,6,23,0.88)]">
-          <h2 className="font-heading text-2xl font-bold text-white">
-            Agencijski pristup se vodi kroz admin provisioning
-          </h2>
-          <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-300">
-            Agencijski paket nije dostupan kao self-serve nadogradnja ili izmjena iz korisničkog dashboarda. Ako treba promjena pristupa, to se radi kroz admin panel.
-          </p>
-        </section>
-      ) : (
-        <section className="space-y-5">
-          <div>
-            <h2 className="font-heading text-2xl font-bold text-slate-900">Odaberite nivo kontrole koji vam treba</h2>
-            <p className="mt-2 text-sm text-slate-600">
-              Cijeli pricing pregled koristi isti premium vizuelni jezik kao ostatak dashboarda.
-            </p>
-          </div>
-          <PricingTable
-            currentPlanId={initialStatus.plan.id}
-            onSelectPlan={handleSelectPlan}
-            isLoading={loadingPlan !== null}
-            visiblePlanIds={["basic", "starter", "pro"]}
-          />
-        </section>
-      )}
     </div>
   );
 }

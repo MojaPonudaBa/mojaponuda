@@ -37,18 +37,19 @@ const PROCEDURE_TYPES = [
 ];
 
 const RECOMMENDED_SORT_OPTIONS = [
+  { value: "nearest", label: "Najbliži firmi" },
   { value: "recommended", label: "Najrelevantniji" },
-  { value: "nearest", label: "Najbliži lokaciji firme" },
   { value: "deadline_asc", label: "Rok najskoriji" },
-  { value: "deadline_desc", label: "Rok najkasniji" },
+  { value: "deadline_desc", label: "Rok najdalji" },
   { value: "value_desc", label: "Najveća vrijednost" },
   { value: "value_asc", label: "Najmanja vrijednost" },
   { value: "newest", label: "Najnovije objavljeno" },
 ];
 
 const ALL_TENDERS_SORT_OPTIONS = [
+  { value: "nearest", label: "Najbliži firmi" },
   { value: "deadline_asc", label: "Rok najskoriji" },
-  { value: "deadline_desc", label: "Rok najkasniji" },
+  { value: "deadline_desc", label: "Rok najdalji" },
   { value: "value_desc", label: "Najveća vrijednost" },
   { value: "value_asc", label: "Najmanja vrijednost" },
   { value: "newest", label: "Najnovije objavljeno" },
@@ -196,7 +197,9 @@ export function TenderFilters({ basePath = "/dashboard/tenders" }: { basePath?: 
   const activeTab = searchParams.get("tab") === "all" ? "all" : "recommended";
   const sortOptions =
     activeTab === "recommended" ? RECOMMENDED_SORT_OPTIONS : ALL_TENDERS_SORT_OPTIONS;
-  const defaultSort = activeTab === "recommended" ? "recommended" : "deadline_asc";
+  const defaultSort = "nearest";
+  const initialSort =
+    sortOptions.find((option) => option.value === searchParams.get("sort"))?.value ?? defaultSort;
 
   const [keyword, setKeyword] = useState(searchParams.get("q") || "");
   const [contractType, setContractType] = useState(
@@ -209,7 +212,7 @@ export function TenderFilters({ basePath = "/dashboard/tenders" }: { basePath?: 
   const [deadlineTo, setDeadlineTo] = useState(searchParams.get("deadline_to") || "");
   const [valueMin, setValueMin] = useState(searchParams.get("value_min") || "");
   const [valueMax, setValueMax] = useState(searchParams.get("value_max") || "");
-  const [sort, setSort] = useState(searchParams.get("sort") || defaultSort);
+  const [sort, setSort] = useState(initialSort);
   const [locations, setLocations] = useState<string[]>(searchParams.getAll("location"));
 
   const applyFilters = useCallback(() => {
@@ -279,7 +282,7 @@ export function TenderFilters({ basePath = "/dashboard/tenders" }: { basePath?: 
         <div className="relative min-w-[260px] flex-[1_1_340px]">
           <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-500" />
           <Input
-            placeholder="Pretraži naziv, naručioca ili opis tendera..."
+            placeholder="Pretraži naziv, naručioca ili opis tendera"
             value={keyword}
             onChange={(event) => setKeyword(event.target.value)}
             onKeyDown={handleKeyDown}
@@ -381,7 +384,7 @@ export function TenderFilters({ basePath = "/dashboard/tenders" }: { basePath?: 
             className="h-11 rounded-2xl border-white/10 bg-white/5 px-4 text-sm font-semibold text-slate-200 hover:bg-white/10 hover:text-white"
           >
             <RotateCcw className="mr-2 size-4" />
-            Resetuj
+            Očisti
           </Button>
           <Button
             onClick={applyFilters}

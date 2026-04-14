@@ -18,7 +18,7 @@ export async function PATCH(
 
   const access = await resolveBidAccess(supabase, user.id, id);
   if (!access) {
-    return NextResponse.json({ error: "Ponuda nije pronadjena." }, { status: 404 });
+    return NextResponse.json({ error: "Ponuda nije pronađena." }, { status: 404 });
   }
 
   const body = await request.json();
@@ -40,7 +40,7 @@ export async function PATCH(
     .single();
 
   if (error || !item) {
-    return NextResponse.json({ error: "Greska pri azuriranju stavke." }, { status: 500 });
+    return NextResponse.json({ error: "Greška pri ažuriranju stavke." }, { status: 500 });
   }
 
   return NextResponse.json({ item });
@@ -62,7 +62,7 @@ export async function DELETE(
 
   const access = await resolveBidAccess(supabase, user.id, id);
   if (!access) {
-    return NextResponse.json({ error: "Ponuda nije pronadjena." }, { status: 404 });
+    return NextResponse.json({ error: "Ponuda nije pronađena." }, { status: 404 });
   }
 
   const { error } = await supabase
@@ -72,7 +72,7 @@ export async function DELETE(
     .eq("bid_id", id);
 
   if (error) {
-    return NextResponse.json({ error: "Greska pri brisanju stavke." }, { status: 500 });
+    return NextResponse.json({ error: "Greška pri brisanju stavke." }, { status: 500 });
   }
 
   return NextResponse.json({ success: true });

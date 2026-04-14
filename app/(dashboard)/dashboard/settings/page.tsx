@@ -25,10 +25,10 @@ export default async function SettingsPage() {
         <section className="relative overflow-hidden rounded-[2rem] border border-slate-800 bg-[radial-gradient(circle_at_top_left,rgba(56,189,248,0.14),transparent_28%),radial-gradient(circle_at_top_right,rgba(59,130,246,0.14),transparent_30%),linear-gradient(180deg,#111827_0%,#0f172a_58%,#0b1120_100%)] p-6 text-white shadow-[0_35px_90px_-45px_rgba(2,6,23,0.92)] sm:p-8">
           <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,rgba(148,163,184,0.06)_1px,transparent_1px),linear-gradient(to_bottom,rgba(148,163,184,0.06)_1px,transparent_1px)] bg-[size:52px_52px] [mask-image:radial-gradient(circle_at_top_left,#000_15%,transparent_75%)]" />
           <div className="relative">
-            <h1 className="text-3xl font-heading font-bold tracking-tight text-white sm:text-4xl">Postavke agencije</h1>
-            <p className="mt-2 text-sm leading-7 text-slate-300 sm:text-base">
-              Upravljajte postavkama vaše agencije i računa u istom sleek i preglednom dashboard jeziku kao ostatak proizvoda.
-            </p>
+              <h1 className="text-3xl font-heading font-bold tracking-tight text-white sm:text-4xl">Postavke agencije</h1>
+              <p className="mt-2 text-sm leading-7 text-slate-300 sm:text-base">
+                Ovdje uređujete postavke agencije i svog računa.
+              </p>
           </div>
         </section>
 

@@ -12,8 +12,17 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Download, ArrowLeft, Loader2, AlertTriangle, X, Building2, Trash2 } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowLeft,
+  Building2,
+  Download,
+  Loader2,
+  Trash2,
+  X,
+} from "lucide-react";
 import Link from "next/link";
+import { useToast } from "@/components/ui/use-toast";
 
 interface TopBarProps {
   bidId: string;
@@ -45,48 +54,74 @@ export function TopBar({
   deleteRedirectHref = "/dashboard/bids",
 }: TopBarProps) {
   const router = useRouter();
+  const { toast } = useToast();
+  const [status, setStatus] = useState<BidStatus>(currentStatus);
+  const [statusLoading, setStatusLoading] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [riskFlags] = useState<string[]>(initialRiskFlags);
   const [riskDismissed, setRiskDismissed] = useState(false);
 
   async function handleStatusChange(newStatus: string) {
-    await fetch(`/api/bids/${bidId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status: newStatus }),
-    });
-    router.refresh();
+    const nextStatus = newStatus as BidStatus;
+    const previousStatus = status;
+
+    setStatus(nextStatus);
+    setStatusLoading(true);
+
+    try {
+      const response = await fetch(`/api/bids/${bidId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => null);
+        throw new Error(data?.error || "Nismo uspjeli promijeniti status.");
+      }
+    } catch (error) {
+      setStatus(previousStatus);
+      toast({
+        title: "Greška",
+        description: error instanceof Error ? error.message : "Nismo uspjeli promijeniti status.",
+        variant: "destructive",
+      });
+    } finally {
+      setStatusLoading(false);
+    }
   }
 
   async function handleDelete() {
-    if (!window.confirm("Da li ste sigurni da zelite obrisati ovu ponudu? Ova akcija je nepovratna.")) {
+    if (!window.confirm("Da li ste sigurni da želite obrisati ovu ponudu? Ova radnja se ne može vratiti.")) {
       return;
     }
 
     setDeleting(true);
     try {
-      const res = await fetch(`/api/bids/${bidId}`, {
+      const response = await fetch(`/api/bids/${bidId}`, {
         method: "DELETE",
       });
 
-      if (res.ok) {
-        router.push(deleteRedirectHref);
-        router.refresh();
-      } else {
-        alert("Greska pri brisanju ponude.");
-        setDeleting(false);
+      if (!response.ok) {
+        const data = await response.json().catch(() => null);
+        throw new Error(data?.error || "Greška pri brisanju ponude.");
       }
-    } catch (err) {
-      alert("Greska pri komunikaciji sa serverom.");
-      console.error("Delete error:", err);
+
+      router.push(deleteRedirectHref);
+    } catch (error) {
       setDeleting(false);
+      toast({
+        title: "Greška",
+        description: error instanceof Error ? error.message : "Greška pri komunikaciji sa serverom.",
+        variant: "destructive",
+      });
     }
   }
 
   function handleDownload() {
     if (hasMissingItems) {
       const confirmed = window.confirm(
-        "UPOZORENJE: Nedostaju neki obavezni dokumenti iz liste. Zelite li ipak preuzeti paket?",
+        "Upozorenje: Nedostaju neki obavezni dokumenti iz liste. Želite li ipak preuzeti paket?"
       );
 
       if (!confirmed) {
@@ -112,7 +147,7 @@ export function TopBar({
               <AlertTriangle className="size-4 text-red-600" />
             </div>
             <div>
-              <p className="font-bold text-red-900">Upozorenja za diskvalifikaciju</p>
+              <p className="font-bold text-red-900">Upozorenja za moguću diskvalifikaciju</p>
               <ul className="mt-2 space-y-1">
                 {riskFlags.map((flag, index) => (
                   <li key={index} className="flex items-start gap-2 text-sm text-red-700">
@@ -153,16 +188,16 @@ export function TopBar({
         </div>
 
         <div className="flex shrink-0 flex-col items-stretch gap-3 sm:flex-row sm:items-center">
-          <Select value={currentStatus} onValueChange={handleStatusChange}>
+          <Select value={status} onValueChange={(value) => void handleStatusChange(value)}>
             <SelectTrigger className="h-10 w-full rounded-xl border-slate-200 bg-slate-50/50 font-medium focus:border-primary focus:ring-primary sm:w-[180px]">
               <SelectValue />
             </SelectTrigger>
             <SelectContent className="rounded-xl border-slate-200 shadow-lg">
-              {BID_STATUSES.map((status) => (
-                <SelectItem key={status} value={status} className="cursor-pointer rounded-lg focus:bg-slate-50">
+              {BID_STATUSES.map((statusOption) => (
+                <SelectItem key={statusOption} value={statusOption} className="cursor-pointer rounded-lg focus:bg-slate-50">
                   <span className="inline-flex items-center gap-2">
-                    <span className={`inline-block size-2 rounded-full ${STATUS_COLORS[status] || "bg-slate-400"}`} />
-                    {BID_STATUS_LABELS[status]}
+                    <span className={`inline-block size-2 rounded-full ${STATUS_COLORS[statusOption] || "bg-slate-400"}`} />
+                    {BID_STATUS_LABELS[statusOption]}
                   </span>
                 </SelectItem>
               ))}
@@ -173,20 +208,20 @@ export function TopBar({
             <Button
               size="sm"
               onClick={handleDownload}
-              disabled={deleting}
+              disabled={deleting || statusLoading}
               className="h-10 flex-1 rounded-xl bg-blue-600 font-bold text-white shadow-md shadow-blue-500/20 sm:flex-none"
             >
-              <Download className="mr-2 size-4" />
+              {statusLoading ? <Loader2 className="mr-2 size-4 animate-spin" /> : <Download className="mr-2 size-4" />}
               Preuzmi
             </Button>
 
             <Button
               variant="outline"
               size="sm"
-              onClick={handleDelete}
-              disabled={deleting}
+              onClick={() => void handleDelete()}
+              disabled={deleting || statusLoading}
               className="h-10 flex-1 rounded-xl border-red-200 font-bold text-red-600 hover:bg-red-50 hover:text-red-700 sm:flex-none"
-              title="Obrisi ponudu"
+              title="Obriši ponudu"
             >
               {deleting ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
             </Button>

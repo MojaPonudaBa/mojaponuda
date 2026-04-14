@@ -223,33 +223,33 @@ function buildOperationalChecklist({
   const positiveItems: DashboardChecklistItem[] = [
     {
       id: "workspace-live",
-      title: "Tender feed i radni prostor su aktivni",
-      description: `Paket ${currentPlanName} je spreman za dnevni operativni rad.`,
+      title: "Tenderi i radni prostor su spremni",
+      description: `Paket ${currentPlanName} je spreman za svakodnevni rad.`,
       tone: "positive",
     },
     ...(profileLabel
       ? [{
           id: "profile-focus",
-          title: `Profil firme usklađen: ${profileLabel}`,
-          description: "Preporuke i tender signal koriste isti profil kao i onboarding preview.",
+          title: `Profil firme je postavljen: ${profileLabel}`,
+          description: "Preporuke i pregled tendera prate isti profil firme.",
           tone: "positive" as const,
         }]
       : []),
     ...(recommendedTenders.length > 0
       ? [{
           id: "recommended-ready",
-          title: `${recommendedTenders.length} prilika je već izdvojeno za pregled`,
-          description: "Najrelevantnije prilike su spremne za otvaranje bez dodatnog filtriranja.",
+          title: `${recommendedTenders.length} prilika je već izdvojeno`,
+          description: "Najvažnije prilike su spremne za otvaranje bez dodatnog traženja.",
           tone: "positive" as const,
         }]
       : []),
     ...(dashboardBidRows.length > 0
       ? [{
           id: "bid-workspace",
-          title: `${dashboardBidRows.length} ponuda je trenutno u radnom prostoru`,
+          title: `${dashboardBidRows.length} ponuda je trenutno u radu`,
           description: subscriptionActive
             ? "Možete odmah otvoriti status, dokumente i sljedeće korake."
-            : "Ponude ostaju pregledne i bez dodatnog klikanja po više sekcija.",
+            : "Ponude su složene pregledno i lako ih je nastaviti.",
           tone: "positive" as const,
         }]
       : []),
@@ -315,7 +315,7 @@ export function DashboardHomeOverview({
             <div className="flex flex-wrap items-center gap-2">
               <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-200">
                 <ShieldCheck className="size-3.5 text-emerald-400" />
-                Operativni dashboard
+                Radni pregled
               </span>
               <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-300">
                 <CreditCard className="size-3.5 text-sky-300" />
@@ -331,10 +331,10 @@ export function DashboardHomeOverview({
 
             <div className="space-y-3">
               <h1 className="max-w-4xl font-heading text-3xl font-bold tracking-tight text-white sm:text-4xl lg:text-[2.9rem]">
-                Sve što je bitno za {companyName}, bez viška šuma.
+                Sve što je važno za {companyName}, bez viška informacija.
               </h1>
               <p className="max-w-3xl text-sm leading-7 text-slate-300 sm:text-base lg:text-lg">
-                Tenderi, ponude, rokovi i dokumenti sada koriste isti premium pregled kao i homepage preview, tako da odmah vidite šta je sigurno, šta je hitno i šta vrijedi otvoriti.
+                Tenderi, ponude, rokovi i dokumenti su na jednom mjestu, tako da odmah vidite šta je sigurno, šta je hitno i šta vrijedi otvoriti.
               </p>
             </div>
 
@@ -399,7 +399,7 @@ export function DashboardHomeOverview({
           <div className="flex items-center justify-between gap-4 border-b border-white/10 pb-5">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Kontrola</p>
-              <h2 className="mt-2 font-heading text-2xl font-bold text-white">Operativni checklist</h2>
+              <h2 className="mt-2 font-heading text-2xl font-bold text-white">Kontrolna lista</h2>
             </div>
             <Clock3 className="size-5 text-sky-300" />
           </div>
@@ -445,7 +445,7 @@ export function DashboardHomeOverview({
               <div className="rounded-xl border border-blue-400/20 bg-blue-500/10 p-4 text-sm leading-6 text-slate-200">
                 Vidite signal da prilike postoje, ali su puni podaci zaključani na besplatnom paketu.
                 <Link href="/dashboard/subscription" className="mt-3 inline-flex items-center gap-2 font-semibold text-sky-300">
-                  Otključaj kompletan pregled
+                  Otključaj potpuni pregled
                   <ArrowUpRight className="size-4" />
                 </Link>
               </div>
@@ -463,7 +463,7 @@ export function DashboardHomeOverview({
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <p className={`line-clamp-2 text-[15px] font-semibold leading-6 text-white ${isLocked ? "blur-sm select-none" : ""}`}>
-                          {isLocked ? "Premium tender pregled je zaključan" : tender.title}
+                          {isLocked ? "Puni pregled tendera je zaključan" : tender.title}
                         </p>
                         <p className={`mt-1 text-xs text-slate-400 ${isLocked ? "blur-sm select-none" : ""}`}>
                           {isLocked ? "Javni naručilac" : (tender.contracting_authority ?? "Nepoznat naručilac")}
@@ -484,7 +484,7 @@ export function DashboardHomeOverview({
               })
             ) : (
               <div className="rounded-xl border border-white/10 bg-white/5 p-4 text-sm leading-6 text-slate-300">
-                Još nema dovoljno jakih preporuka. Čim sistem prepozna relevantne prilike, pojavit će se ovdje u istom preview stilu.
+                Još nema dovoljno jakih preporuka. Čim sistem prepozna relevantne prilike, pojavit će se ovdje.
               </div>
             )}
           </div>
@@ -610,13 +610,13 @@ export function DashboardHomeOverview({
                 <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Preporuke</p>
                 <p className="mt-2 text-sm leading-6 text-slate-300">
                   {recommendedTenders.length > 0
-                    ? "Dashboard i homepage preview sada koriste isti premium vizuelni jezik za preporuke i operativni pregled."
+                    ? "Preporuke su spremne za pregled i otvaranje."
                     : "Čim se pojave nove prilike ili operativni signali, ovdje će biti vidljivi bez dodatnog kopanja po sekcijama."}
                 </p>
               </div>
               {isLocked ? (
                 <div className="rounded-xl border border-blue-400/20 bg-blue-500/10 p-4 text-sm leading-6 text-slate-200">
-                  Besplatni paket i dalje ima pregledan premium dashboard, ali puni sadržaj tendera ostaje zaključan dok ne aktivirate pretplatu.
+                  Besplatni paket vam i dalje pokazuje gdje postoje prilike, ali puni sadržaj tendera ostaje zaključan dok ne aktivirate pretplatu.
                   <Link href="/dashboard/subscription" className="mt-3 inline-flex items-center gap-2 font-semibold text-sky-300">
                     Pregled paketa
                     <ArrowUpRight className="size-4" />
