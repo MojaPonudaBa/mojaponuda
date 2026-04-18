@@ -79,20 +79,25 @@ export async function POST(request: NextRequest) {
         .update(payload)
         .eq("id", companyId);
       if (error) throw error;
-    } else {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: inserted, error } = await (supabase as any)
-        .from("companies")
-        .insert({ user_id: user.id, ...payload })
-        .select("id")
-        .single();
-      if (error) throw error;
-      companyId = inserted?.id ?? null;
+
+      return NextResponse.json({
+        ok: true,
+        companyId,
+        deferred: false,
+        profileTextLength: profileText.length,
+        embeddingDims: embedding.length,
+      });
     }
 
+    // No company row yet — defer the DB write until final onboarding submit,
+    // which provides required NOT NULL fields (name, jib). Return the computed
+    // values so the client can include them in the final insert payload.
     return NextResponse.json({
       ok: true,
-      companyId,
+      companyId: null,
+      deferred: true,
+      profileText,
+      profileEmbedding: vec,
       profileTextLength: profileText.length,
       embeddingDims: embedding.length,
     });

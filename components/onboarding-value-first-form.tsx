@@ -153,6 +153,12 @@ export function OnboardingValueFirstForm({
   const [notOffered, setNotOffered] = useState("");
   const [embeddingSaving, setEmbeddingSaving] = useState(false);
   const [embeddingError, setEmbeddingError] = useState<string | null>(null);
+  // When the user has no company row yet (typical first onboarding), the
+  // save-embedding endpoint cannot INSERT (companies.name/jib are NOT NULL).
+  // In that case it returns the computed values here so handleSubmit can
+  // include them in the final INSERT payload.
+  const [deferredProfileText, setDeferredProfileText] = useState<string | null>(null);
+  const [deferredProfileEmbedding, setDeferredProfileEmbedding] = useState<string | null>(null);
   const [previewTenders, setPreviewTenders] = useState<PreviewTender[]>([]);
   const [previewSummary, setPreviewSummary] = useState(
     "Nakon osnovnog unosa ovdje ćete odmah vidjeti prve tendere koji odgovaraju vašoj firmi i njenoj lokaciji."
@@ -379,6 +385,13 @@ export function OnboardingValueFirstForm({
         console.error("saveProfileEmbedding response:", response.status, data);
         return { ok: false, error: msg };
       }
+      if (data?.deferred && data?.profileEmbedding) {
+        setDeferredProfileText(data.profileText ?? null);
+        setDeferredProfileEmbedding(data.profileEmbedding);
+      } else {
+        setDeferredProfileText(null);
+        setDeferredProfileEmbedding(null);
+      }
       return { ok: true };
     } catch (err) {
       const msg = `Greška pri kontaktu sa serverom: ${err instanceof Error ? err.message : String(err)}`;
@@ -574,7 +587,7 @@ export function OnboardingValueFirstForm({
       ...profileSeeds,
     ]);
 
-    const payload = {
+    const payload: Record<string, unknown> = {
       name: name.trim(),
       jib: jib.trim(),
       pdv: pdv.trim() || null,
@@ -602,13 +615,21 @@ export function OnboardingValueFirstForm({
       operating_regions: regions,
     };
 
+    if (deferredProfileEmbedding) {
+      payload.profile_text = deferredProfileText;
+      payload.profile_embedding = deferredProfileEmbedding;
+      payload.profile_embedded_at = new Date().toISOString();
+    }
+
     setLoadingText("Spremam profil i otvaram vaš pregled tendera...");
 
     let savedCompanyId = companyId;
     let saveError: { message: string } | null = null;
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const supabaseAny = supabase as any;
     if (companyId) {
-      const { error: updateError } = await supabase.from("companies").update(payload).eq("id", companyId);
+      const { error: updateError } = await supabaseAny.from("companies").update(payload).eq("id", companyId);
       saveError = updateError;
     } else {
       const { data: existingCompany } = await supabase
@@ -619,13 +640,13 @@ export function OnboardingValueFirstForm({
 
       if (existingCompany?.id) {
         savedCompanyId = existingCompany.id;
-        const { error: updateError } = await supabase
+        const { error: updateError } = await supabaseAny
           .from("companies")
           .update(payload)
           .eq("id", existingCompany.id);
         saveError = updateError;
       } else {
-        const { data: insertedCompany, error: insertError } = await supabase
+        const { data: insertedCompany, error: insertError } = await supabaseAny
           .from("companies")
           .insert({
             user_id: user.id,
