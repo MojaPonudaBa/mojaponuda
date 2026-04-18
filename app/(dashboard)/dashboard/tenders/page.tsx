@@ -12,6 +12,7 @@ import {
 import { classifyTenderRecommendationsWithAI } from "@/lib/tender-recommendation-rerank";
 import { ensureCompanyProfileEnrichment } from "@/lib/ai-profile-enrichment";
 import { getSubscriptionStatus } from "@/lib/subscription";
+import { getRecommendedTenders, classifyTier } from "@/lib/tender-relevance";
 import {
   buildRecommendationContext,
   enrichTendersWithAuthorityGeo,
@@ -190,6 +191,7 @@ async function TendersContent({
     keywords: string[] | null;
     cpv_codes: string[] | null;
     operating_regions: string[] | null;
+    profile_embedded_at: string | null;
   } | null = null;
   let hasProfile = false;
   let hasRecommendationSignalsForProfile = false;
@@ -312,11 +314,13 @@ async function TendersContent({
   } else if (userId && !isAgency) {
     const { data: company } = await supabase
       .from("companies")
-      .select("id, industry, keywords, cpv_codes, operating_regions")
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .select("id, industry, keywords, cpv_codes, operating_regions, profile_embedded_at" as any)
       .eq("user_id", userId)
       .single();
 
-    companyProfile = company;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    companyProfile = (company ?? null) as any;
 
     if (activeTab === "recommended" && companyProfile) {
       hasProfile = true;
@@ -424,6 +428,104 @@ async function TendersContent({
     totalCount = agencyTotalCount;
     tenders = [...agencyTenderClientMap.values()]
       .map(({ tender }) => tender);
+  } else if (
+    activeTab === "recommended" &&
+    companyProfile &&
+    companyProfile.profile_embedded_at
+  ) {
+    // ── New embedding pipeline (precision-first) ──
+    // Only show tenders the company can realistically fulfill.
+    // Pipeline: pgvector top-200 retrieval → LLM rerank 1-10 → cache in tender_relevance.
+    // We apply an adaptive score gate so the user sees only tier "top" when possible,
+    // relaxing to "maybe" only if there are too few results.
+    type TenderWithGeo = Tender & {
+      authority_city: string | null;
+      authority_municipality: string | null;
+      authority_canton: string | null;
+      authority_entity: string | null;
+      contracting_authority_jib: string | null;
+    };
+
+    // Step 1: retrieve with a permissive gate, then tighten client-side for flexibility.
+    const scored = await getRecommendedTenders<TenderWithGeo>(
+      supabase,
+      companyProfile.id,
+      {
+        topK: 200,
+        limit: 500,
+        minScore: 5,
+      }
+    );
+
+    const scoredAvailable = scored.filter(
+      ({ tender }) => !existingBidTenderIds.has(tender.id)
+    );
+
+    // Adaptive precision gate: prefer tier "top" (score >= 8).
+    // If that yields too few results, fall back to score >= 6, then >= 5.
+    const pickByGate = (minScore: number) =>
+      scoredAvailable.filter((s) => s.score >= minScore);
+    let gated = pickByGate(8);
+    if (gated.length < 5) gated = pickByGate(6);
+    if (gated.length < 5) gated = scoredAvailable;
+
+    // Step 2: enrich tender rows with authority geo + attach location priority.
+    const enrichedTenders = await enrichTendersWithAuthorityGeo<TenderWithGeo>(
+      supabase,
+      gated.map((s) => s.tender as TenderWithGeo)
+    );
+    const selectedRegions = companyProfile.operating_regions ?? [];
+    const tendersWithLoc = attachTenderLocationPriority(
+      enrichedTenders,
+      selectedRegions
+    );
+    const tendersById = new Map(tendersWithLoc.map((t) => [t.id, t]));
+
+    // Step 3: build items compatible with sortRecommendedTenderItems.
+    let items = gated.map((s) => {
+      const t = tendersById.get(s.tender.id) ?? s.tender;
+      const locationPriority =
+        (t as TenderWithGeo & { locationPriority?: number }).locationPriority ?? 3;
+      return {
+        tender: t as TenderWithGeo,
+        score: s.score,
+        confidence: s.confidence,
+        tier: s.tier,
+        locationPriority,
+        positiveSignalCount: s.score,
+      };
+    });
+
+    // Step 4: user-specified client filters (keyword, procedure, value, deadline).
+    items = items.filter(({ tender }) =>
+      tenderMatchesClientFilters(tender as Tender, {
+        keyword: keywordParam,
+        contractType: contractTypeParam,
+        procedureType: procedureTypeParam,
+        deadlineFrom: deadlineFromParam,
+        deadlineTo: deadlineToParam,
+        valueMin: valueMinParam,
+        valueMax: valueMaxParam,
+      })
+    );
+
+    // Step 5: explicit location filter (multi-select in UI).
+    if (locationFilterTerms.length > 0) {
+      items = items.filter(({ tender }) =>
+        matchesTenderLocationTerms(tender as RecommendationTenderInput, locationFilterTerms)
+      );
+    }
+
+    // Step 6: sort (default "nearest" — closest tenders first).
+    items = sortRecommendedTenderItems(items, sortParam);
+
+    totalCount = items.length;
+    tenders = items
+      .slice(offset, offset + PAGE_SIZE)
+      .map(({ tender }) => tender as Tender);
+
+    // Touch classifyTier so the import remains used for future UI badges.
+    void classifyTier;
   } else if (activeTab === "recommended" && recommendationContext) {
     const scopedRecommendationRows = await fetchRecommendedTenderCandidates<
       Tender & {
