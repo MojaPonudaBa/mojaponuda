@@ -1945,11 +1945,35 @@ export async function runMorningSyncAtSarajevo4AM(): Promise<{
 
   const result = await runOperationalPortalRefresh();
 
+  // After tenders are upserted, backfill pgvector embeddings for any rows
+  // that still lack one. LLM reranking is NOT invoked here — relevance
+  // scoring is computed lazily in getRecommendedTenders() per company.
+  let tendersEmbedded = 0;
+  try {
+    const { embedNewTenders } = await import("@/lib/tender-relevance");
+    const embedResult = await embedNewTenders(supabase, { batchSize: 20, maxBatches: 25 });
+    tendersEmbedded = embedResult.updated;
+    if (tendersEmbedded > 0) {
+      console.log(`[MorningSync] Embedded ${tendersEmbedded} tenders into pgvector`);
+    }
+  } catch (err) {
+    console.error("[MorningSync] embedNewTenders failed:", err);
+  }
+
   return {
     status: result.status,
     duration_ms: result.duration_ms,
     local_day: localTime.dayKey,
     local_hour: localTime.hour,
     results: result.results,
+    tenders_embedded: tendersEmbedded,
+  } as {
+    status: "ok" | "partial" | "skipped";
+    reason?: string;
+    duration_ms: number;
+    local_day: string;
+    local_hour: number;
+    results: SyncResult[];
+    tenders_embedded: number;
   };
 }

@@ -14,6 +14,7 @@ import { scoreOpportunity, generateSlug, PUBLISH_THRESHOLD } from "./opportunity
 import { generateOpportunityContent, generateLegalSummary, aiReviewOpportunity } from "./ai-content-generator";
 import { categorizeOpportunity } from "@/lib/category-classifier";
 import type { ScrapedOpportunity } from "./scrapers/types";
+import { embedNewTenders, cleanupOrphanedRelevance } from "@/lib/tender-relevance";
 
 function createServiceClient() {
   return createClient(
@@ -30,6 +31,8 @@ export interface PostSyncResult {
   legal_updates_processed: number;
   ai_content_regen: number;
   expired_marked: number;
+  tenders_embedded: number;
+  relevance_cleaned: number;
   errors: string[];
   duration_ms: number;
   execution_layer?: ExecutionLayer;
@@ -397,6 +400,35 @@ export async function runPostSyncPipeline(layer: ExecutionLayer = "layer1"): Pro
     if (regenCount > 0) console.log(`[PostSync] Regenerated ai_content for ${regenCount} posts`);
   }
 
+  // ── 9. Embed any tenders missing `embedding` (used by the new recommendation pipeline) ──
+  // Runs on every layer after new tenders have been written. LLM reranking is NOT
+  // triggered here — scoring happens lazily via getRecommendedTenders() per user.
+  let tendersEmbedded = 0;
+  try {
+    const embedResult = await embedNewTenders(supabase, { batchSize: 20, maxBatches: 25 });
+    tendersEmbedded = embedResult.updated;
+    for (const e of embedResult.errors) errors.push(`embed: ${e}`);
+    if (tendersEmbedded > 0) {
+      console.log(`[PostSync] Embedded ${tendersEmbedded} tenders into pgvector`);
+    }
+  } catch (err) {
+    errors.push(`embedNewTenders: ${String(err)}`);
+  }
+
+  // ── 10. Maintenance: prune stale tender_relevance rows (layer3 only — monthly) ──────
+  let relevanceCleaned = 0;
+  if (layer === "layer3") {
+    try {
+      const cleanup = await cleanupOrphanedRelevance(supabase);
+      relevanceCleaned = cleanup.deleted;
+      if (relevanceCleaned > 0) {
+        console.log(`[PostSync] Cleaned ${relevanceCleaned} stale tender_relevance rows`);
+      }
+    } catch (err) {
+      errors.push(`cleanupOrphanedRelevance: ${String(err)}`);
+    }
+  }
+
   return {
     opportunities_processed: opProcessed,
     opportunities_published: opPublished,
@@ -404,6 +436,8 @@ export async function runPostSyncPipeline(layer: ExecutionLayer = "layer1"): Pro
     legal_updates_processed: legalProcessed,
     ai_content_regen: regenCount,
     expired_marked: expiredCount,
+    tenders_embedded: tendersEmbedded,
+    relevance_cleaned: relevanceCleaned,
     errors,
     duration_ms: Date.now() - start,
     execution_layer: layer,

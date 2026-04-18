@@ -75,31 +75,31 @@ interface PreviewTender {
 const STEPS = [
   {
     id: "focus",
-    title: "Čime se bavite i gdje se nalazite",
-    description: "Prvo nam recite osnovno. Na osnovu toga odmah ćemo izdvojiti tendere koji imaju smisla za vašu firmu i koji su vam najbliži.",
+    title: "Čime se bavite",
+    description: "Odaberite šta vaša firma stvarno radi. U sljedećem koraku dodajemo kontekst koji AI koristi za preporuke.",
     icon: Brain,
-    completionLabel: "Profil 40%",
+    completionLabel: "Korak 1 / 4",
+  },
+  {
+    id: "profile",
+    title: "Recite nam više o svojoj firmi",
+    description: "Što više kažete, to preciznije preporuke. AI čita sve ovo i pronalazi tendere koji stvarno odgovaraju vašem poslu.",
+    icon: Target,
+    completionLabel: "Korak 2 / 4",
   },
   {
     id: "preview",
     title: "Prvi pregled tendera",
-    description: "Ovo je početni pregled na osnovu osnovnih podataka. U sljedećem koraku ga možete dodatno izoštriti.",
+    description: "Na osnovu profila koji smo upravo izgradili, AI je već odabrao tendere koji najbolje odgovaraju vašoj firmi.",
     icon: Search,
-    completionLabel: "Vrijednost odmah",
-  },
-  {
-    id: "precision",
-    title: "Želite preciznije preporuke?",
-    description: "Dodajte još malo konteksta da preporuke tačnije znaju koje poslove stvarno možete raditi.",
-    icon: Target,
-    completionLabel: "Profil 70%",
+    completionLabel: "Korak 3 / 4",
   },
   {
     id: "company",
     title: "Završite profil firme",
     description: "Na kraju upisujete podatke firme kako bismo sačuvali profil i otvorili vaš dashboard bez ponovnog unosa.",
     icon: Building2,
-    completionLabel: "Profil 100%",
+    completionLabel: "Korak 4 / 4",
   },
 ] as const;
 
@@ -148,6 +148,11 @@ export function OnboardingValueFirstForm({
   const [description, setDescription] = useState(
     parsedProfile.companyDescription ?? parsedProfile.legacyIndustryText ?? ""
   );
+  const [pastClients, setPastClients] = useState("");
+  const [licenses, setLicenses] = useState("");
+  const [notOffered, setNotOffered] = useState("");
+  const [embeddingSaving, setEmbeddingSaving] = useState(false);
+  const [embeddingError, setEmbeddingError] = useState<string | null>(null);
   const [previewTenders, setPreviewTenders] = useState<PreviewTender[]>([]);
   const [previewSummary, setPreviewSummary] = useState(
     "Nakon osnovnog unosa ovdje ćete odmah vidjeti prve tendere koji odgovaraju vašoj firmi i njenoj lokaciji."
@@ -330,12 +335,54 @@ export function OnboardingValueFirstForm({
       return "Odaberite barem jednu stvar koju vaša firma stvarno radi.";
     }
 
+    if (targetStep === 1) {
+      if (description.trim().length < 10) {
+        return "Opišite čime se vaša firma bavi (barem 10 karaktera, 2–5 rečenica).";
+      }
+    }
+
     if (targetStep === 3) {
       if (!name.trim()) return "Unesite puni naziv firme.";
       if (jib.trim().length < 12) return "JIB mora imati najmanje 12 cifara.";
     }
 
     return null;
+  }
+
+  async function saveProfileEmbedding(): Promise<boolean> {
+    setEmbeddingSaving(true);
+    setEmbeddingError(null);
+    try {
+      const categoryText = offeringCategories
+        .map((id) => getProfileOptionLabel(id))
+        .filter(Boolean)
+        .join(", ");
+      const response = await fetch("/api/onboarding/save-embedding", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          description: description.trim(),
+          pastClients: pastClients.trim() || null,
+          licenses: licenses.trim() || null,
+          notOffered: notOffered.trim() || null,
+          regionsText: regionSelectionLabels.join(", ") || null,
+          categoryText: categoryText || null,
+          companyId: companyId || null,
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        setEmbeddingError(data?.error || "Nismo uspjeli spremiti profil za preporuke.");
+        return false;
+      }
+      return true;
+    } catch (err) {
+      console.error("saveProfileEmbedding error:", err);
+      setEmbeddingError("Greška pri kontaktu sa serverom. Pokušajte ponovo.");
+      return false;
+    } finally {
+      setEmbeddingSaving(false);
+    }
   }
 
   async function loadPreview() {
@@ -401,16 +448,27 @@ export function OnboardingValueFirstForm({
   }
 
   useEffect(() => {
-    if (step === 1 && previewKey !== previewRequestKey) {
+    if (step === 2 && previewKey !== previewRequestKey) {
       void loadPreview();
     }
   }, [step, previewKey, previewRequestKey]);
 
-  function goNext() {
+  async function goNext() {
     const validationError = validateStep(step);
     if (validationError) {
       setError(validationError);
       return;
+    }
+
+    // Before moving from questionnaire (step 1) into preview (step 2),
+    // compute and persist profile_embedding so the recommendation pipeline
+    // can query with it. This is required by the new architecture.
+    if (step === 1) {
+      const ok = await saveProfileEmbedding();
+      if (!ok) {
+        setError(embeddingError ?? "Nismo uspjeli spremiti profil. Pokušajte ponovo.");
+        return;
+      }
     }
 
     setError(null);
@@ -718,27 +776,10 @@ export function OnboardingValueFirstForm({
             })}
           </div>
 
-          <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-5">
-            <div className="flex items-center gap-2 text-slate-900">
-              <MapPin className="size-4 text-blue-600" />
-              <p className="text-sm font-semibold">Gdje se nalazite</p>
-            </div>
-            <p className="mt-2 text-sm leading-6 text-slate-500">
-              Odaberite šire područje, gradove i općine gdje je firma ili poslovnica. Na osnovu toga prvo prikazujemo najbliže relevantne tendere.
-            </p>
-            <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4">
-              <p className="text-sm font-bold uppercase tracking-wide text-amber-800">
-                Ako ništa ne odaberete, prikazivat ćemo prilike sa nivoa cijele BiH.
-              </p>
-            </div>
-            <div className="mt-4">
-              <RegionMultiSelect selectedRegions={regions} onChange={setRegions} />
-            </div>
-          </div>
         </div>
       ) : null}
 
-      {step === 1 ? (
+      {step === 2 ? (
         <div className="space-y-6 rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-sm sm:p-7">
           <div className="flex items-start gap-3 rounded-2xl border border-blue-100 bg-blue-50/70 p-5">
             <ShieldCheck className="mt-0.5 size-5 text-blue-600" />
@@ -815,7 +856,97 @@ export function OnboardingValueFirstForm({
         </div>
       ) : null}
 
-      {step === 2 ? (
+      {step === 1 ? (
+        <div className="space-y-6 rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-sm sm:p-7">
+          <div className="space-y-2">
+            <Label htmlFor="description" className="text-sm font-semibold text-slate-900">
+              Čime se vaša firma točno bavi?
+            </Label>
+            <Textarea
+              id="description"
+              value={description}
+              onChange={(event) => setDescription(event.target.value)}
+              disabled={loading || embeddingSaving}
+              placeholder="Npr: Bavimo se isporukom i instalacijom serverske i mrežne opreme. Prodajemo softverske licence i pružamo IT podršku javnim institucijama."
+              className="min-h-[100px] rounded-2xl border-slate-200 bg-white"
+            />
+            <p className="text-xs text-slate-500">
+              Opišite šta radite i za koga — 2 do 5 rečenica je sasvim dovoljno.
+            </p>
+          </div>
+
+          <div className="space-y-5 rounded-2xl border border-slate-200 bg-slate-50/60 p-5">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+              Opciono — ali što više kažete, to bolji tenderi
+            </p>
+
+            <div className="space-y-2">
+              <Label htmlFor="pastClients" className="text-sm font-semibold text-slate-700">
+                Za koga ste do sada radili?
+              </Label>
+              <Input
+                id="pastClients"
+                value={pastClients}
+                onChange={(event) => setPastClients(event.target.value)}
+                disabled={loading || embeddingSaving}
+                placeholder="Npr: Klinički centar, općine u FBiH, javna preduzeća"
+                className="h-11 rounded-xl border-slate-200 bg-white"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="licenses" className="text-sm font-semibold text-slate-700">
+                Imate li posebne licence ili certifikate?
+              </Label>
+              <Input
+                id="licenses"
+                value={licenses}
+                onChange={(event) => setLicenses(event.target.value)}
+                disabled={loading || embeddingSaving}
+                placeholder="Npr: ISO 9001, licenca MUP-a, vatrogasno ovlaštenje"
+                className="h-11 rounded-xl border-slate-200 bg-white"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="notOffered" className="text-sm font-semibold text-slate-700">
+                Što vaša firma ne radi i ne može isporučiti? (koje tendere ne želite vidjeti)
+              </Label>
+              <Input
+                id="notOffered"
+                value={notOffered}
+                onChange={(event) => setNotOffered(event.target.value)}
+                disabled={loading || embeddingSaving}
+                placeholder="Npr: Ne izvodimo građevinske radove, ne isporučujemo hranu ni vozila"
+                className="h-11 rounded-xl border-slate-200 bg-white"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-slate-900">
+                <MapPin className="size-4 text-blue-600" />
+                <Label className="text-sm font-semibold">Na kojim područjima radite ili isporučujete?</Label>
+              </div>
+              <p className="text-xs leading-5 text-slate-500">
+                Odaberite šire područje, gradove i općine gdje je firma ili poslovnica. Na osnovu toga prvo prikazujemo najbliže relevantne tendere.
+              </p>
+              <p className="text-xs leading-5 text-slate-500">
+                Ako ništa ne odaberete, prikazivat ćemo prilike sa nivoa cijele BiH.
+              </p>
+              <RegionMultiSelect selectedRegions={regions} onChange={setRegions} />
+            </div>
+          </div>
+
+          {embeddingSaving ? (
+            <div className="flex items-center gap-2 rounded-2xl border border-blue-100 bg-blue-50/70 p-4 text-sm text-blue-800">
+              <Loader2 className="size-4 animate-spin" />
+              Spremam profil firme za AI preporuke...
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
+      {false ? (
         <div className="space-y-6 rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-sm sm:p-7">
           <div className="rounded-2xl border border-blue-100 bg-blue-50/70 p-5">
             <p className="text-sm font-semibold text-slate-900">Sada možemo biti još precizniji</p>
@@ -1017,11 +1148,26 @@ export function OnboardingValueFirstForm({
           <Button
             type="button"
             onClick={goNext}
-            disabled={loading}
+            disabled={
+              loading ||
+              embeddingSaving ||
+              (step === 1 && description.trim().length < 10)
+            }
             className="h-11 rounded-xl bg-slate-950 px-5 font-semibold text-white hover:bg-blue-700"
           >
-            {step === 1 ? "Dalje: Otključaj tendere za vašu firmu" : "Nastavi"}
-            <ArrowRight className="ml-2 size-4" />
+            {embeddingSaving ? (
+              <>
+                <Loader2 className="mr-2 size-4 animate-spin" />
+                Pripremam AI profil...
+              </>
+            ) : (
+              <>
+                {step === 1
+                  ? "Dalje: Otključaj tendere za vašu firmu"
+                  : "Nastavi"}
+                <ArrowRight className="ml-2 size-4" />
+              </>
+            )}
           </Button>
         ) : (
           <Button

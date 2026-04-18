@@ -63,6 +63,8 @@ describe("Post-Sync Pipeline Integration", () => {
       ai_content_regen: 0,
       expired_marked: 0,
       legal_updates_processed: 0,
+      tenders_embedded: 0,
+      relevance_cleaned: 0,
       errors: [],
       duration_ms: 0,
       execution_layer: "layer1", // New field
