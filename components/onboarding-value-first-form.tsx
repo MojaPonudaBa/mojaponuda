@@ -349,7 +349,7 @@ export function OnboardingValueFirstForm({
     return null;
   }
 
-  async function saveProfileEmbedding(): Promise<boolean> {
+  async function saveProfileEmbedding(): Promise<{ ok: boolean; error?: string }> {
     setEmbeddingSaving(true);
     setEmbeddingError(null);
     try {
@@ -370,16 +370,21 @@ export function OnboardingValueFirstForm({
           companyId: companyId || null,
         }),
       });
-      const data = await response.json();
+      const data = await response.json().catch(() => ({}));
       if (!response.ok) {
-        setEmbeddingError(data?.error || "Nismo uspjeli spremiti profil za preporuke.");
-        return false;
+        const msg =
+          [data?.error, data?.detail].filter(Boolean).join(" — ") ||
+          `Nismo uspjeli spremiti profil (HTTP ${response.status}).`;
+        setEmbeddingError(msg);
+        console.error("saveProfileEmbedding response:", response.status, data);
+        return { ok: false, error: msg };
       }
-      return true;
+      return { ok: true };
     } catch (err) {
+      const msg = `Greška pri kontaktu sa serverom: ${err instanceof Error ? err.message : String(err)}`;
       console.error("saveProfileEmbedding error:", err);
-      setEmbeddingError("Greška pri kontaktu sa serverom. Pokušajte ponovo.");
-      return false;
+      setEmbeddingError(msg);
+      return { ok: false, error: msg };
     } finally {
       setEmbeddingSaving(false);
     }
@@ -464,9 +469,9 @@ export function OnboardingValueFirstForm({
     // compute and persist profile_embedding so the recommendation pipeline
     // can query with it. This is required by the new architecture.
     if (step === 1) {
-      const ok = await saveProfileEmbedding();
-      if (!ok) {
-        setError(embeddingError ?? "Nismo uspjeli spremiti profil. Pokušajte ponovo.");
+      const result = await saveProfileEmbedding();
+      if (!result.ok) {
+        setError(result.error ?? "Nismo uspjeli spremiti profil. Pokušajte ponovo.");
         return;
       }
     }
