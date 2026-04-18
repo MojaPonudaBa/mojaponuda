@@ -477,6 +477,7 @@ export function OnboardingValueFirstForm({
 
     let generatedCpv = initialCpvCodes;
     let generatedKeywords = initialKeywords;
+    let enrichmentData: { core_keywords: string[]; broad_keywords: string[]; cpv_codes: string[]; negative_keywords: string[] } | null = null;
 
     try {
       const res = await fetch("/api/onboarding/generate-profile", {
@@ -496,6 +497,9 @@ export function OnboardingValueFirstForm({
       if (res.ok) {
         generatedCpv = data.cpv_codes || [];
         generatedKeywords = data.keywords || [];
+        if (data.enrichment) {
+          enrichmentData = data.enrichment;
+        }
       }
     } catch (generationError) {
       console.error("Onboarding profile generation error:", generationError);
@@ -522,6 +526,13 @@ export function OnboardingValueFirstForm({
           preferredTenderTypes,
           companyDescription: effectiveDescription,
           legacyIndustryText: null,
+          ...(enrichmentData ? {
+            aiCoreKeywords: enrichmentData.core_keywords,
+            aiBroadKeywords: enrichmentData.broad_keywords,
+            aiCpvCodes: enrichmentData.cpv_codes,
+            aiNegativeKeywords: enrichmentData.negative_keywords,
+            aiEnrichedAt: new Date().toISOString(),
+          } : {}),
         }) ?? profileContext,
       cpv_codes: generatedCpv,
       keywords,

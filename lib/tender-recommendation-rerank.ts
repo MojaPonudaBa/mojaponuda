@@ -220,3 +220,141 @@ export async function maybeRerankTenderRecommendationsWithAI<
     return applyLimit(ranked, limit);
   }
 }
+
+// ── AI Classification ───────────────────────────────────────────────────
+
+const CLASSIFY_SYSTEM_PROMPT = `Ti si ekspert za javne nabavke u Bosni i Hercegovini.
+Za svaki tender odluči je li RELEVANTAN za profil firme.
+
+Pravila:
+- Uključi SAMO tendere koje bi firma realno mogla izvršiti ili isporučiti.
+- Obrati pažnju na CPV kod — ako odgovara industriji firme, vjerovatno je relevantan.
+- NE uključuj tender samo zato što ga objavljuje institucija iz branše firme.
+  Npr. bolnica koja nabavlja gorivo, namještaj ili čišćenje NIJE relevantan za medicinsku opremu.
+- Ako je naslov tendera jasno iz druge industrije, isključi ga čak i ako dijeli neke ključne riječi.
+- U slučaju dvojbe, uključi tender.`;
+
+const CLASSIFY_RESPONSE_SCHEMA = {
+  type: "json_schema" as const,
+  json_schema: {
+    name: "tender_classification",
+    strict: true,
+    schema: {
+      type: "object",
+      properties: {
+        include_ids: {
+          type: "array",
+          items: { type: "string" },
+        },
+      },
+      required: ["include_ids"],
+      additionalProperties: false,
+    },
+  },
+};
+
+interface ClassifyResponse {
+  include_ids: string[];
+}
+
+interface ClassifyOptions {
+  maxBatchSize?: number;
+}
+
+export async function classifyTenderRecommendationsWithAI<
+  TTender extends RecommendationTenderInput,
+>(
+  recommendations: Array<ScoredTenderRecommendation<TTender>>,
+  context: RecommendationContext,
+  options: ClassifyOptions = {}
+): Promise<Array<ScoredTenderRecommendation<TTender>>> {
+  if (!process.env.OPENAI_API_KEY || recommendations.length === 0) {
+    return recommendations;
+  }
+
+  const maxBatchSize = options.maxBatchSize ?? 40;
+
+  // Split into high-confidence (skip AI) vs borderline (send to AI)
+  const highConfidence: Array<ScoredTenderRecommendation<TTender>> = [];
+  const borderline: Array<ScoredTenderRecommendation<TTender>> = [];
+
+  for (const rec of recommendations) {
+    const isHighConfidence =
+      (rec.cpvMatch && rec.score >= 10) ||
+      (rec.titleMatches.length >= 2 && rec.matchedKeywords.length >= 3 && rec.score >= 8) ||
+      (rec.cpvMatch && rec.matchedKeywords.length >= 2 && rec.contractMatch);
+
+    if (isHighConfidence) {
+      highConfidence.push(rec);
+    } else {
+      borderline.push(rec);
+    }
+  }
+
+  if (borderline.length === 0) {
+    return recommendations;
+  }
+
+  const batch = borderline.slice(0, maxBatchSize);
+
+  try {
+    const openai = getOpenAIClient();
+    const profileSummary = buildProfileSummary(context);
+
+    const tenderSummaries = batch
+      .map((rec, i) => {
+        const t = rec.tender;
+        const desc = truncateText(t.raw_description, 200);
+        return [
+          `${i + 1}. [${t.id}]`,
+          `Naslov: ${t.title}`,
+          t.cpv_code ? `CPV: ${t.cpv_code}` : null,
+          t.contract_type ? `Tip: ${t.contract_type}` : null,
+          desc ? `Opis: ${desc}` : null,
+        ]
+          .filter(Boolean)
+          .join(" | ");
+      })
+      .join("\n");
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        { role: "system", content: CLASSIFY_SYSTEM_PROMPT },
+        {
+          role: "user",
+          content: [
+            "Profil firme:",
+            profileSummary,
+            "",
+            "Tenderi za klasifikaciju:",
+            tenderSummaries,
+            "",
+            "Odgovori sa JSON listom ID-eva tendera koje treba UKLJUČITI.",
+          ].join("\n"),
+        },
+      ],
+      response_format: CLASSIFY_RESPONSE_SCHEMA,
+      temperature: 0.1,
+    });
+
+    const rawContent = completion.choices[0]?.message?.content;
+
+    if (!rawContent) {
+      return recommendations;
+    }
+
+    const parsed = JSON.parse(rawContent) as ClassifyResponse;
+    const includeIds = new Set(
+      Array.isArray(parsed.include_ids) ? parsed.include_ids : []
+    );
+
+    const aiApproved = batch.filter((rec) => includeIds.has(rec.tender.id));
+    const remainingBorderline = borderline.slice(maxBatchSize);
+
+    return [...highConfidence, ...aiApproved, ...remainingBorderline];
+  } catch (error) {
+    console.error("Tender recommendation AI classify error:", error);
+    return recommendations;
+  }
+}

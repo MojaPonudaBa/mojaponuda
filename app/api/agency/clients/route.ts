@@ -136,10 +136,20 @@ export async function POST(request: NextRequest) {
       const generated = await generateRes.json();
       if (generated.keywords?.length) generatedKeywords = generated.keywords;
       if (generated.cpv_codes?.length) generatedCpvCodes = generated.cpv_codes;
+      if (generated.enrichment) {
+        profile.aiCoreKeywords = generated.enrichment.core_keywords;
+        profile.aiBroadKeywords = generated.enrichment.broad_keywords;
+        profile.aiCpvCodes = generated.enrichment.cpv_codes;
+        profile.aiNegativeKeywords = generated.enrichment.negative_keywords;
+        profile.aiEnrichedAt = new Date().toISOString();
+      }
     }
   } catch (e) {
     console.error("Agency client AI profile generation error:", e);
   }
+
+  // Re-serialize with enrichment data included
+  const finalSerializedIndustry = serializeCompanyProfile(profile) ?? serializedIndustry;
 
   const keywords = sanitizeSearchKeywords([...generatedKeywords, ...profileKeywordSeeds]);
 
@@ -159,7 +169,7 @@ export async function POST(request: NextRequest) {
 
     // Update company with new profile data
     await supabase.from("companies").update({
-      industry: serializedIndustry,
+      industry: finalSerializedIndustry,
       keywords,
       cpv_codes: generatedCpvCodes,
       operating_regions: operatingRegions.length > 0 ? operatingRegions : null,
@@ -176,7 +186,7 @@ export async function POST(request: NextRequest) {
 
       // Update existing company with the new profile data
       await supabase.from("companies").update({
-        industry: serializedIndustry,
+        industry: finalSerializedIndustry,
         keywords,
         cpv_codes: generatedCpvCodes,
         operating_regions: operatingRegions.length > 0 ? operatingRegions : null,
@@ -192,7 +202,7 @@ export async function POST(request: NextRequest) {
           address: companyAddress || null,
           contact_email: companyContactEmail || null,
           contact_phone: companyContactPhone || null,
-          industry: serializedIndustry,
+          industry: finalSerializedIndustry,
           keywords,
           cpv_codes: generatedCpvCodes,
           operating_regions: operatingRegions.length > 0 ? operatingRegions : null,

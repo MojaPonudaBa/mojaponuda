@@ -750,6 +750,17 @@ const PRIMARY_INDUSTRY_CORE_KEYWORDS: Record<string, string[]> = {
     "niskogradnja",
     "visokogradnja",
     "izgradnja objekta",
+    "betonski radovi",
+    "armiranski radovi",
+    "zidarski radovi",
+    "fasaderski radovi",
+    "krovopokrivacki radovi",
+    "hidroizolacija",
+    "termoizolacija",
+    "asfaltiranje",
+    "zemljani radovi",
+    "cestogradnja",
+    "gradjevinski materijal",
   ],
   it: [
     "softver",
@@ -757,9 +768,23 @@ const PRIMARY_INDUSTRY_CORE_KEYWORDS: Record<string, string[]> = {
     "program",
     "programska rjesenja",
     "informacioni sistem",
+    "informacijski sistem",
     "aplikacija",
     "digitalna platforma",
     "licence",
+    "informaticka oprema",
+    "racunarska oprema",
+    "IT oprema",
+    "IT usluge",
+    "web aplikacija",
+    "web portal",
+    "elektronski sistem",
+    "baza podataka",
+    "implementacija sistema",
+    "digitalna rjesenja",
+    "racunar",
+    "laptop",
+    "server",
   ],
   equipment: [
     "nabavka opreme",
@@ -776,6 +801,15 @@ const PRIMARY_INDUSTRY_CORE_KEYWORDS: Record<string, string[]> = {
     "dijagnosticka oprema",
     "reagensi",
     "sanitetski materijal",
+    "medicinski uredjaj",
+    "bolnicka oprema",
+    "zdravstvena oprema",
+    "farmaceutski proizvod",
+    "stomatoloska oprema",
+    "ortopedska oprema",
+    "hirurski instrument",
+    "klinicka oprema",
+    "medicinski instrument",
   ],
   maintenance: [
     "servis i odrzavanje",
@@ -1001,10 +1035,10 @@ const TENDER_TYPE_KEYWORDS: Record<string, string[]> = {
 };
 
 const PRIMARY_INDUSTRY_CPV_CODES: Record<string, string[]> = {
-  construction: ["45000000", "45100000", "45200000", "45300000", "45400000", "45500000"],
-  it: ["30200000", "32400000", "48000000", "48100000", "48200000", "48700000", "72200000", "72500000"],
+  construction: ["45000000", "45100000", "45200000", "45300000", "45400000", "45500000", "44000000"],
+  it: ["30000000", "30200000", "32000000", "32400000", "48000000", "48100000", "48200000", "48700000", "72000000", "72200000", "72300000", "72400000", "72500000"],
   equipment: ["30100000", "30190000", "39000000", "39100000", "42000000", "42600000"],
-  medical: ["33100000", "33140000", "33190000", "33600000", "38430000", "50421000"],
+  medical: ["33000000", "33100000", "33110000", "33120000", "33130000", "33140000", "33150000", "33160000", "33170000", "33180000", "33190000", "33600000", "33690000", "38430000"],
   maintenance: ["50000000", "50300000", "72253000"],
   consulting: ["71200000", "71520000", "79400000"],
   logistics: ["34100000", "60100000", "90500000"],
@@ -1013,9 +1047,22 @@ const PRIMARY_INDUSTRY_CPV_CODES: Record<string, string[]> = {
   communications_media: ["79340000", "79800000", "79952000"],
 };
 
+export const PRIMARY_INDUSTRY_BROAD_CPV_PREFIXES: Record<string, string[]> = {
+  construction: ["45", "44"],
+  it: ["30", "32", "48", "72"],
+  equipment: ["30", "39", "42"],
+  medical: ["33"],
+  maintenance: ["50"],
+  consulting: ["71", "79"],
+  logistics: ["34", "60"],
+  security_energy: ["09", "31", "35"],
+  facilities_hospitality: ["15", "55", "90"],
+  communications_media: ["22", "79"],
+};
+
 const OFFERING_CATEGORY_CPV_CODES: Record<string, string[]> = {
-  software_licenses: ["48000000", "48100000", "48200000", "48300000", "48400000", "48500000", "48600000", "48700000", "48800000", "72260000", "72267000", "72268000"],
-  it_hardware: ["30200000", "30213000", "30231300", "32400000", "32420000", "32422000", "32424000", "48820000"],
+  software_licenses: ["48000000", "48100000", "48200000", "48300000", "48400000", "48500000", "48600000", "48700000", "48800000", "72200000", "72260000", "72267000", "72268000", "72300000", "72400000"],
+  it_hardware: ["30000000", "30200000", "30210000", "30213000", "30230000", "30231300", "32400000", "32420000", "32422000", "32424000", "48820000"],
   telecom_av: ["32000000", "32200000", "32260000", "32300000", "32320000", "32321200"],
   cloud_cyber_data: ["48710000", "48730000", "48760000", "48800000", "72250000", "72317000", "72500000"],
   construction_works: ["45000000", "45100000", "45200000", "45300000", "45400000", "45500000"],
@@ -1025,8 +1072,8 @@ const OFFERING_CATEGORY_CPV_CODES: Record<string, string[]> = {
   office_school_equipment: ["30190000", "39100000", "39160000"],
   industrial_tools_machinery: ["42000000", "42600000", "43800000"],
   furniture_interior: ["39100000", "39130000", "39160000"],
-  medical_supplies: ["33100000", "33140000", "33190000", "33600000", "33690000", "33141000"],
-  laboratory_diagnostics: ["33124100", "33696500", "38430000", "38500000"],
+  medical_supplies: ["33000000", "33100000", "33110000", "33120000", "33130000", "33140000", "33141000", "33150000", "33160000", "33170000", "33190000", "33600000", "33690000"],
+  laboratory_diagnostics: ["33124100", "33696500", "38000000", "38430000", "38500000"],
   vehicles_transport: ["34100000", "34300000", "60100000"],
   utility_waste_winter: ["90511000", "90600000", "90620000"],
   cleaning_hygiene: ["33700000", "39800000", "90910000"],
@@ -1045,15 +1092,38 @@ const PRIMARY_INDUSTRY_RETRIEVAL_ALIASES: Record<string, string[]> = {
     "rekonstrukcija objekta",
     "sanacija objekta",
     "niskogradnja",
+    "betonski radovi",
+    "fasaderski radovi",
+    "krovopokrivacki radovi",
+    "hidroizolacija",
+    "asfaltiranje",
+    "gradjevinski materijal",
+    "cestogradnja",
+    "instalaterski radovi",
+    "demontaza",
   ],
   it: [
     "software",
     "business software",
     "programska rjesenja",
     "informacioni sistem",
+    "informacijski sistem",
     "ict",
     "digitalna platforma",
     "upravljanje dokumentima",
+    "informaticka oprema",
+    "racunarska oprema",
+    "IT usluge",
+    "web portal",
+    "web aplikacija",
+    "elektronski sistem",
+    "baza podataka",
+    "digitalizacija",
+    "implementacija",
+    "racunar",
+    "laptop",
+    "server",
+    "monitor",
   ],
   equipment: [
     "isporuka opreme",
@@ -1066,6 +1136,14 @@ const PRIMARY_INDUSTRY_RETRIEVAL_ALIASES: Record<string, string[]> = {
     "medicinski materijal",
     "zdravstvena oprema",
     "laboratorijska oprema",
+    "bolnicka oprema",
+    "farmaceutski",
+    "stomatoloska oprema",
+    "medicinski uredjaji",
+    "klinicka oprema",
+    "sanitetski materijal",
+    "dijagnosticka oprema",
+    "medicinski potrosni",
   ],
   maintenance: [
     "servis i odrzavanje",
@@ -1299,6 +1377,11 @@ export interface StructuredCompanyProfile {
   preferredTenderTypes: string[];
   companyDescription: string | null;
   manualKeywords?: string[];
+  aiCoreKeywords?: string[];
+  aiBroadKeywords?: string[];
+  aiCpvCodes?: string[];
+  aiNegativeKeywords?: string[];
+  aiEnrichedAt?: string;
 }
 
 export interface ParsedCompanyProfile {
@@ -1309,6 +1392,11 @@ export interface ParsedCompanyProfile {
   companyDescription: string | null;
   manualKeywords?: string[];
   legacyIndustryText: string | null;
+  aiCoreKeywords?: string[];
+  aiBroadKeywords?: string[];
+  aiCpvCodes?: string[];
+  aiNegativeKeywords?: string[];
+  aiEnrichedAt?: string;
 }
 
 const optionLookup = new Map(
@@ -1587,6 +1675,11 @@ export function serializeCompanyProfile(profile: ParsedCompanyProfile): string |
     preferredTenderTypes: [...new Set(profile.preferredTenderTypes)],
     companyDescription: profile.companyDescription?.trim() || null,
     manualKeywords,
+    ...(profile.aiCoreKeywords?.length ? { aiCoreKeywords: profile.aiCoreKeywords } : {}),
+    ...(profile.aiBroadKeywords?.length ? { aiBroadKeywords: profile.aiBroadKeywords } : {}),
+    ...(profile.aiCpvCodes?.length ? { aiCpvCodes: profile.aiCpvCodes } : {}),
+    ...(profile.aiNegativeKeywords?.length ? { aiNegativeKeywords: profile.aiNegativeKeywords } : {}),
+    ...(profile.aiEnrichedAt ? { aiEnrichedAt: profile.aiEnrichedAt } : {}),
   };
 
   if (
@@ -1630,6 +1723,11 @@ export function parseCompanyProfile(industry: string | null | undefined): Parsed
         companyDescription: parsed.companyDescription ?? null,
         manualKeywords: sanitizeSearchKeywords(parsed.manualKeywords ?? []),
         legacyIndustryText: null,
+        aiCoreKeywords: parsed.aiCoreKeywords,
+        aiBroadKeywords: parsed.aiBroadKeywords,
+        aiCpvCodes: parsed.aiCpvCodes,
+        aiNegativeKeywords: parsed.aiNegativeKeywords,
+        aiEnrichedAt: parsed.aiEnrichedAt,
       };
     }
   } catch {
@@ -1765,6 +1863,17 @@ export function buildProfileKeywordAliases(profile: ParsedCompanyProfile): strin
     ),
     ...buildSelectedSpecializationKeywordSeeds(profile),
   ]).slice(0, 24);
+}
+
+export function buildBroadRetrievalCpvPrefixes(profile: ParsedCompanyProfile): string[] {
+  const derivedPrimaryIndustry = derivePrimaryIndustry(
+    profile.offeringCategories,
+    profile.primaryIndustry
+  );
+
+  return derivedPrimaryIndustry
+    ? PRIMARY_INDUSTRY_BROAD_CPV_PREFIXES[derivedPrimaryIndustry] ?? []
+    : [];
 }
 
 export function buildProfileContextText({

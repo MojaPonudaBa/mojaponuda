@@ -10,6 +10,8 @@ import {
   sortRecommendedTenderItems,
   sortStandardTenders,
 } from "@/lib/tender-sorting";
+import { classifyTenderRecommendationsWithAI } from "@/lib/tender-recommendation-rerank";
+import { ensureCompanyProfileEnrichment } from "@/lib/ai-profile-enrichment";
 import {
   buildRecommendationContext,
   enrichTendersWithAuthorityGeo,
@@ -201,6 +203,11 @@ async function TendersContent({ agencyClientId, companyId, recommendationContext
     let ranked = selectTenderRecommendations(available, recommendationContext, {
       minimumResults: RECOMMENDATION_FULL_PAGE_MINIMUM_RESULTS,
     });
+
+    ranked = await classifyTenderRecommendationsWithAI(
+      ranked,
+      recommendationContext
+    );
 
     ranked = ranked.filter(({ tender }) =>
       tenderMatchesClientFilters(tender, {
@@ -394,8 +401,13 @@ export default async function AgencyClientTendersPage({ params, searchParams }: 
   } | null;
   if (!company) notFound();
 
+  const enrichedIndustry = await ensureCompanyProfileEnrichment(
+    supabase,
+    company.id,
+    company.industry
+  );
   const recommendationContext = buildRecommendationContext({
-    industry: company.industry,
+    industry: enrichedIndustry,
     keywords: company.keywords,
     cpv_codes: company.cpv_codes,
     operating_regions: company.operating_regions,

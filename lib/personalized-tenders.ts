@@ -1,5 +1,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { maybeRerankTenderRecommendationsWithAI } from "@/lib/tender-recommendation-rerank";
+import {
+  classifyTenderRecommendationsWithAI,
+  maybeRerankTenderRecommendationsWithAI,
+} from "@/lib/tender-recommendation-rerank";
+import { ensureCompanyProfileEnrichment } from "@/lib/ai-profile-enrichment";
 import {
   buildRecommendationContext,
   fetchRecommendedTenderCandidates,
@@ -14,6 +18,7 @@ import type { Database } from "@/types/database";
 
 interface PersonalizedTenderOptions {
   company: RecommendationCompanySource;
+  companyId?: string;
   select?: string;
   nowIso?: string;
   candidateLimit?: number;
@@ -21,6 +26,7 @@ interface PersonalizedTenderOptions {
   limit?: number;
   shortlistSize?: number;
   rerank?: boolean;
+  classify?: boolean;
   excludeTenderIds?: Iterable<string>;
 }
 
@@ -37,7 +43,18 @@ export async function getPersonalizedTenderRecommendations<
   supabase: SupabaseClient<Database>,
   options: PersonalizedTenderOptions
 ): Promise<PersonalizedTenderResult<TTender>> {
-  const context = buildRecommendationContext(options.company);
+  let companySource = options.company;
+  if (options.companyId) {
+    const enrichedIndustry = await ensureCompanyProfileEnrichment(
+      supabase,
+      options.companyId,
+      companySource.industry ?? null
+    );
+    if (enrichedIndustry !== companySource.industry) {
+      companySource = { ...companySource, industry: enrichedIndustry };
+    }
+  }
+  const context = buildRecommendationContext(companySource);
   const hasSignals = hasRecommendationSignals(context);
 
   if (!hasSignals) {
@@ -64,6 +81,14 @@ export async function getPersonalizedTenderRecommendations<
   let recommendations = selectTenderRecommendations(availableCandidates, context, {
     minimumResults: options.minimumResults,
   });
+
+  if (options.classify !== false && recommendations.length > 1) {
+    recommendations = await classifyTenderRecommendationsWithAI(
+      recommendations,
+      context
+    );
+  }
+
   const totalCount = recommendations.length;
 
   if (options.rerank !== false && recommendations.length > 1) {

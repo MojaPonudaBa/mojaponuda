@@ -9,6 +9,8 @@ import {
   sortRecommendedTenderItems,
   sortStandardTenders,
 } from "@/lib/tender-sorting";
+import { classifyTenderRecommendationsWithAI } from "@/lib/tender-recommendation-rerank";
+import { ensureCompanyProfileEnrichment } from "@/lib/ai-profile-enrichment";
 import { getSubscriptionStatus } from "@/lib/subscription";
 import {
   buildRecommendationContext,
@@ -220,8 +222,13 @@ async function TendersContent({
       // Build recommendation contexts and fetch candidates for each client (parallel)
       const clientResults = await Promise.all(
         agencyClients.map(async (client) => {
+          const enrichedIndustry = await ensureCompanyProfileEnrichment(
+            supabase,
+            client.companyId,
+            client.industry
+          );
           const ctx = buildRecommendationContext({
-            industry: client.industry,
+            industry: enrichedIndustry,
             keywords: client.keywords,
             cpv_codes: client.cpv_codes,
             operating_regions: client.operating_regions,
@@ -313,7 +320,15 @@ async function TendersContent({
 
     if (activeTab === "recommended" && companyProfile) {
       hasProfile = true;
-      recommendationContext = buildRecommendationContext(companyProfile);
+      const enrichedIndustry = await ensureCompanyProfileEnrichment(
+        supabase,
+        companyProfile.id,
+        companyProfile.industry
+      );
+      recommendationContext = buildRecommendationContext({
+        ...companyProfile,
+        industry: enrichedIndustry,
+      });
       hasRecommendationSignalsForProfile = hasRecommendationSignals(recommendationContext);
 
       const { data: bidRows } = await supabase
@@ -431,6 +446,11 @@ async function TendersContent({
       {
         minimumResults: RECOMMENDATION_FULL_PAGE_MINIMUM_RESULTS,
       }
+    );
+
+    rankedRecommendations = await classifyTenderRecommendationsWithAI(
+      rankedRecommendations,
+      recommendationContext
     );
 
     rankedRecommendations = rankedRecommendations.filter(({ tender }) =>

@@ -229,4 +229,176 @@ describe("tender recommendations", () => {
     expect(scored.qualifies).toBe(true);
     expect(scored.cpvMatch).toBe(true);
   });
+
+  it("merges AI-generated core keywords into the recommendation context", () => {
+    const profileContext = buildRecommendationContext({
+      industry: JSON.stringify({
+        version: 1,
+        primaryIndustry: null,
+        offeringCategories: [],
+        specializationIds: [],
+        preferredTenderTypes: [],
+        companyDescription: "Prodaja poljoprivrednih masina.",
+        manualKeywords: [],
+        aiCoreKeywords: ["poljoprivredna mehanizacija", "traktor", "kombajn", "plug"],
+        aiBroadKeywords: ["poljopriv", "mehanizac", "traktor", "kombajn"],
+        aiCpvCodes: ["16000000"],
+        aiNegativeKeywords: ["softver", "građevinsk", "medicinsk"],
+        aiEnrichedAt: "2026-01-01T00:00:00.000Z",
+      }),
+      keywords: [],
+      cpv_codes: [],
+      operating_regions: [],
+    });
+
+    expect(profileContext.coreKeywords).toContain("poljoprivredna mehanizacija");
+    expect(profileContext.coreKeywords).toContain("traktor");
+    expect(profileContext.keywords).toContain("poljopriv");
+    expect(profileContext.cpvPrefixes).toContain("16000");
+    expect(profileContext.negativeSignals).toContain("softver");
+    expect(profileContext.negativeSignals).toContain("medicinsk");
+  });
+
+  it("qualifies tenders for an AI-enriched profile in any industry", () => {
+    const profileContext = buildRecommendationContext({
+      industry: JSON.stringify({
+        version: 1,
+        primaryIndustry: null,
+        offeringCategories: [],
+        specializationIds: [],
+        preferredTenderTypes: [],
+        companyDescription: "Proizvodnja peciva i kruha.",
+        manualKeywords: [],
+        aiCoreKeywords: ["pekarski proizvodi", "kruh", "pecivo", "pekara"],
+        aiBroadKeywords: ["pekar", "kruh", "peciv", "brašn"],
+        aiCpvCodes: ["15810000"],
+        aiNegativeKeywords: ["softver", "građevinsk", "medicinsk", "vozil"],
+        aiEnrichedAt: "2026-01-01T00:00:00.000Z",
+      }),
+      keywords: [],
+      cpv_codes: [],
+      operating_regions: [],
+    });
+
+    const relevant = scoreTenderRecommendation(
+      createTender({
+        id: "bakery-fit",
+        title: "Nabavka kruha i pekarskih proizvoda",
+        contract_type: "Robe",
+        cpv_code: "15811000-6",
+        raw_description: "Nabavka pekarskih proizvoda za potrebe bolnice.",
+      }),
+      profileContext
+    );
+
+    const irrelevant = scoreTenderRecommendation(
+      createTender({
+        id: "bakery-noise",
+        title: "Nabavka softverskih licenci",
+        contract_type: "Robe",
+        cpv_code: "48000000-8",
+        raw_description: "Nabavka licenci za operativni sistem i office paket.",
+      }),
+      profileContext
+    );
+
+    expect(relevant.qualifies).toBe(true);
+    expect(relevant.cpvMatch).toBe(true);
+    expect(irrelevant.qualifies).toBe(false);
+  });
+
+  it("AI negative keywords block false positives from related institutions", () => {
+    const profileContext = buildRecommendationContext({
+      industry: JSON.stringify({
+        version: 1,
+        primaryIndustry: null,
+        offeringCategories: [],
+        specializationIds: [],
+        preferredTenderTypes: [],
+        companyDescription: "Laboratorijska oprema i reagensi.",
+        manualKeywords: [],
+        aiCoreKeywords: ["laboratorijska oprema", "reagensi", "dijagnostika"],
+        aiBroadKeywords: ["laboratorij", "reagens", "dijagnostik"],
+        aiCpvCodes: ["33696000", "38000000"],
+        aiNegativeKeywords: ["goriv", "čišćenj", "vozil", "namještaj", "catering"],
+        aiEnrichedAt: "2026-01-01T00:00:00.000Z",
+      }),
+      keywords: [],
+      cpv_codes: [],
+      operating_regions: [],
+    });
+
+    const hospitalFuelTender = scoreTenderRecommendation(
+      createTender({
+        id: "hospital-fuel",
+        title: "Nabavka goriva za potrebe bolnice",
+        contract_type: "Robe",
+        raw_description: "Nabavka loz ulja i goriva za centralno grijanje bolnice.",
+        contracting_authority: "Opca bolnica Sarajevo",
+      }),
+      profileContext
+    );
+
+    expect(hospitalFuelTender.negativeTitleMatches.length).toBeGreaterThan(0);
+    expect(hospitalFuelTender.qualifies).toBe(false);
+  });
+
+  it("AI CPV codes produce broad prefixes for retrieval", () => {
+    const profileContext = buildRecommendationContext({
+      industry: JSON.stringify({
+        version: 1,
+        primaryIndustry: null,
+        offeringCategories: [],
+        specializationIds: [],
+        preferredTenderTypes: [],
+        companyDescription: "Stampanje reklamnog materijala.",
+        manualKeywords: [],
+        aiCoreKeywords: ["stampanje", "reklamni materijal", "ofset stampa"],
+        aiBroadKeywords: ["stamp", "reklam", "ofset", "tisak"],
+        aiCpvCodes: ["22000000", "79800000"],
+        aiNegativeKeywords: ["građevinsk", "medicinsk", "softver"],
+        aiEnrichedAt: "2026-01-01T00:00:00.000Z",
+      }),
+      keywords: [],
+      cpv_codes: [],
+      operating_regions: [],
+    });
+
+    expect(profileContext.cpvPrefixes).toContain("22000");
+    expect(profileContext.cpvPrefixes).toContain("79800");
+    expect(profileContext.broadCpvPrefixes).toContain("22");
+    expect(profileContext.broadCpvPrefixes).toContain("79");
+  });
+
+  it("CPV match bypasses contractMatch for flexible qualification", () => {
+    const profileContext = buildRecommendationContext({
+      industry: JSON.stringify({
+        version: 1,
+        primaryIndustry: "medical",
+        offeringCategories: ["medical_supplies"],
+        specializationIds: [],
+        preferredTenderTypes: [],
+        companyDescription: "Prodaja medicinske opreme.",
+        manualKeywords: [],
+      }),
+      keywords: [],
+      cpv_codes: [],
+      operating_regions: [],
+    });
+
+    const scored = scoreTenderRecommendation(
+      createTender({
+        id: "medical-service-cpv",
+        title: "Nabavka medicinske opreme za laboratoriju",
+        contract_type: "Usluge",
+        cpv_code: "33100000-1",
+        raw_description: "Nabavka i isporuka medicinske opreme za laboratorijsku dijagnostiku.",
+      }),
+      profileContext
+    );
+
+    expect(scored.cpvMatch).toBe(true);
+    expect(scored.contractMatch).toBe(false);
+    expect(scored.qualifies).toBe(true);
+  });
 });

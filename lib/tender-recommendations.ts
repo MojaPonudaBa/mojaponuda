@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
+  buildBroadRetrievalCpvPrefixes,
   buildEffectiveContractTypes,
   buildProfileCoreKeywordSeeds,
   buildProfileCpvSeeds,
@@ -46,6 +47,8 @@ export interface RecommendationContext {
   neighboringRegionTerms: string[];
   regionLabels: string[];
   cpvPrefixes: string[];
+  /** 2-digit CPV prefixes for broad retrieval (fetched with higher limit) */
+  broadCpvPrefixes: string[];
   /** Geographic anchor point (average of selected regions). Null if no regions selected. */
   anchorLat: number | null;
   anchorLng: number | null;
@@ -103,9 +106,9 @@ interface FetchRecommendedTenderCandidatesOptions {
   includeUndated?: boolean;
 }
 
-export const RECOMMENDATION_FULL_PAGE_CANDIDATE_LIMIT = 1200;
-export const RECOMMENDATION_SUMMARY_CANDIDATE_LIMIT = 360;
-export const RECOMMENDATION_FULL_PAGE_MINIMUM_RESULTS = 24;
+export const RECOMMENDATION_FULL_PAGE_CANDIDATE_LIMIT = 3000;
+export const RECOMMENDATION_SUMMARY_CANDIDATE_LIMIT = 800;
+export const RECOMMENDATION_FULL_PAGE_MINIMUM_RESULTS = 36;
 export const RECOMMENDATION_SUMMARY_MINIMUM_RESULTS = 12;
 
 const PRIMARY_INDUSTRY_NEGATIVE_KEYWORDS: Record<string, string[]> = {
@@ -142,7 +145,17 @@ const PRIMARY_INDUSTRY_NEGATIVE_KEYWORDS: Record<string, string[]> = {
     "softverska podrška",
     "razvoj aplikacije",
   ],
-  medical: ["asfalt", "beton", "kanalizacij", "vodovod", "građevin"],
+  medical: [
+    "asfalt", "beton", "kanalizacij", "vodovod", "građevin",
+    "goriv", "lož ulj", "pelet",
+    "čišćenj objekat", "generalno čišćenj",
+    "catering", "priprema obrok", "prehramben",
+    "kancelarijski namještaj", "školski namještaj",
+    "servis vozil", "autodijelov",
+    "zimsk održavanj", "odvoz otpad",
+    "štamp", "promotivn materijal",
+    "softver", "licenc", "server", "računar",
+  ],
   maintenance: ["izgradnj", "rekonstrukcij", "novogradnj", "softver", "razvoj aplikacije"],
   consulting: ["armaturna mreža", "beton", "asfalt", "server", "računar"],
   logistics: ["softver", "licenc", "server", "cyber sigurnost", "projektovanje"],
@@ -161,8 +174,21 @@ const OFFERING_CATEGORY_NEGATIVE_KEYWORDS: Record<string, string[]> = {
   design_supervision: ["server", "računar", "antivirus", "mrežna oprema"],
   maintenance_support: ["novogradnj", "izgradnj autoputa", "grubi građevinski radovi"],
   office_school_equipment: ["asfalt", "kanalizacij", "izgradnj", "razvoj softvera"],
-  medical_supplies: ["asfalt", "kanalizacij", "izgradnj", "server"],
-  laboratory_diagnostics: ["asfalt", "beton", "kanalizacij", "vodovod"],
+  medical_supplies: [
+    "asfalt", "kanalizacij", "izgradnj", "server",
+    "goriv", "lož ulj", "čišćenj objekat",
+    "catering", "priprema obrok", "prehramben",
+    "kancelarijski namještaj", "školski namještaj",
+    "servis vozil", "autodijelov",
+    "softver", "licenc",
+  ],
+  laboratory_diagnostics: [
+    "asfalt", "beton", "kanalizacij", "vodovod",
+    "goriv", "čišćenj objekat", "catering",
+    "prehramben", "namještaj",
+    "servis vozil", "autodijelov",
+    "softver", "licenc",
+  ],
   security_video: ["prehramben", "catering", "asfalt", "namještaj"],
 };
 
@@ -594,23 +620,46 @@ export function buildRecommendationContext(
     profile,
   });
   const aliasKeywords = buildProfileKeywordAliases(profile);
+
+  // AI enrichment data (primary source when available)
+  const aiCoreKw = profile.aiCoreKeywords ?? [];
+  const aiBroadKw = profile.aiBroadKeywords ?? [];
+  const aiCpv = profile.aiCpvCodes ?? [];
+  const aiNegKw = profile.aiNegativeKeywords ?? [];
+
   const coreKeywords = [...new Set([
+    ...aiCoreKw,
     ...buildProfileCoreKeywordSeeds(profile),
     ...strictKeywords,
-  ])].slice(0, 24);
+  ])].slice(0, 36);
   const scoringKeywords = [...new Set([
     ...coreKeywords,
+    ...aiBroadKw,
     ...strictKeywords,
     ...broadKeywords,
-  ])].slice(0, 24);
+  ])].slice(0, 36);
   const retrievalKeywords = buildKeywordVariantSet([
     ...coreKeywords,
     ...scoringKeywords,
     ...aliasKeywords,
-  ]).slice(0, 28);
+    ...aiCoreKw.slice(0, 8),
+  ]).slice(0, 32);
   const profileCpvCodes = buildProfileCpvSeeds(profile);
 
+  const hardcodedNegatives = buildNegativeSignals(profile, focusIndustry);
+  const aiNegativeNormalized = aiNegKw
+    .map((term) => normalizeSignalTerm(term))
+    .filter((term): term is string => Boolean(term));
+
   const anchor = getAnchorCoords(selectedRegions);
+
+  // AI CPV codes produce additional broad 2-digit prefixes for retrieval
+  const aiCpvBroadPrefixes = [...new Set(
+    aiCpv
+      .map((code) => code.replace(/[^0-9]/g, "").slice(0, 2))
+      .filter((p) => p.length === 2)
+  )];
+  const hardcodedBroadPrefixes = buildBroadRetrievalCpvPrefixes(profile);
 
   return {
     profile,
@@ -618,7 +667,7 @@ export function buildRecommendationContext(
     coreKeywords,
     keywords: scoringKeywords,
     retrievalKeywords,
-    negativeSignals: buildNegativeSignals(profile, focusIndustry),
+    negativeSignals: [...new Set([...hardcodedNegatives, ...aiNegativeNormalized])],
     preferredContractTypes: buildEffectiveContractTypes(profile),
     regionTerms: buildRegionSearchTerms(selectedRegions),
     sameGroupRegionTerms: buildRegionSearchTerms(
@@ -629,10 +678,12 @@ export function buildRecommendationContext(
     ),
     regionLabels: getRegionSelectionLabels(selectedRegions),
     cpvPrefixes: buildCpvPrefixes([
+      ...aiCpv,
       ...strictCpvCodes,
       ...(source.cpv_codes ?? []),
       ...profileCpvCodes,
     ]),
+    broadCpvPrefixes: [...new Set([...hardcodedBroadPrefixes, ...aiCpvBroadPrefixes])],
     anchorLat: anchor?.lat ?? null,
     anchorLng: anchor?.lng ?? null,
   };
@@ -752,14 +803,37 @@ export async function fetchRecommendedTenderCandidates<
     ]);
   };
 
-  const resultGroups =
-    conditionGroups.length > 0
+  // CPV-primary retrieval: broad CPV prefixes get 3x limit for maximum recall
+  const broadCpvConditions = context.broadCpvPrefixes.length > 0
+    ? context.broadCpvPrefixes.map((prefix) => `cpv_code.ilike.${prefix}%`)
+    : [];
+
+  let combinedRows: TTender[];
+
+  if (broadCpvConditions.length > 0) {
+    const cpvLimit = Math.min(limit * 3, 6000);
+    const supplementalGroups = [keywordConditions, contractConditions].filter(
+      (conditions) => conditions.length > 0
+    );
+
+    const [cpvRows, ...supplementalResults] = await Promise.all([
+      runCandidateQuery(broadCpvConditions, cpvLimit),
+      ...supplementalGroups.map((conditions) => runCandidateQuery(conditions, limit)),
+    ]);
+
+    combinedRows = dedupeCandidateRows([cpvRows, ...supplementalResults].flat());
+  } else {
+    const resultGroups = conditionGroups.length > 0
       ? await Promise.all(conditionGroups.map((conditions) => runCandidateQuery(conditions, limit)))
       : [await runCandidateQuery([], limit)];
-  let combinedRows = dedupeCandidateRows(resultGroups.flat());
-  const fallbackThreshold = Math.max(18, Math.min(limit, Math.floor(limit / 3)));
 
-  if (conditionGroups.length > 0 && combinedRows.length < fallbackThreshold) {
+    combinedRows = dedupeCandidateRows(resultGroups.flat());
+  }
+
+  const fallbackThreshold = Math.max(18, Math.min(limit, Math.floor(limit / 3)));
+  const hasConditions = broadCpvConditions.length > 0 || conditionGroups.length > 0;
+
+  if (hasConditions && combinedRows.length < fallbackThreshold) {
     const fallbackRows = await runCandidateQuery(
       [],
       Math.min(Math.max(fallbackThreshold * 2, 120), limit)
@@ -967,7 +1041,7 @@ export function scoreTenderRecommendation<TTender extends RecommendationTenderIn
     hasLocationPreference && locationScope === "broad" && !strongBusinessSignal;
   const fallbackEligible =
     !blockedByNegativeTitle &&
-    contractMatch &&
+    (contractMatch || cpvMatch) &&
     !broadLocationBlocked &&
     score >= 3 &&
     (cpvMatch || hasCoreSignal || titleMatches.length > 0 || matchedKeywords.length >= 2);
@@ -986,7 +1060,7 @@ export function scoreTenderRecommendation<TTender extends RecommendationTenderIn
         supportOnlyQualified) &&
       score >= (cpvMatch ? 2 : 4)) ||
       fallbackTypeScopedMatch) &&
-    contractMatch &&
+    (contractMatch || (cpvMatch && score >= 4)) &&
     !broadLocationBlocked &&
     !blockedByNegativeTitle;
 

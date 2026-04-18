@@ -38,7 +38,7 @@ export async function RecommendedTenders() {
   // Get company keywords and regions
   const { data: company } = await supabase
     .from("companies")
-    .select("industry, keywords, cpv_codes, operating_regions")
+    .select("id, industry, keywords, cpv_codes, operating_regions")
     .eq("user_id", user.id)
     .single();
 
@@ -46,6 +46,7 @@ export async function RecommendedTenders() {
   const recommendationResult = company
     ? await getPersonalizedTenderRecommendations<RecommendationCardTender>(supabase, {
         company,
+        companyId: company.id,
         select:
           "id, title, deadline, estimated_value, contracting_authority, contracting_authority_jib, contract_type, raw_description, cpv_code, ai_analysis",
         minimumResults: RECOMMENDATION_SUMMARY_MINIMUM_RESULTS,

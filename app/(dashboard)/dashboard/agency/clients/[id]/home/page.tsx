@@ -221,6 +221,7 @@ export default async function AgencyClientHomePage({
     raw_description: string | null;
   }>(supabase, {
     company,
+    companyId: company.id,
     select: "id, title, deadline, estimated_value, contracting_authority, contracting_authority_jib, contract_type, raw_description",
     nowIso,
     candidateLimit: RECOMMENDATION_FULL_PAGE_CANDIDATE_LIMIT,

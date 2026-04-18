@@ -10,6 +10,7 @@ import {
   sanitizeSearchKeywords,
   type ParsedCompanyProfile,
 } from "@/lib/company-profile";
+import { generateProfileEnrichment } from "@/lib/ai-profile-enrichment";
 
 export const maxDuration = 30;
 
@@ -129,6 +130,14 @@ export async function POST(request: NextRequest) {
     const aiOnlyKeywords = sanitizeSearchKeywords(aiKeywords).slice(0, 18);
     const aiOnlyCpvCodes = [...new Set(aiCpvCodes.map((code) => code.trim()).filter((code) => code.length >= 5))].slice(0, 12);
 
+    // Run enrichment in parallel (non-blocking if it fails)
+    let enrichment: { core_keywords: string[]; broad_keywords: string[]; cpv_codes: string[]; negative_keywords: string[] } | null = null;
+    try {
+      enrichment = await generateProfileEnrichment(baseProfile);
+    } catch (enrichmentError) {
+      console.error("Profile enrichment error during onboarding:", enrichmentError);
+    }
+
     return NextResponse.json({
       cpv_codes:
         strictCpvCodes.length > 0
@@ -144,6 +153,7 @@ export async function POST(request: NextRequest) {
             : keywordSeeds.slice(0, 12),
       suggested_regions: regions.length > 0 ? regions : [...new Set(profile.suggested_regions ?? [])],
       summary: profile.summary ?? null,
+      enrichment: enrichment ?? null,
     });
   } catch (error) {
     console.error("Profile generation error:", error);
