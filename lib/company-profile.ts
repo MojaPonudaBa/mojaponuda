@@ -201,6 +201,30 @@ export const OFFERING_CATEGORY_OPTIONS: OfferingCategoryOption[] = [
     focusId: "consulting",
   },
   {
+    id: "insurance_services",
+    label: "Osiguranje",
+    description: "Usluge osiguranja zaposlenika, imovine, vozila i kasko polise.",
+    focusId: "consulting",
+  },
+  {
+    id: "water_sewage_infrastructure",
+    label: "Vodovod, kanalizacija i komunalna infrastruktura",
+    description: "Vodovodne cijevi, DMA zone, kanalizacija, otpadne vode i opskrba vodom.",
+    focusId: "construction",
+  },
+  {
+    id: "agriculture_forestry",
+    label: "Poljoprivreda i šumarstvo",
+    description: "Poljoprivredni materijal, sjeme, sadnice, pošumljavanje, sječa i šumska dobra.",
+    focusId: "facilities_hospitality",
+  },
+  {
+    id: "workwear_ppe",
+    label: "Odore i HTZ oprema",
+    description: "Radne uniforme, HTZ oprema, zaštitna obuća, rukavice i lična zaštitna oprema.",
+    focusId: "equipment",
+  },
+  {
     id: "printing_marketing_events",
     label: "Štampa, marketing i događaji",
     description: "Promotivni materijali, štampa, kampanje, sajmovi i organizacija događaja.",
@@ -854,28 +878,33 @@ const PRIMARY_INDUSTRY_CORE_KEYWORDS: Record<string, string[]> = {
 };
 
 const OFFERING_CATEGORY_KEYWORDS: Record<string, string[]> = {
-  software_licenses: ["softver", "licenc", "erp", "dms", "saas", "aplikacij"],
-  it_hardware: ["server", "računar", "printer", "switch", "router", "firewall", "mrežna oprema"],
-  telecom_av: ["telekom", "telefonij", "konferencij", "audio", "video", "razglas"],
-  cloud_cyber_data: ["cloud", "backup", "cyber sigurnost", "siem", "data platform", "disaster recovery"],
-  construction_works: ["izgradnj", "rekonstrukcij", "sanacij", "adaptacij", "građevin", "radov"],
-  electro_mechanical: ["elektroinstalacij", "mašinsk", "instalacij", "hvac", "grijanj", "hlađenj"],
-  design_supervision: ["projektovanj", "nadzor", "idejn", "glavn", "revizij"],
-  maintenance_support: ["održavanj", "servisiranj", "tehnička podrška", "helpdesk", "intervencij"],
-  office_school_equipment: ["uredsk", "kancelarij", "školsk", "namještaj", "inventar"],
-  industrial_tools_machinery: ["industrijsk", "alat", "mašin", "rezervn", "radionic"],
-  furniture_interior: ["namještaj", "stolic", "stol", "ormar", "enterijer"],
-  medical_supplies: ["medicinsk", "potrošn", "instrument", "sanitetsk", "uređaj"],
-  laboratory_diagnostics: ["laboratorij", "dijagnostik", "reagens", "analizator"],
-  vehicles_transport: ["vozil", "automobil", "kombi", "kamion", "transport", "prevoz"],
-  utility_waste_winter: ["komunaln", "otpad", "odvoz", "zimsk", "održavanj"],
-  cleaning_hygiene: ["čišćenj", "higijen", "dezinfekcij", "sanitarn", "hemij"],
-  food_catering: ["hran", "prehramben", "catering", "ugostitelj", "obrok"],
-  security_video: ["sigurnost", "zaštit", "alarm", "video", "nadzor", "videonadzor"],
-  fuel_energy: ["goriv", "lož", "energ", "elektroenergetsk", "agregat"],
-  legal_finance_consulting: ["pravn", "finansij", "računovodstv", "revizij", "savjetovanj"],
-  training_research: ["obuk", "edukacij", "certifikacij", "istraživanj", "seminar"],
-  printing_marketing_events: ["štamp", "marketing", "promotivn", "brendiranj", "događaj"],
+  software_licenses: ["softver", "licenc", "erp", "dms", "saas", "aplikacij", "programsk", "software", "informacioni sistem", "informacijski sistem"],
+  it_hardware: ["računar", "racunar", "server", "printer", "switch", "router", "firewall", "laptop", "monitor", "skener", "mrežn", "mrezn", "lan ", " ip "],
+  telecom_av: ["telekom", "telefon", "konferencij", "razglas", "interfon", "ozvučenj", "ozvucenj"],
+  cloud_cyber_data: ["cloud", "backup", "cyber", "siem", "hosting", "kolokacij"],
+  construction_works: ["izgradnj", "rekonstrukcij", "sanacij", "adaptacij", "građevin", "gradjevin", "asfaltiran", "asfalt", "krov", "hidroizolacij", "betonsk", "putev", "igrali", "most", "mrtvačk sanduk", "mrtvacki sanduk"],
+  electro_mechanical: ["elektroinstalacij", "električn", "elektricn", "mašinsk", "masinsk", "hvac", "grijanj", "hladjenj", "hlađenj", "ventilacij", "klimatizacij", "plinsk", "gromobran", "napon", "stabilizator", "ups ", "razvodn ormar"],
+  design_supervision: ["projektovanj", "projektn dokumentacij", "idejn", "elaborat", "urbanist"],
+  maintenance_support: ["održavanj", "odrzavanj", "servisiranj", "helpdesk", "remont", "opravk", "kalibracij", "verifikacij"],
+  office_school_equipment: ["uredsk", "kancelarij", "školsk", "skolsk", "nastavn", "učionič", "ucionic", "inventar", "potrepštin", "potrepstin", "zavjes"],
+  industrial_tools_machinery: ["industrijsk", "alat", "radionic", "armatur", "ventil", "reduktor", "valjaon", "pres ", "mjerni instrument", "mjerni ured", "vaga", "plastifikacij", "linija za"],
+  furniture_interior: ["namještaj", "namjestaj", "mobilijar", "stolic", "ormar", "enterijer", "klupa", "krevet"],
+  medical_supplies: ["medicinsk", "sanitetsk", "hirurš", "hirurs", "oftalmol", "stomatol", "ortopedsk", "rehabilitacij", "skop", "endoskop", "rendgen", "ultrazvuk", "ekg", "lijek", "ljekov", "lekov", "farmaceutsk", "ampul", "igle ", "špric", "spric", "zavoj"],
+  laboratory_diagnostics: ["laboratorij", "dijagnostik", "reagens", "analizator", "mikroskop", "epruvet", "fizičko-hemij", "fizicko-hemij", "patch test", "jednokratn posuđ", "jednokratn posud"],
+  vehicles_transport: ["vozil", "automobil", "kombi", "kamion", "transport", "prevoz", "autodijel", "autodio", "gum", "pneumatik", "ratrak", "bager"],
+  utility_waste_winter: ["komunaln", "otpad", "odvoz", "rasvjet", "rasvet", "groblj", "grobn", "dezinsekcij", "deratizacij", "zimsk"],
+  cleaning_hygiene: ["čišćenj", "ciscenj", "higijen", "dezinfekcij", "sanitarn", "pranje", "sredstv za ciscenj"],
+  food_catering: ["hran", "prehramben", "catering", "ugostitelj", "obrok", "mineraln", "kahv", "kafa", "čaj", "caj", "meso", "mlijek", "pekarsk", "voće", "voce", "povrć", "povrc", "konditorsk", "začin", "pić", "napitak", "namirnic"],
+  security_video: ["videonadzor", "video nadzor", "alarm", "portirsk", "zaštitarsk", "zastitarsk", "fizičk zaštit", "fizicka zastit"],
+  fuel_energy: ["goriv", "naftn", "nafta", "benzin", "dizel", "lož", "loz ", "energ", "elektroenergetsk", "agregat", "pelet", "ogrjev", "ogrijev", "ogrev", "kotao", "kotlov", "toplotn", "toplan", "trafostanic", "visok napon", "solarn", "plin ", "plinsk", "ugalj", "fluo cijev", "drveta"],
+  legal_finance_consulting: ["pravn", "advokat", "notar", "finansij", "računovodstv", "racunovodstv", "revizor", "audit", "poresk", "savjetovanj", "consulting", "osigur", "studij izvodljivost"],
+  training_research: ["obuk", "edukacij", "certifikacij", "certificiranj", "istraživanj", "istrazivanj", "seminar", "usavršav", "usavrsav", "anketiranj", "školovanj", "skolovanj"],
+  printing_marketing_events: ["štamp", "stamp", "marketing", "promotivn", "brendiranj", "događaj", "dogadjaj", "sajamsk", "plakat", "brošur", "brosur", "oglaš", "oglas", "knjig", "publikacij", "vijest"],
+  // ── nove kategorije ───────────────────────────────────────────────
+  insurance_services: ["osigur", "kasko", "životn osigur", "zivotn osigur", "polis"],
+  water_sewage_infrastructure: ["vodovod", "vodosnabdj", "vodosnab", "kanalizacij", "opskrb vodom", "opskrba vodom", "otpadn vod", "ph", "dma zon", "vodomjer"],
+  agriculture_forestry: ["poljoprivr", "sjem", "sadnic", "pošumljavanj", "posumljavanj", "šumarsk", "sumarsk", "šuma", "suma", "sjeca ", "sječe ", "sječ", "sjec", "drvn sortiment", "ogrjevn drvet", "ogrevn drvet", "sadnja", "rasad", "gnojiv", "biomas", "usitnjavanj biomas"],
+  workwear_ppe: ["htz", "odora", "odore", "uniform", "radna odjeć", "radna odjec", "zaštitn obuć", "zastitn obuc", "opasač", "opasac", "kaciga", "rukavic", "pancir", "sjekač"],
 };
 
 const OFFERING_CATEGORY_CORE_KEYWORDS: Record<string, string[]> = {
@@ -1026,6 +1055,32 @@ const OFFERING_CATEGORY_CORE_KEYWORDS: Record<string, string[]> = {
     "organizacija konferencije",
     "branding",
   ],
+  insurance_services: [
+    "usluge osiguranja",
+    "osiguranje zaposlenika",
+    "osiguranje imovine",
+    "kasko polisa",
+  ],
+  water_sewage_infrastructure: [
+    "vodovodne cijevi",
+    "vodosnabdijevanje",
+    "kanalizaciona mreza",
+    "opskrba vodom",
+    "otpadne vode",
+  ],
+  agriculture_forestry: [
+    "poljoprivredni materijal",
+    "sjeme i sadnice",
+    "posumljavanje",
+    "sjeca suma",
+    "drvni sortiment",
+  ],
+  workwear_ppe: [
+    "htz oprema",
+    "radne uniforme",
+    "zastitna obuca",
+    "licna zastitna oprema",
+  ],
 };
 
 const TENDER_TYPE_KEYWORDS: Record<string, string[]> = {
@@ -1060,6 +1115,19 @@ export const PRIMARY_INDUSTRY_BROAD_CPV_PREFIXES: Record<string, string[]> = {
   communications_media: ["22", "79"],
 };
 
+// Category-specific broad CPV prefixes used in retrieval when a category
+// represents a CPV division not covered by its parent primary industry.
+// Example: insurance_services sits under the "consulting" focus but its
+// actual CPV division is 66 (financial services), which "consulting"
+// (71/79) does not include. Same pattern for agriculture (03/77) and
+// workwear/PPE (18).
+export const OFFERING_CATEGORY_BROAD_CPV_PREFIXES: Record<string, string[]> = {
+  insurance_services: ["66"],
+  water_sewage_infrastructure: ["41", "44", "45", "65", "90"],
+  agriculture_forestry: ["03", "77"],
+  workwear_ppe: ["18", "35"],
+};
+
 const OFFERING_CATEGORY_CPV_CODES: Record<string, string[]> = {
   software_licenses: ["48000000", "48100000", "48200000", "48300000", "48400000", "48500000", "48600000", "48700000", "48800000", "72200000", "72260000", "72267000", "72268000", "72300000", "72400000"],
   it_hardware: ["30000000", "30200000", "30210000", "30213000", "30230000", "30231300", "32400000", "32420000", "32422000", "32424000", "48820000"],
@@ -1083,6 +1151,10 @@ const OFFERING_CATEGORY_CPV_CODES: Record<string, string[]> = {
   legal_finance_consulting: ["79100000", "79200000", "79400000"],
   training_research: ["73000000", "79300000", "80500000"],
   printing_marketing_events: ["79340000", "79800000", "79952000"],
+  insurance_services: ["66510000", "66512000", "66513000", "66514000", "66515000", "66516000"],
+  water_sewage_infrastructure: ["41110000", "44160000", "44162000", "44163000", "45231000", "45232000", "65100000", "90470000", "90480000"],
+  agriculture_forestry: ["03000000", "03100000", "03200000", "03400000", "77100000", "77200000", "77300000", "77500000", "77600000"],
+  workwear_ppe: ["18100000", "18110000", "18140000", "18830000", "18930000", "35113000"],
 };
 
 const PRIMARY_INDUSTRY_RETRIEVAL_ALIASES: Record<string, string[]> = {
@@ -1828,6 +1900,38 @@ export function buildProfileKeywordSeeds(profile: ParsedCompanyProfile): string[
   ]);
 }
 
+/**
+ * Keyword seeds for hybrid retrieval (ILIKE on title / raw_description).
+ * Unlike `buildProfileKeywordSeeds`, this bypasses the sanitize cap and
+ * the generic-term filter — those are LLM-prompt safeguards, irrelevant
+ * to retrieval recall. The LLM rerank gate later filters false positives.
+ */
+export function buildRetrievalKeywordSeeds(profile: ParsedCompanyProfile): string[] {
+  const derivedPrimaryIndustry = derivePrimaryIndustry(
+    profile.offeringCategories,
+    profile.primaryIndustry
+  );
+  const seen = new Set<string>();
+  const result: string[] = [];
+  const push = (term: string | null | undefined) => {
+    if (!term) return;
+    const trimmed = term.trim();
+    if (!trimmed) return;
+    const key = trimmed.toLowerCase();
+    if (seen.has(key)) return;
+    seen.add(key);
+    result.push(trimmed);
+  };
+  if (derivedPrimaryIndustry) {
+    for (const t of PRIMARY_INDUSTRY_KEYWORDS[derivedPrimaryIndustry] ?? []) push(t);
+  }
+  for (const cat of profile.offeringCategories) {
+    for (const t of OFFERING_CATEGORY_KEYWORDS[cat] ?? []) push(t);
+  }
+  for (const t of buildSelectedSpecializationKeywordSeeds(profile)) push(t);
+  return result;
+}
+
 export function buildProfileCoreKeywordSeeds(profile: ParsedCompanyProfile): string[] {
   const derivedPrimaryIndustry = derivePrimaryIndustry(
     profile.offeringCategories,
@@ -1871,9 +1975,18 @@ export function buildBroadRetrievalCpvPrefixes(profile: ParsedCompanyProfile): s
     profile.primaryIndustry
   );
 
-  return derivedPrimaryIndustry
-    ? PRIMARY_INDUSTRY_BROAD_CPV_PREFIXES[derivedPrimaryIndustry] ?? []
-    : [];
+  const out = new Set<string>();
+  if (derivedPrimaryIndustry) {
+    for (const p of PRIMARY_INDUSTRY_BROAD_CPV_PREFIXES[derivedPrimaryIndustry] ?? []) {
+      out.add(p);
+    }
+  }
+  for (const cat of profile.offeringCategories) {
+    for (const p of OFFERING_CATEGORY_BROAD_CPV_PREFIXES[cat] ?? []) {
+      out.add(p);
+    }
+  }
+  return [...out];
 }
 
 export function buildProfileContextText({

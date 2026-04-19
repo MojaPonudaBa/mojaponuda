@@ -8,9 +8,10 @@ import {
 } from "@/lib/embeddings";
 import {
   buildBroadRetrievalCpvPrefixes,
-  buildProfileKeywordSeeds,
+  buildRetrievalKeywordSeeds,
   parseCompanyProfile,
 } from "@/lib/company-profile";
+import { expandKeywordVariants } from "@/lib/cyrillic-transliterate";
 import type { Database } from "@/types/database";
 
 // ── Constants ─────────────────────────────────────────────────────────
@@ -220,11 +221,17 @@ export async function retrieveKeywordCandidates(
     term.replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_").replace(/,/g, " ");
 
   const keywordConds: string[] = [];
-  for (const raw of keywords.slice(0, 12)) {
-    const term = escapeIlike(raw.trim());
-    if (!term) continue;
-    keywordConds.push(`title.ilike.%${term}%`);
-    keywordConds.push(`raw_description.ilike.%${term}%`);
+  for (const raw of keywords.slice(0, 30)) {
+    // Expand each seed to BOTH latin and cyrillic forms. Bosnian/Croatian
+    // tenders are written in latin; Republika Srpska tenders are written
+    // in cyrillic. A latin-only seed like "vozil" cannot ILIKE-match
+    // "Набавка возила", so we add "возил" as a second condition.
+    for (const variant of expandKeywordVariants(raw)) {
+      const term = escapeIlike(variant);
+      if (!term) continue;
+      keywordConds.push(`title.ilike.%${term}%`);
+      keywordConds.push(`raw_description.ilike.%${term}%`);
+    }
   }
   for (const prefix of cpvPrefixes.slice(0, 12)) {
     const term = escapeIlike(prefix.trim());
@@ -305,7 +312,7 @@ export async function getRecommendedTenders<T extends { id: string } = Record<st
     }),
     (async () => {
       const parsed = parseCompanyProfile(row.industry);
-      const keywords = buildProfileKeywordSeeds(parsed);
+      const keywords = buildRetrievalKeywordSeeds(parsed);
       const cpvPrefixes = buildBroadRetrievalCpvPrefixes(parsed);
       if (keywords.length === 0 && cpvPrefixes.length === 0) return [];
       return retrieveKeywordCandidates(supabase, keywords, cpvPrefixes, {

@@ -17,9 +17,10 @@ import { createClient } from "@supabase/supabase-js";
 import OpenAI from "openai";
 import {
   buildBroadRetrievalCpvPrefixes,
-  buildProfileKeywordSeeds,
+  buildRetrievalKeywordSeeds,
   parseCompanyProfile,
 } from "../lib/company-profile";
+import { expandKeywordVariants } from "../lib/cyrillic-transliterate";
 
 const MODEL = "gpt-4o-mini";
 const MODEL_VERSION = "gpt-4o-mini-v1";
@@ -154,7 +155,7 @@ async function runPool<T, R>(
 function deriveCategoryRecall(industry: string | null): { keywords: string[]; cpvPrefixes: string[] } {
   const parsed = parseCompanyProfile(industry);
   return {
-    keywords: buildProfileKeywordSeeds(parsed),
+    keywords: buildRetrievalKeywordSeeds(parsed),
     cpvPrefixes: buildBroadRetrievalCpvPrefixes(parsed),
   };
 }
@@ -168,11 +169,13 @@ async function retrieveByKeywords(
   if (keywords.length === 0 && cpvPrefixes.length === 0) return [];
   const escape = (t: string) => t.replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_").replace(/,/g, " ");
   const conds: string[] = [];
-  for (const k of keywords.slice(0, 12)) {
-    const term = escape(k.trim());
-    if (!term) continue;
-    conds.push(`title.ilike.%${term}%`);
-    conds.push(`raw_description.ilike.%${term}%`);
+  for (const k of keywords.slice(0, 30)) {
+    for (const variant of expandKeywordVariants(k)) {
+      const term = escape(variant);
+      if (!term) continue;
+      conds.push(`title.ilike.%${term}%`);
+      conds.push(`raw_description.ilike.%${term}%`);
+    }
   }
   for (const p of cpvPrefixes.slice(0, 12)) {
     const term = escape(p.trim());
