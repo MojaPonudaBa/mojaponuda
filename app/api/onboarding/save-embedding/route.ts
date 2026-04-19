@@ -80,6 +80,18 @@ export async function POST(request: NextRequest) {
         .eq("id", companyId);
       if (error) throw error;
 
+      // Purge stale LLM relevance cache for this company — the embedding has
+      // changed so previous scores may no longer reflect the company's real
+      // fit. Next /dashboard/tenders?tab=recommended render will re-score.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error: purgeErr } = await (supabase as any)
+        .from("tender_relevance")
+        .delete()
+        .eq("company_id", companyId);
+      if (purgeErr) {
+        console.warn("save-embedding: could not purge tender_relevance cache:", purgeErr.message);
+      }
+
       return NextResponse.json({
         ok: true,
         companyId,

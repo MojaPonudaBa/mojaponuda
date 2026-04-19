@@ -10,13 +10,9 @@ import {
   OFFERING_CATEGORY_GROUPS,
   OFFERING_CATEGORY_OPTIONS,
   parseCompanyProfile,
-  TENDER_TYPE_OPTIONS,
-  sanitizeSearchKeywords,
   serializeCompanyProfile,
 } from "@/lib/company-profile";
-import {
-  BIH_REGION_GROUPS,
-  getRegionSelectionLabels } from "@/lib/constants/regions";
+import { getRegionSelectionLabels } from "@/lib/constants/regions";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,7 +20,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { RegionMultiSelect } from "@/components/ui/region-multi-select";
-import { Loader2, Brain, X, Plus, Sparkles, Save, Building2, MapPin, Mail, Phone, ChevronDown, Check } from "lucide-react";
+import { Loader2, Brain, Save, Building2, MapPin, Mail, Phone, ChevronDown, Check } from "lucide-react";
 
 interface ProfileSettingsProps {
   company: {
@@ -41,6 +37,26 @@ interface ProfileSettingsProps {
     operating_regions: string[] | null;
   };
 }
+
+/**
+ * Settings form is the source of truth for a company's recommendation profile.
+ * It collects exactly the fields the onboarding collects (Step 1 + Step 2):
+ *   - offeringCategories   (Šta tačno radite)
+ *   - description          (Čime se firma bavi) — required
+ *   - pastClients          (Za koga ste radili)
+ *   - licenses             (Licence i certifikati)
+ *   - notOffered           (Šta NE radite)
+ *   - operating_regions    (Lokacija firme)
+ *
+ * On save we:
+ *   1. UPDATE companies row (basic info + industry JSON blob + regions).
+ *   2. POST /api/onboarding/save-embedding to regenerate profile_embedding
+ *      and purge the tender_relevance LLM cache for this company, so the next
+ *      /dashboard/tenders?tab=recommended render re-scores against the new
+ *      profile. This is why legacy fields (manual CPV, manual keywords,
+ *      Radovi/Usluge/Robe, specializations) have been removed — they are not
+ *      inputs to the new embedding pipeline and editing them was misleading.
+ */
 
 export function ProfileSettings({ company }: ProfileSettingsProps) {
   const router = useRouter();
@@ -60,32 +76,18 @@ export function ProfileSettings({ company }: ProfileSettingsProps) {
   const [description, setDescription] = useState(
     parsedProfile.companyDescription ?? parsedProfile.legacyIndustryText ?? ""
   );
+  const [pastClients, setPastClients] = useState(parsedProfile.pastClients ?? "");
+  const [licenses, setLicenses] = useState(parsedProfile.licenses ?? "");
+  const [notOffered, setNotOffered] = useState(parsedProfile.notOffered ?? "");
   const [offeringCategories, setOfferingCategories] = useState<string[]>(
     parsedProfile.offeringCategories ?? []
   );
   const [specializationIds, setSpecializationIds] = useState<string[]>(
     parsedProfile.specializationIds ?? []
   );
-  const [preferredTenderTypes, setPreferredTenderTypes] = useState<string[]>(
-    parsedProfile.preferredTenderTypes ?? []
-  );
-  const [cpvCodes, setCpvCodes] = useState<string[]>(company.cpv_codes || []);
-  const [manualKeywords, setManualKeywords] = useState<string[]>(
-    sanitizeSearchKeywords(parsedProfile.manualKeywords ?? [])
-  );
-  const [hiddenGeneratedKeywords, setHiddenGeneratedKeywords] = useState<string[]>(
-    sanitizeSearchKeywords(
-      (company.keywords || []).filter(
-        (keyword) => !sanitizeSearchKeywords(parsedProfile.manualKeywords ?? []).includes(keyword)
-      )
-    )
-  );
   const [regions, setRegions] = useState<string[]>(company.operating_regions || []);
-  
-  const [generating, setGenerating] = useState(false);
-  const [newKeyword, setNewKeyword] = useState("");
-  const [newCpvCode, setNewCpvCode] = useState("");
-  const [expandedSection, setExpandedSection] = useState<"offering" | "tender-types" | null>(null);
+
+  const [expandedSection, setExpandedSection] = useState<"offering" | null>(null);
   const derivedPrimaryIndustry = useMemo(
     () => derivePrimaryIndustry(offeringCategories, parsedProfile.primaryIndustry),
     [offeringCategories, parsedProfile.primaryIndustry]
@@ -128,88 +130,6 @@ export function ProfileSettings({ company }: ProfileSettingsProps) {
     );
   }, [offeringCategories]);
 
-  async function generateProfile() {
-    if (!description.trim() || description.length < 10) return;
-    setGenerating(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/onboarding/generate-profile", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          description,
-          primaryIndustry: derivedPrimaryIndustry,
-          offeringCategories,
-          specializationIds,
-          preferredTenderTypes,
-          regions: regionSelectionLabels,
-        }),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        const uniqueCpv = Array.from(new Set([...cpvCodes, ...(data.cpv_codes || [])]));
-        const uniqueHiddenKeywords = sanitizeSearchKeywords([
-          ...hiddenGeneratedKeywords,
-          ...(data.keywords || []),
-        ]);
-        const uniqueRegions = Array.from(new Set([...regions, ...(data.suggested_regions || [])]));
-
-        setCpvCodes(uniqueCpv);
-        setHiddenGeneratedKeywords(uniqueHiddenKeywords);
-        setRegions(uniqueRegions);
-      } else {
-        setError("Greška pri generisanju profila: " + data.error);
-      }
-    } catch (e) {
-      console.error(e);
-      setError("Greška pri komunikaciji sa AI servisom.");
-    } finally {
-      setGenerating(false);
-    }
-  }
-
-  function removeTag(list: string[], setList: (l: string[]) => void, item: string) {
-    setList(list.filter(i => i !== item));
-  }
-
-  function addKeyword(e: React.KeyboardEvent) {
-    if (e.key === 'Enter' && newKeyword.trim()) {
-      e.preventDefault();
-      setManualKeywords(sanitizeSearchKeywords([...manualKeywords, newKeyword.trim()]));
-      setNewKeyword("");
-    }
-  }
-
-  function addCpvCode(e?: React.KeyboardEvent) {
-    if (e && e.key !== 'Enter') {
-      return;
-    }
-
-    if (e) {
-      e.preventDefault();
-    }
-
-    const normalizedCode = newCpvCode.trim();
-
-    if (!normalizedCode) {
-      return;
-    }
-
-    setCpvCodes(Array.from(new Set([...cpvCodes, normalizedCode])));
-    setNewCpvCode("");
-  }
-
-  function removeRegionLabel(label: string) {
-    const group = BIH_REGION_GROUPS.find((item) => item.parentRegion === label);
-
-    if (group?.parentRegion) {
-      setRegions(regions.filter((region) => !group.municipalities.includes(region)));
-      return;
-    }
-
-    setRegions(regions.filter((region) => region !== label));
-  }
-
   function toggleSelection(
     value: string,
     current: string[],
@@ -228,12 +148,18 @@ export function ProfileSettings({ company }: ProfileSettingsProps) {
     setError(null);
     setSuccess(false);
 
+    if (description.trim().length < 10) {
+      setError("Opis firme mora imati najmanje 10 karaktera (2–5 rečenica).");
+      setLoading(false);
+      return;
+    }
+
     const supabase = createClient();
-    const combinedKeywords = sanitizeSearchKeywords([
-      ...hiddenGeneratedKeywords,
-      ...manualKeywords,
-    ]);
-    
+
+    // Step 1: persist basic info + structured profile (including new embedding
+    // fields) in the industry JSON blob. We keep existing cpv_codes/keywords
+    // untouched — those are AI-generated helper columns used by legacy code
+    // paths and admin diagnostics, and should not be user-editable.
     const { error: updateError } = await supabase
       .from("companies")
       .update({
@@ -248,23 +174,65 @@ export function ProfileSettings({ company }: ProfileSettingsProps) {
           primaryIndustry: derivedPrimaryIndustry,
           offeringCategories,
           specializationIds,
-          preferredTenderTypes,
+          preferredTenderTypes: parsedProfile.preferredTenderTypes ?? [],
           companyDescription: description,
-          manualKeywords,
+          pastClients: pastClients.trim() || null,
+          licenses: licenses.trim() || null,
+          notOffered: notOffered.trim() || null,
+          manualKeywords: parsedProfile.manualKeywords ?? [],
         }),
-        cpv_codes: cpvCodes,
-        keywords: combinedKeywords,
         operating_regions: regions,
       })
       .eq("id", company.id);
 
     if (updateError) {
       setError("Greška pri spremanju podataka: " + updateError.message);
-    } else {
-      setSuccess(true);
-      router.refresh();
-      setTimeout(() => setSuccess(false), 3000);
+      setLoading(false);
+      return;
     }
+
+    // Step 2: regenerate profile_embedding + purge tender_relevance cache so
+    // the recommendation pipeline re-scores this company against the updated
+    // profile on the next /dashboard/tenders render.
+    try {
+      const categoryText = offeringCategories
+        .map((id) => getProfileOptionLabel(id))
+        .filter(Boolean)
+        .join(", ");
+      const res = await fetch("/api/onboarding/save-embedding", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          description: description.trim(),
+          pastClients: pastClients.trim() || null,
+          licenses: licenses.trim() || null,
+          notOffered: notOffered.trim() || null,
+          regionsText: regionSelectionLabels.join(", ") || null,
+          categoryText: categoryText || null,
+          companyId: company.id,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(
+          "Profil je spremljen, ali osvježavanje preporuka nije uspjelo: " +
+            (data?.error ?? `HTTP ${res.status}`)
+        );
+        setLoading(false);
+        return;
+      }
+    } catch (embedError) {
+      console.error("settings: save-embedding error", embedError);
+      setError(
+        "Profil je spremljen, ali osvježavanje preporuka nije uspjelo. Pokušajte ponovo."
+      );
+      setLoading(false);
+      return;
+    }
+
+    setSuccess(true);
+    router.refresh();
+    setTimeout(() => setSuccess(false), 3000);
     setLoading(false);
   }
 
@@ -335,12 +303,12 @@ export function ProfileSettings({ company }: ProfileSettingsProps) {
           </div>
           <div>
             <h2 className="font-heading font-bold text-lg text-slate-900">Profil preporuka</h2>
-            <p className="text-sm text-slate-500">Ovdje dopunjujete opis firme, svoje dodatne pojmove i CPV kodove.</p>
+            <p className="text-sm text-slate-500">Ova polja su isti podaci koje ste unijeli u onboardingu. Izmjene automatski osvježe preporuke.</p>
           </div>
         </div>
 
         <div className="space-y-6">
-          <div className="grid gap-4 lg:grid-cols-2">
+          <div className="grid gap-4">
             <button
               type="button"
               onClick={() => setExpandedSection((value) => value === "offering" ? null : "offering")}
@@ -386,39 +354,6 @@ export function ProfileSettings({ company }: ProfileSettingsProps) {
               </div>
             </button>
 
-            <button
-              type="button"
-              onClick={() => setExpandedSection((value) => value === "tender-types" ? null : "tender-types")}
-              className="rounded-2xl border border-white/10 bg-white/5 p-5 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:bg-white/10"
-            >
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-sm font-semibold text-slate-900">Koje tendere pratite</p>
-                  <p className="mt-1 text-xs text-slate-600">
-                    {preferredTenderTypes.length > 0
-                      ? `${preferredTenderTypes.length} odabrane vrste tendera`
-                      : "Odaberite robe, usluge i/ili radove"}
-                  </p>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className="rounded-full border border-slate-300 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700">
-                    Klikni za uređivanje
-                  </span>
-                  <ChevronDown className={cn("size-4 text-slate-600 transition-transform", expandedSection === "tender-types" ? "rotate-180" : "rotate-0")} />
-                </div>
-              </div>
-              <div className="mt-3 flex flex-wrap gap-2">
-                {preferredTenderTypes.length > 0 ? preferredTenderTypes.map((item) => (
-                  <Badge key={item} variant="outline" className="border-emerald-100 bg-emerald-50 text-emerald-700">
-                    {getProfileOptionLabel(item)}
-                  </Badge>
-                )) : (
-                  <Badge variant="outline" className="bg-white text-slate-500">
-                    Nije odabrano
-                  </Badge>
-                )}
-              </div>
-            </button>
           </div>
 
           {expandedSection === "offering" ? (
@@ -525,145 +460,73 @@ export function ProfileSettings({ company }: ProfileSettingsProps) {
             </div>
           ) : null}
 
-          {expandedSection === "tender-types" ? (
-            <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
-              <div className="mb-4">
-                <Label className="text-base font-bold text-slate-900">Koje vrste tendera želite pratiti</Label>
-                <p className="mt-1 text-sm text-slate-500">
-                  Ovo određuje da li vam prvo prikazujemo robe, usluge, radove ili kombinaciju.
-                </p>
-              </div>
-              <div className="grid gap-3 md:grid-cols-3">
-                {TENDER_TYPE_OPTIONS.map((option) => {
-                  const selected = preferredTenderTypes.includes(option.id);
-
-                  return (
-                    <button
-                      key={option.id}
-                      type="button"
-                      onClick={() => toggleSelection(option.id, preferredTenderTypes, setPreferredTenderTypes)}
-                      className={cn(
-                        "rounded-2xl border p-4 text-left transition-all",
-                        selected
-                          ? "border-sky-400/40 bg-sky-500/12 shadow-sm shadow-sky-500/10"
-                          : "border-white/10 bg-white/[0.03] hover:border-white/20 hover:bg-white/[0.06]"
-                      )}
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <p className="text-sm font-semibold text-slate-100">{option.label}</p>
-                          <p className="mt-2 text-sm leading-6 text-slate-400">{option.description}</p>
-                        </div>
-                        {selected ? <Check className="mt-0.5 size-4 text-blue-200" /> : null}
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          ) : null}
-
-          <div className="rounded-2xl border border-violet-500/20 bg-violet-500/10 p-4">
+          <div className="space-y-5">
+            {/* Opis firme — required, drives the embedding */}
             <div className="space-y-2">
-              <Label className="text-purple-900 font-bold">Automatska priprema profila</Label>
-              <p className="text-xs text-slate-500 mb-2">
-                Upišite čime se firma bavi. Preporuke će se u pozadini doraditi i predložiti dodatne CPV kodove.
-              </p>
-              <Textarea 
-                placeholder="Npr. Izvodimo elektroinstalacione radove, održavamo javnu rasvjetu i isporučujemo kabel, razvodne ormare i prateću opremu..." 
+              <Label htmlFor="description" className="text-sm font-semibold text-slate-100">
+                Čime se vaša firma točno bavi?
+              </Label>
+              <Textarea
+                id="description"
                 value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                className="bg-white min-h-[80px]"
+                onChange={(event) => setDescription(event.target.value)}
+                placeholder="Npr: Bavimo se isporukom i instalacijom serverske i mrežne opreme. Prodajemo softverske licence i pružamo IT podršku javnim institucijama."
+                className="min-h-[100px] rounded-2xl"
               />
-              <Button 
-                onClick={generateProfile} 
-                disabled={generating || description.length < 5}
-                size="sm"
-                className="w-full mt-2 bg-purple-600 hover:bg-purple-700 text-white"
-              >
-                {generating ? <Loader2 className="mr-2 size-4 animate-spin" /> : <Sparkles className="mr-2 size-4" />}
-                Dopuni profil i CPV kodove
-              </Button>
-            </div>
-          </div>
-
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Vaši dodatni pojmovi</Label>
               <p className="text-xs text-slate-500">
-                Ovdje vidite samo pojmove koje ste vi ručno unijeli. Standardni pojmovi ostaju skriveni u pozadini.
+                Opišite šta radite i za koga — 2 do 5 rečenica je sasvim dovoljno. AI koristi ovaj opis za preporuke.
               </p>
-              <div className="flex gap-2">
-                <Input 
-                  placeholder="Dodaj pojam koji želite pratiti..." 
-                  value={newKeyword}
-                  onChange={(e) => setNewKeyword(e.target.value)}
-                  onKeyDown={addKeyword}
-                  className="max-w-xs"
-                />
-                <Button size="icon" variant="outline" onClick={() => {
-                  if (newKeyword.trim()) {
-                    setManualKeywords(sanitizeSearchKeywords([...manualKeywords, newKeyword.trim()]));
-                    setNewKeyword("");
-                  }
-                }}>
-                  <Plus className="size-4" />
-                </Button>
-              </div>
-              <div className="flex min-h-[44px] flex-wrap gap-2 rounded-xl border border-white/10 bg-white/5 p-3">
-                {manualKeywords.length === 0 && <span className="text-xs text-slate-400 italic">Nema ručno unesenih pojmova</span>}
-                {manualKeywords.map(k => (
-                  <Badge key={k} variant="outline" className="bg-white border-slate-200 text-slate-700 gap-1 pr-1">
-                    {k}
-                    <button onClick={() => removeTag(manualKeywords, setManualKeywords, k)} className="hover:text-red-500"><X className="size-3" /></button>
-                  </Badge>
-                ))}
-              </div>
+            </div>
+
+            {/* Opciona polja — svako daje embeddingu dodatni kontekst */}
+            <div className="space-y-2">
+              <Label htmlFor="pastClients" className="text-sm font-semibold text-slate-100">
+                Za koga ste do sada radili?
+              </Label>
+              <Input
+                id="pastClients"
+                value={pastClients}
+                onChange={(event) => setPastClients(event.target.value)}
+                placeholder="Npr: Klinički centar, općine u FBiH, javna preduzeća"
+                className="h-11 rounded-xl"
+              />
             </div>
 
             <div className="space-y-2">
-              <Label>CPV Kodovi</Label>
-              <p className="text-xs text-slate-500">
-                Ovdje su svi trenutno dodijeljeni CPV kodovi. Možete dodati i svoje dodatne kodove.
-              </p>
-              <div className="flex gap-2">
-                <Input
-                  placeholder="Dodaj CPV kod, npr. 48000000-8"
-                  value={newCpvCode}
-                  onChange={(e) => setNewCpvCode(e.target.value)}
-                  onKeyDown={addCpvCode}
-                  className="max-w-xs"
-                />
-                <Button size="icon" variant="outline" onClick={() => addCpvCode()}>
-                  <Plus className="size-4" />
-                </Button>
-              </div>
-              <div className="flex min-h-[44px] flex-wrap gap-2 rounded-xl border border-white/10 bg-white/5 p-3">
-                {cpvCodes.length === 0 && <span className="text-xs text-slate-400 italic">Nema CPV kodova</span>}
-                {cpvCodes.map(c => (
-                  <Badge key={c} variant="secondary" className="gap-1 pr-1">
-                    {c}
-                    <button onClick={() => removeTag(cpvCodes, setCpvCodes, c)} className="hover:text-red-500"><X className="size-3" /></button>
-                  </Badge>
-                ))}
-              </div>
+              <Label htmlFor="licenses" className="text-sm font-semibold text-slate-100">
+                Imate li posebne licence ili certifikate?
+              </Label>
+              <Input
+                id="licenses"
+                value={licenses}
+                onChange={(event) => setLicenses(event.target.value)}
+                placeholder="Npr: ISO 9001, licenca MUP-a, vatrogasno ovlaštenje"
+                className="h-11 rounded-xl"
+              />
             </div>
 
             <div className="space-y-2">
-              <Label>Lokacija firme / poslovnica</Label>
+              <Label htmlFor="notOffered" className="text-sm font-semibold text-slate-100">
+                Što vaša firma NE radi? (koje tendere ne želite vidjeti)
+              </Label>
+              <Input
+                id="notOffered"
+                value={notOffered}
+                onChange={(event) => setNotOffered(event.target.value)}
+                placeholder="Npr: Ne izvodimo građevinske radove, ne isporučujemo hranu ni vozila"
+                className="h-11 rounded-xl"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-sm font-semibold text-slate-100">Lokacija firme / poslovnica</Label>
               <p className="text-xs text-slate-500">
-                Označite šire područje, gradove i općine gdje je firma ili poslovnica. Ovo koristimo da bliži tenderi imaju prednost u preporukama.
+                Označite šire područje, gradove i općine gdje je firma ili poslovnica. Bliži tenderi imaju prednost u preporukama.
               </p>
               <RegionMultiSelect selectedRegions={regions} onChange={setRegions} />
-              <div className="flex min-h-[44px] flex-wrap gap-2 rounded-xl border border-white/10 bg-white/5 p-3">
-                {regionSelectionLabels.length === 0 && <span className="text-xs text-slate-400 italic">Cijela BiH</span>}
-                {regionSelectionLabels.map(r => (
-                  <Badge key={r} variant="outline" className="bg-blue-50 text-blue-700 border-blue-100 gap-1 pr-1">
-                    {r}
-                    <button onClick={() => removeRegionLabel(r)} className="hover:text-red-500"><X className="size-3" /></button>
-                  </Badge>
-                ))}
-              </div>
+              {regionSelectionLabels.length === 0 ? (
+                <p className="text-xs text-slate-400 italic">Ako ništa ne odaberete, prikazivat ćemo prilike sa nivoa cijele BiH.</p>
+              ) : null}
             </div>
           </div>
         </div>

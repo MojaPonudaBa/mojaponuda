@@ -1376,6 +1376,9 @@ export interface StructuredCompanyProfile {
   specializationIds?: string[];
   preferredTenderTypes: string[];
   companyDescription: string | null;
+  pastClients?: string | null;
+  licenses?: string | null;
+  notOffered?: string | null;
   manualKeywords?: string[];
   aiCoreKeywords?: string[];
   aiBroadKeywords?: string[];
@@ -1390,6 +1393,9 @@ export interface ParsedCompanyProfile {
   specializationIds?: string[];
   preferredTenderTypes: string[];
   companyDescription: string | null;
+  pastClients?: string | null;
+  licenses?: string | null;
+  notOffered?: string | null;
   manualKeywords?: string[];
   legacyIndustryText: string | null;
   aiCoreKeywords?: string[];
@@ -1674,6 +1680,9 @@ export function serializeCompanyProfile(profile: ParsedCompanyProfile): string |
     specializationIds: normalizeSpecializationIds(profile.specializationIds ?? [], profile.offeringCategories),
     preferredTenderTypes: [...new Set(profile.preferredTenderTypes)],
     companyDescription: profile.companyDescription?.trim() || null,
+    pastClients: profile.pastClients?.trim() || null,
+    licenses: profile.licenses?.trim() || null,
+    notOffered: profile.notOffered?.trim() || null,
     manualKeywords,
     ...(profile.aiCoreKeywords?.length ? { aiCoreKeywords: profile.aiCoreKeywords } : {}),
     ...(profile.aiBroadKeywords?.length ? { aiBroadKeywords: profile.aiBroadKeywords } : {}),
@@ -1721,6 +1730,9 @@ export function parseCompanyProfile(industry: string | null | undefined): Parsed
         ),
         preferredTenderTypes: parsed.preferredTenderTypes ?? [],
         companyDescription: parsed.companyDescription ?? null,
+        pastClients: parsed.pastClients ?? null,
+        licenses: parsed.licenses ?? null,
+        notOffered: parsed.notOffered ?? null,
         manualKeywords: sanitizeSearchKeywords(parsed.manualKeywords ?? []),
         legacyIndustryText: null,
         aiCoreKeywords: parsed.aiCoreKeywords,

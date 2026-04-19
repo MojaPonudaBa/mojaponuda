@@ -601,6 +601,9 @@ export function OnboardingValueFirstForm({
           specializationIds,
           preferredTenderTypes,
           companyDescription: effectiveDescription,
+          pastClients: pastClients.trim() || null,
+          licenses: licenses.trim() || null,
+          notOffered: notOffered.trim() || null,
           legacyIndustryText: null,
           ...(enrichmentData ? {
             aiCoreKeywords: enrichmentData.core_keywords,

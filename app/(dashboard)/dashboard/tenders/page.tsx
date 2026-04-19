@@ -446,28 +446,24 @@ async function TendersContent({
       contracting_authority_jib: string | null;
     };
 
-    // Step 1: retrieve with a permissive gate, then tighten client-side for flexibility.
+    // Step 1: retrieve a wide pgvector top-K (semantic recall), then use a single
+    // fixed precision gate. User requirement: "Show ALL tenders the company can
+    // realistically fulfill — no more, no less." On the LLM 1..10 scale that
+    // corresponds to >= 6 (drops "nerelevantno" 1-3 and borderline "možda" 4-5,
+    // keeps solid "možda" 6 through "vrlo relevantno" 10).
     const scored = await getRecommendedTenders<TenderWithGeo>(
       supabase,
       companyProfile.id,
       {
-        topK: 200,
-        limit: 500,
-        minScore: 5,
+        topK: 300,
+        limit: 1000,
+        minScore: 6,
       }
     );
 
-    const scoredAvailable = scored.filter(
+    const gated = scored.filter(
       ({ tender }) => !existingBidTenderIds.has(tender.id)
     );
-
-    // Adaptive precision gate: prefer tier "top" (score >= 8).
-    // If that yields too few results, fall back to score >= 6, then >= 5.
-    const pickByGate = (minScore: number) =>
-      scoredAvailable.filter((s) => s.score >= minScore);
-    let gated = pickByGate(8);
-    if (gated.length < 5) gated = pickByGate(6);
-    if (gated.length < 5) gated = scoredAvailable;
 
     // Step 2: enrich tender rows with authority geo + attach location priority.
     const enrichedTenders = await enrichTendersWithAuthorityGeo<TenderWithGeo>(
