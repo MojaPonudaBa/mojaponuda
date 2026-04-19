@@ -24,7 +24,7 @@ import { expandKeywordVariants } from "../lib/cyrillic-transliterate";
 
 const MODEL = "gpt-4o-mini";
 const MODEL_VERSION = "gpt-4o-mini-v1";
-const RETRIEVE_TOP_K = 200;
+const RETRIEVE_TOP_K = 500;
 const LLM_BATCH_SIZE = 7;
 const LLM_MAX_PARALLEL = 6;
 const LLM_BATCH_DELAY_MS = 200;
@@ -189,7 +189,7 @@ async function retrieveByKeywords(
     .or(conds.join(","))
     .or(`deadline.gt.${nowIso},deadline.is.null`)
     .order("deadline", { ascending: true, nullsFirst: false })
-    .limit(200);
+    .limit(500);
   if (error) {
     console.error("  retrieveByKeywords error:", error.message);
     return [];

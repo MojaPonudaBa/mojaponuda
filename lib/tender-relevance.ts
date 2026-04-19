@@ -16,8 +16,8 @@ import type { Database } from "@/types/database";
 
 // ── Constants ─────────────────────────────────────────────────────────
 export const RELEVANCE_MODEL_VERSION = "gpt-4o-mini-v1";
-export const RETRIEVAL_TOP_K = 200;
-export const KEYWORD_RETRIEVAL_LIMIT = 200;
+export const RETRIEVAL_TOP_K = 500;
+export const KEYWORD_RETRIEVAL_LIMIT = 500;
 export const LLM_BATCH_SIZE = 7;
 export const LLM_MAX_PARALLEL = 10;
 export const LLM_BATCH_DELAY_MS = 300;
