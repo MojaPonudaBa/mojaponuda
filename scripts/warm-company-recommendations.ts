@@ -15,6 +15,11 @@ import { config as loadEnv } from "dotenv";
 loadEnv({ path: ".env.local" });
 import { createClient } from "@supabase/supabase-js";
 import OpenAI from "openai";
+import {
+  buildBroadRetrievalCpvPrefixes,
+  buildProfileKeywordSeeds,
+  parseCompanyProfile,
+} from "../lib/company-profile";
 
 const MODEL = "gpt-4o-mini";
 const MODEL_VERSION = "gpt-4o-mini-v1";
@@ -140,61 +145,18 @@ async function runPool<T, R>(
   return results;
 }
 
-// ── Category → keyword/CPV seeds (mirrors lib/company-profile.ts) ─────
-// Self-contained here so the script does not pull in server-only code.
-const CATEGORY_KEYWORDS: Record<string, string[]> = {
-  software_licenses: ["softver", "licenc", "erp", "dms", "saas", "aplikacij", "software"],
-  it_hardware: ["server", "računar", "printer", "switch", "router", "firewall", "mrežna oprema", "kompjuter", "laptop", "storage"],
-  telecom_av: ["telekom", "telefonij", "konferencij", "audio", "video", "razglas"],
-  cloud_cyber_data: ["cloud", "backup", "cyber", "siem", "data platform", "disaster recovery"],
-  civil_works: ["izgradnj", "rekonstrukcij", "sanacij", "adaptacij", "građevin"],
-  electrical_works: ["elektroinst", "električ", "niskonapon"],
-  mechanical_works: ["mašin", "mehan", "hvac", "klima"],
-  road_works: ["cestogr", "asfalt", "put", "cesta"],
-  medical_goods: ["medicin", "ljekarn", "bolnic", "zdravstv"],
-  office_goods: ["kancelar", "uredsk", "namještaj"],
-  food_goods: ["hrana", "prehra", "piće"],
-  cleaning_goods: ["čiš", "higijen"],
-  vehicles: ["vozil", "autodio"],
-  fuels_energy: ["gorivo", "dizel", "benzin", "energ"],
-  services: ["usluge", "konsultanc", "savjetovanj"],
-  maintenance: ["održavanj", "servisir", "servis"],
-  transport_logistics: ["transport", "logist", "dostav"],
-};
-
-const CATEGORY_CPV_PREFIXES: Record<string, string[]> = {
-  software_licenses: ["48", "72"],
-  it_hardware: ["30", "32"],
-  telecom_av: ["32"],
-  cloud_cyber_data: ["48", "72"],
-  civil_works: ["45"],
-  electrical_works: ["45"],
-  mechanical_works: ["45", "42"],
-  road_works: ["45"],
-  medical_goods: ["33"],
-  office_goods: ["30", "39"],
-  food_goods: ["15"],
-  cleaning_goods: ["39"],
-  vehicles: ["34"],
-  fuels_energy: ["09"],
-  transport_logistics: ["60"],
-};
-
+// Delegates to the same library helpers the production pipeline uses
+// (lib/tender-relevance.ts). This guarantees identical seed coverage across
+// ALL offering categories — construction, medical, food, cleaning, vehicles,
+// fuel/energy, legal/finance, training, printing/marketing, etc. — not just
+// the IT subset. Any future change to OFFERING_CATEGORY_OPTIONS or its
+// keyword/CPV tables is automatically picked up here.
 function deriveCategoryRecall(industry: string | null): { keywords: string[]; cpvPrefixes: string[] } {
-  if (!industry) return { keywords: [], cpvPrefixes: [] };
-  try {
-    const parsed = JSON.parse(industry) as { offeringCategories?: string[] };
-    const cats = parsed?.offeringCategories ?? [];
-    const kw = new Set<string>();
-    const cpv = new Set<string>();
-    for (const c of cats) {
-      for (const k of CATEGORY_KEYWORDS[c] ?? []) kw.add(k);
-      for (const p of CATEGORY_CPV_PREFIXES[c] ?? []) cpv.add(p);
-    }
-    return { keywords: [...kw], cpvPrefixes: [...cpv] };
-  } catch {
-    return { keywords: [], cpvPrefixes: [] };
-  }
+  const parsed = parseCompanyProfile(industry);
+  return {
+    keywords: buildProfileKeywordSeeds(parsed),
+    cpvPrefixes: buildBroadRetrievalCpvPrefixes(parsed),
+  };
 }
 
 async function retrieveByKeywords(
