@@ -5,8 +5,11 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   ArrowLeft,
+  BarChart3,
   Briefcase,
   Building2,
+  Eye,
+  Kanban,
   ChevronDown,
   ChevronsUpDown,
   CircleDollarSign,
@@ -42,7 +45,10 @@ interface NavItem {
 const coreItems: NavItem[] = [
   { href: "/dashboard", label: "Početna", icon: LayoutDashboard, exact: true },
   { href: "/dashboard/tenders", label: "Tenderi", icon: Search },
+  { href: "/dashboard/ponude", label: "Pipeline", icon: Kanban },
   { href: "/dashboard/bids", label: "Moje ponude", icon: Briefcase },
+  { href: "/dashboard/watchlist", label: "Praćenja", icon: Eye },
+  { href: "/dashboard/trziste", label: "Tržište", icon: BarChart3 },
   { href: "/dashboard/vault", label: "Dokumenti", icon: FileText },
   { href: "/dashboard/prilike", label: "Poticaji", icon: Sparkles, pro: true },
 ];
@@ -145,7 +151,10 @@ export function DashboardSidebar({
     const routes = new Set<string>([
       "/dashboard",
       "/dashboard/tenders",
+      "/dashboard/ponude",
       "/dashboard/bids",
+      "/dashboard/watchlist",
+      "/dashboard/trziste",
       "/dashboard/vault",
       "/dashboard/prilike",
       "/dashboard/subscription",

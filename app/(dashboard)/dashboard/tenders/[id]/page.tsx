@@ -17,6 +17,15 @@ import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { StartBidButton } from "@/components/tenders/start-bid-button";
 import { UpgradeButton } from "@/components/subscription/upgrade-button";
+import { TenderTimeline } from "@/components/tenders/tender-timeline";
+import { PricePredictionCard } from "@/components/intelligence/price-prediction-card";
+import { WinProbabilityCard } from "@/components/intelligence/win-probability-card";
+import { CompetitorsCard } from "@/components/intelligence/competitors-card";
+import { WatchButton } from "@/components/watchlist/watch-button";
+import { getPricePrediction } from "@/lib/price-prediction";
+import { getWinProbability } from "@/lib/win-probability";
+import { getCompetitors, getSimilarTenders } from "@/lib/competitor-intelligence";
+import { isWatched } from "@/lib/watchlist";
 import { getOpenAIClient } from "@/lib/openai";
 import { getSubscriptionStatus } from "@/lib/subscription";
 import { createClient } from "@/lib/supabase/server";
@@ -108,7 +117,7 @@ export default async function TenderDetailPage({
 
   const [{ data: tenderData }, { data: companyData }] = await Promise.all([
     supabase.from("tenders").select("*").eq("id", id).maybeSingle(),
-    supabase.from("companies").select("id").eq("user_id", user.id).maybeSingle(),
+    supabase.from("companies").select("id, jib").eq("user_id", user.id).maybeSingle(),
   ]);
 
   const tender = tenderData as Tender | null;
@@ -173,6 +182,47 @@ export default async function TenderDetailPage({
         tender.procedure_type,
       )
     : null;
+
+  // ── Nove intelligence sekcije: price, win probability, competitors ──
+  const [pricePred, winProb, competitors, similarTenders, isAuthorityWatched, isCpvWatched] =
+    isLockedForFree
+      ? [null, null, [], [], false, false]
+      : await Promise.all([
+          getPricePrediction({
+            estimatedValue: tender.estimated_value ?? null,
+            cpvCode: tender.cpv_code,
+            authorityJib: tender.contracting_authority_jib,
+          }),
+          company
+            ? getWinProbability({
+                companyJib: (company as Company & { jib: string }).jib,
+                cpvCode: tender.cpv_code,
+                authorityJib: tender.contracting_authority_jib,
+              })
+            : Promise.resolve(null),
+          getCompetitors({
+            cpvCode: tender.cpv_code,
+            authorityJib: tender.contracting_authority_jib,
+            excludeJib: (company as Company & { jib?: string } | null)?.jib,
+            limit: 5,
+          }),
+          getSimilarTenders({
+            cpvCode: tender.cpv_code,
+            authorityJib: tender.contracting_authority_jib,
+            limit: 5,
+          }),
+          tender.contracting_authority_jib
+            ? isWatched(user.id, "authority", tender.contracting_authority_jib)
+            : Promise.resolve(false),
+          tender.cpv_code
+            ? isWatched(user.id, "cpv", tender.cpv_code.replace(/[^0-9]/g, "").slice(0, 3))
+            : Promise.resolve(false),
+        ]);
+
+  const timelinePhases = [
+    { key: "published", label: "Objava", date: tender.created_at ?? null },
+    { key: "bid_deadline", label: "Rok za ponude", date: tender.deadline ?? null },
+  ];
 
   return (
     <div className="mx-auto max-w-6xl space-y-5 sm:space-y-6">
@@ -314,6 +364,44 @@ export default async function TenderDetailPage({
           </div>
 
           <div className="space-y-6">
+            {/* Watch dugmad za brzi follow */}
+            {(tender.contracting_authority_jib || tender.cpv_code) && !isLockedForFree && (
+              <div className="flex flex-wrap gap-2 rounded-[1.35rem] border border-slate-100 bg-white p-4 shadow-sm">
+                {tender.contracting_authority_jib && (
+                  <WatchButton
+                    entityType="authority"
+                    entityKey={tender.contracting_authority_jib}
+                    entityLabel={tender.contracting_authority}
+                    isWatched={isAuthorityWatched}
+                    redirectTo={`/dashboard/tenders/${id}`}
+                    size="sm"
+                  />
+                )}
+                {tender.cpv_code && (
+                  <WatchButton
+                    entityType="cpv"
+                    entityKey={tender.cpv_code.replace(/[^0-9]/g, "").slice(0, 3)}
+                    entityLabel={`CPV ${tender.cpv_code}`}
+                    isWatched={isCpvWatched}
+                    redirectTo={`/dashboard/tenders/${id}`}
+                    size="sm"
+                  />
+                )}
+              </div>
+            )}
+
+            {/* Timeline nabavke */}
+            <TenderTimeline phases={timelinePhases} />
+
+            {/* AI Price prediction */}
+            <PricePredictionCard p={pricePred} />
+
+            {/* Win probability */}
+            <WinProbabilityCard wp={winProb} />
+
+            {/* Competitor intelligence */}
+            <CompetitorsCard competitors={competitors} similar={similarTenders} />
+
             {authorityStats ? (
               <div className="rounded-[1.35rem] border border-slate-100 bg-white p-5 shadow-sm sm:rounded-[1.5rem] sm:p-6">
                 <h3 className="mb-5 flex items-center gap-2 text-lg font-heading font-bold text-slate-900">

@@ -17,6 +17,9 @@ import { NotesSection } from "@/components/bids/workspace/notes-section";
 import { TenderDocUpload } from "@/components/bids/workspace/tender-doc-upload";
 import { PaywallOverlay } from "@/components/subscription/paywall-overlay";
 import { getSubscriptionStatus, isAgencyPlan } from "@/lib/subscription";
+import { BidComments, type BidComment } from "@/components/bids/bid-comments";
+import { PricePredictionCard } from "@/components/intelligence/price-prediction-card";
+import { getPricePrediction } from "@/lib/price-prediction";
 
 const MAX_FREE_BIDS = 3;
 
@@ -121,6 +124,25 @@ export default async function BidWorkspacePage({
 
   const hasMissingItems = checklistItems.some((item) => item.status === "missing");
 
+  // ── Bid komentari tima ───────────────────────────────────────────────
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const anySupabase = supabase as any;
+  const { data: commentRows } = await anySupabase
+    .from("bid_comments")
+    .select("id, body, author_name, user_id, created_at")
+    .eq("bid_id", id)
+    .order("created_at", { ascending: true });
+  const comments: BidComment[] = (commentRows ?? []) as BidComment[];
+
+  // ── Price prediction na osnovu tendera ──────────────────────────────
+  const pricePrediction = bid.tenders
+    ? await getPricePrediction({
+        estimatedValue: bid.tenders.estimated_value ?? null,
+        cpvCode: bid.tenders.cpv_code,
+        authorityJib: bid.tenders.contracting_authority_jib,
+      })
+    : null;
+
   return (
     <div className="mx-auto max-w-[1400px] space-y-6">
       <TopBar
@@ -170,6 +192,13 @@ export default async function BidWorkspacePage({
             <DocumentsPanel bidId={id} attachedDocs={attachedDocs} vaultDocuments={vaultDocuments} />
           }
         />
+      )}
+
+      {!showPaywall && (
+        <div className="grid gap-6 lg:grid-cols-2">
+          <PricePredictionCard p={pricePrediction} />
+          <BidComments bidId={id} comments={comments} currentUserId={user.id} />
+        </div>
       )}
     </div>
   );
