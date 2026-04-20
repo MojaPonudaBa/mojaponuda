@@ -1,12 +1,14 @@
 import { redirect } from "next/navigation";
-import { Bell, Building2, ShieldAlert, Users } from "lucide-react";
+import { Bell, Building2, KeyRound, ShieldAlert, Users } from "lucide-react";
 import { DangerZone } from "@/components/settings/danger-zone";
 import { ProfileSettings } from "@/components/settings/profile-settings";
 import { TeamSettings } from "@/components/settings/team-settings";
 import { NotificationSettings } from "@/components/settings/notification-settings";
+import { EjnCredentialsForm } from "@/components/settings/ejn-credentials-form";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getSubscriptionStatus, isAgencyPlan } from "@/lib/subscription";
 import { createClient } from "@/lib/supabase/server";
+import { hasEjnCredentials } from "@/lib/ejn-credentials";
 import type { Company } from "@/types/database";
 
 export default async function SettingsPage() {
@@ -19,6 +21,7 @@ export default async function SettingsPage() {
 
   const status = await getSubscriptionStatus(user.id, user.email, supabase);
   const isAgency = isAgencyPlan(status.plan);
+  const ejnConnected = await hasEjnCredentials(user.id);
 
   if (isAgency) {
     return (
@@ -43,6 +46,10 @@ export default async function SettingsPage() {
               <Bell className="size-4" />
               Obavještenja
             </TabsTrigger>
+            <TabsTrigger value="ejn">
+              <KeyRound className="size-4" />
+              eJN nalog
+            </TabsTrigger>
             <TabsTrigger value="account">
               <ShieldAlert className="size-4" />
               Račun i opasna zona
@@ -55,6 +62,10 @@ export default async function SettingsPage() {
 
           <TabsContent value="notifications" className="focus-visible:ring-0">
             <NotificationSettings />
+          </TabsContent>
+
+          <TabsContent value="ejn" className="focus-visible:ring-0">
+            <EjnCredentialsForm hasCredentials={ejnConnected} />
           </TabsContent>
 
           <TabsContent value="account" className="focus-visible:ring-0">
@@ -100,6 +111,10 @@ export default async function SettingsPage() {
             <Bell className="size-4" />
             Obavještenja
           </TabsTrigger>
+          <TabsTrigger value="ejn">
+            <KeyRound className="size-4" />
+            eJN nalog
+          </TabsTrigger>
           <TabsTrigger value="account">
             <ShieldAlert className="size-4" />
             Račun i opasna zona
@@ -130,6 +145,10 @@ export default async function SettingsPage() {
 
         <TabsContent value="notifications" className="focus-visible:ring-0">
           <NotificationSettings />
+        </TabsContent>
+
+        <TabsContent value="ejn" className="focus-visible:ring-0">
+          <EjnCredentialsForm hasCredentials={ejnConnected} />
         </TabsContent>
 
         <TabsContent value="account" className="focus-visible:ring-0">

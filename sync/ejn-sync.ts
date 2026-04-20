@@ -1491,6 +1491,8 @@ async function syncAwardDecisions(
     const rowsToUpsert: Array<{
       portal_award_id: string;
       tender_id: string | null;
+      notice_id: string | null;
+      procedure_id: string | null;
       contracting_authority_jib: string | null;
       procedure_name: string | null;
       winner_name: string | null;
@@ -1515,6 +1517,10 @@ async function syncAwardDecisions(
       const row = {
         portal_award_id: a.AwardId,
         tender_id: tenderId,
+        // Čuvamo portal identifikatore — reconciliation skripta ih koristi kad
+        // tender nije bio u bazi u vrijeme prvog award syncinga.
+        notice_id: a.NoticeId || null,
+        procedure_id: a.ProcedureId || null,
         contracting_authority_jib: a.ContractingAuthorityJib || null,
         procedure_name: a.ProcedureName || null,
         winner_name: winningSupplier?.name ?? a.WinnerName ?? null,
