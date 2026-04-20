@@ -8,8 +8,13 @@
  * Popuniti prije nego što se cron uključi. Idempotentan — UPSERT na sve tablice.
  */
 
-import "dotenv/config";
+import { config as loadEnv } from "dotenv";
+import path from "node:path";
 import { createClient } from "@supabase/supabase-js";
+
+// Next.js projekti drže env u .env.local; učitavamo oba (local ima prioritet).
+loadEnv({ path: path.resolve(process.cwd(), ".env.local") });
+loadEnv({ path: path.resolve(process.cwd(), ".env") });
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -42,8 +47,91 @@ function topKeys(counter: Map<string, number>, k: number): string[] {
   return [...counter.entries()].sort((a, b) => b[1] - a[1]).slice(0, k).map(([key]) => key);
 }
 
-async function fetchAllAwards() {
-  console.log("→ Dohvatam award_decisions + join tenders …");
+interface TenderRef {
+  cpv_code: string | null;
+  authority_jib: string | null;
+  estimated_value: number | null;
+  created_at: string | null;
+}
+
+interface TenderLookup {
+  byId: Map<string, TenderRef>;
+  byAuthority: Map<string, Array<TenderRef & { id: string }>>;
+}
+
+async function fetchTenderLookup(): Promise<TenderLookup> {
+  console.log("→ Dohvatam tenders lookup (id → cpv + authority + value) …");
+  const byId = new Map<string, TenderRef>();
+  const byAuthority = new Map<string, Array<TenderRef & { id: string }>>();
+  let from = 0;
+  while (true) {
+    const { data, error } = await supabase
+      .from("tenders")
+      .select("id, cpv_code, contracting_authority_jib, estimated_value, created_at")
+      .range(from, from + PAGE_SIZE - 1);
+    if (error) throw error;
+    if (!data || data.length === 0) break;
+    for (const t of data) {
+      const ref: TenderRef & { id: string } = {
+        id: t.id,
+        cpv_code: t.cpv_code,
+        authority_jib: t.contracting_authority_jib,
+        estimated_value: t.estimated_value !== null && t.estimated_value !== undefined ? Number(t.estimated_value) : null,
+        created_at: t.created_at,
+      };
+      byId.set(t.id, ref);
+      if (ref.authority_jib) {
+        const list = byAuthority.get(ref.authority_jib) ?? [];
+        list.push(ref);
+        byAuthority.set(ref.authority_jib, list);
+      }
+    }
+    if (data.length < PAGE_SIZE) break;
+    from += PAGE_SIZE;
+  }
+  console.log(`   indeksirano ${byId.size} tendera (${byAuthority.size} naručilaca)`);
+  return { byId, byAuthority };
+}
+
+/**
+ * Award → tender matching preko (authority_jib + estimated_value).
+ * Ako je više kandidata, bira najbliži po datumu (award_date vs tender.created_at).
+ */
+function matchAwardToTender(
+  award: { contracting_authority_jib: string | null; estimated_value: number | null; award_date: string | null },
+  lookup: TenderLookup
+): TenderRef | null {
+  if (!award.contracting_authority_jib || award.estimated_value === null) return null;
+  const candidates = lookup.byAuthority.get(award.contracting_authority_jib);
+  if (!candidates) return null;
+
+  // Match na estimated_value (tolerancija 1 KM zbog zaokruživanja)
+  const value = award.estimated_value;
+  const matches = candidates.filter((t) => {
+    if (t.estimated_value === null) return false;
+    return Math.abs(t.estimated_value - value) <= 1;
+  });
+  if (matches.length === 0) return null;
+  if (matches.length === 1) return matches[0];
+
+  // Više kandidata: odaberi najbliži po datumu
+  const awardTs = award.award_date ? new Date(award.award_date).getTime() : null;
+  if (awardTs === null) return matches[0];
+  let best = matches[0];
+  let bestDiff = Number.POSITIVE_INFINITY;
+  for (const m of matches) {
+    if (!m.created_at) continue;
+    const diff = Math.abs(new Date(m.created_at).getTime() - awardTs);
+    if (diff < bestDiff) {
+      bestDiff = diff;
+      best = m;
+    }
+  }
+  return best;
+}
+
+async function fetchAllAwards(tenderLookup: TenderLookup) {
+  console.log("→ Dohvatam award_decisions (s fuzzy matchingom na tendere) …");
   const all: Array<{
     winner_jib: string | null;
     winner_name: string | null;
@@ -59,30 +147,44 @@ async function fetchAllAwards() {
     const { data, error } = await supabase
       .from("award_decisions")
       .select(
-        "winner_jib, winner_name, contracting_authority_jib, winning_price, estimated_value, discount_pct, total_bidders_count, tenders(cpv_code)"
+        "tender_id, winner_jib, winner_name, contracting_authority_jib, winning_price, estimated_value, discount_pct, total_bidders_count, award_date"
       )
       .range(from, from + PAGE_SIZE - 1);
     if (error) throw error;
     if (!data || data.length === 0) break;
     for (const r of data) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const tt: any = Array.isArray((r as any).tenders) ? (r as any).tenders[0] : (r as any).tenders;
+      const estVal = r.estimated_value !== null && r.estimated_value !== undefined ? Number(r.estimated_value) : null;
+      // 1) Prvo pokušaj direktni FK match (ako je sync popunio)
+      let tenderRef: TenderRef | null = r.tender_id ? tenderLookup.byId.get(r.tender_id) ?? null : null;
+      // 2) Fallback: match po (authority + estimated_value [+ award_date kao tiebreaker])
+      if (!tenderRef) {
+        tenderRef = matchAwardToTender(
+          {
+            contracting_authority_jib: r.contracting_authority_jib,
+            estimated_value: estVal,
+            award_date: r.award_date ?? null,
+          },
+          tenderLookup
+        );
+      }
       all.push({
         winner_jib: r.winner_jib,
         winner_name: r.winner_name,
-        contracting_authority_jib: r.contracting_authority_jib,
+        contracting_authority_jib: r.contracting_authority_jib ?? tenderRef?.authority_jib ?? null,
         winning_price: r.winning_price ? Number(r.winning_price) : null,
-        estimated_value: r.estimated_value ? Number(r.estimated_value) : null,
+        estimated_value: estVal,
         discount_pct: r.discount_pct ? Number(r.discount_pct) : null,
         total_bidders_count: r.total_bidders_count,
-        tender_cpv: tt?.cpv_code ?? null,
+        tender_cpv: tenderRef?.cpv_code ?? null,
       });
     }
     if (data.length < PAGE_SIZE) break;
     from += PAGE_SIZE;
     process.stdout.write(`   +${data.length} (ukupno ${all.length})\r`);
   }
-  console.log(`\n   dohvaćeno ${all.length} award redova`);
+  const matched = all.filter((a) => a.tender_cpv).length;
+  const pct = all.length > 0 ? Math.round((matched / all.length) * 1000) / 10 : 0;
+  console.log(`\n   dohvaćeno ${all.length} award redova (${matched} s CPV-om = ${pct}% match rate)`);
   return all;
 }
 
@@ -154,8 +256,9 @@ async function upsertChunked(table: string, rows: Record<string, unknown>[], onC
 
 async function main() {
   console.time("backfill-analytics");
+  const tenderLookup = await fetchTenderLookup();
   const [awards, authorityNames, tenderCountsByAuth, tenderCountsByCpv] = await Promise.all([
-    fetchAllAwards(),
+    fetchAllAwards(tenderLookup),
     fetchAuthorities(),
     fetchTenderCountsPerAuthority(),
     fetchTenderCountsPerCpv(),
@@ -201,84 +304,103 @@ async function main() {
   await upsertChunked("authority_stats", authorityRows, "authority_jib");
   console.log(`   ✓ authority_stats: ${authorityRows.length} redova`);
 
-  // ── cpv_stats ───────────────────────────────────────────────────────
-  console.log("→ Gradim cpv_stats …");
-  const byCpv = new Map<string, {
-    winningPrices: number[];
+  // ── cpv_stats i authority_cpv_stats (iz tenders, augmented awards) ───
+  //
+  // NAPOMENA: Trenutno samo ~3% awarda u bazi ima estimated_value i samo
+  // zadnja 2 mjeseca imaju matchujuće tendere (ostali awardi su istorijski,
+  // iz 2014-2024). Zato CPV/authority_cpv agregate gradimo PRIMARNO iz
+  // `tenders` tablice (uvijek ima CPV kod), a discount metriku dopunjavamo
+  // kad god award ima povezan tender (tender_id FK ili fuzzy match).
+  console.log("→ Gradim cpv_stats (iz tendera) + authority_cpv_stats …");
+  const cpvAgg = new Map<string, {
+    tenders: number;
+    values: number[];
     discountPcts: number[];
     biddersCounts: number[];
     authorityCounter: Map<string, number>;
   }>();
-  for (const a of awards) {
-    const p = cpvPrefix(a.tender_cpv);
-    if (!p) continue;
-    const g = byCpv.get(p) ?? {
-      winningPrices: [] as number[],
-      discountPcts: [] as number[],
-      biddersCounts: [] as number[],
-      authorityCounter: new Map<string, number>(),
-    };
-    if (a.winning_price) g.winningPrices.push(a.winning_price);
-    if (a.discount_pct !== null) g.discountPcts.push(a.discount_pct);
-    if (a.total_bidders_count) g.biddersCounts.push(a.total_bidders_count);
-    if (a.contracting_authority_jib) {
-      g.authorityCounter.set(a.contracting_authority_jib, (g.authorityCounter.get(a.contracting_authority_jib) ?? 0) + 1);
-    }
-    byCpv.set(p, g);
-  }
-  const cpvRows = [...byCpv.entries()].map(([code, g]) => {
-    const counts = tenderCountsByCpv.get(code) ?? { count: 0, totalValue: [] as number[] };
-    return {
-      cpv_code: code,
-      tender_count: counts.count,
-      avg_estimated_value: avg(counts.totalValue),
-      avg_bidders_count: avg(g.biddersCounts),
-      avg_discount_pct: avg(g.discountPcts),
-      top_authorities: topKeys(g.authorityCounter, 5),
-      updated_at: new Date().toISOString(),
-    };
-  });
-  await upsertChunked("cpv_stats", cpvRows, "cpv_code");
-  console.log(`   ✓ cpv_stats: ${cpvRows.length} redova`);
-
-  // ── authority_cpv_stats ─────────────────────────────────────────────
-  console.log("→ Gradim authority_cpv_stats …");
-  const byAuthCpv = new Map<string, {
-    winningPrices: number[];
+  const authCpvAgg = new Map<string, {
+    tenders: number;
+    values: number[];
     discountPcts: number[];
     biddersCounts: number[];
   }>();
+
+  // (1) Primarni izvor — sve tendere iz `tenders` (imaju CPV + authority).
+  for (const [, t] of tenderLookup.byId) {
+    const p = cpvPrefix(t.cpv_code);
+    if (!p) continue;
+    const cg = cpvAgg.get(p) ?? {
+      tenders: 0, values: [] as number[], discountPcts: [] as number[],
+      biddersCounts: [] as number[], authorityCounter: new Map<string, number>(),
+    };
+    cg.tenders += 1;
+    if (t.estimated_value !== null) cg.values.push(t.estimated_value);
+    if (t.authority_jib) {
+      cg.authorityCounter.set(t.authority_jib, (cg.authorityCounter.get(t.authority_jib) ?? 0) + 1);
+    }
+    cpvAgg.set(p, cg);
+
+    if (t.authority_jib) {
+      const key = `${t.authority_jib}|${p}`;
+      const ag = authCpvAgg.get(key) ?? {
+        tenders: 0, values: [] as number[], discountPcts: [] as number[], biddersCounts: [] as number[],
+      };
+      ag.tenders += 1;
+      if (t.estimated_value !== null) ag.values.push(t.estimated_value);
+      authCpvAgg.set(key, ag);
+    }
+  }
+
+  // (2) Dopuniti discount/bidders iz awarda koji imaju CPV match.
   for (const a of awards) {
-    if (!a.contracting_authority_jib) continue;
     const p = cpvPrefix(a.tender_cpv);
     if (!p) continue;
-    const key = `${a.contracting_authority_jib}|${p}`;
-    const g = byAuthCpv.get(key) ?? {
-      winningPrices: [] as number[],
-      discountPcts: [] as number[],
-      biddersCounts: [] as number[],
-    };
-    if (a.winning_price) g.winningPrices.push(a.winning_price);
-    if (a.discount_pct !== null) g.discountPcts.push(a.discount_pct);
-    if (a.total_bidders_count) g.biddersCounts.push(a.total_bidders_count);
-    byAuthCpv.set(key, g);
+    const cg = cpvAgg.get(p);
+    if (cg) {
+      if (a.discount_pct !== null) cg.discountPcts.push(a.discount_pct);
+      if (a.total_bidders_count) cg.biddersCounts.push(a.total_bidders_count);
+    }
+    if (a.contracting_authority_jib) {
+      const key = `${a.contracting_authority_jib}|${p}`;
+      const ag = authCpvAgg.get(key);
+      if (ag) {
+        if (a.discount_pct !== null) ag.discountPcts.push(a.discount_pct);
+        if (a.total_bidders_count) ag.biddersCounts.push(a.total_bidders_count);
+      }
+    }
   }
-  const authCpvRows = [...byAuthCpv.entries()].map(([key, g]) => {
+
+  const cpvRows = [...cpvAgg.entries()].map(([code, g]) => ({
+    cpv_code: code,
+    tender_count: g.tenders,
+    avg_estimated_value: avg(g.values),
+    avg_bidders_count: avg(g.biddersCounts),
+    avg_discount_pct: avg(g.discountPcts),
+    top_authorities: topKeys(g.authorityCounter, 5),
+    updated_at: new Date().toISOString(),
+  }));
+  await upsertChunked("cpv_stats", cpvRows, "cpv_code");
+  const cpvWithDiscount = cpvRows.filter((r) => r.avg_discount_pct !== null).length;
+  console.log(`   ✓ cpv_stats: ${cpvRows.length} redova (${cpvWithDiscount} s discount metrikom)`);
+
+  const authCpvRows = [...authCpvAgg.entries()].map(([key, g]) => {
     const [authority_jib, cpv_code] = key.split("|");
     return {
       authority_jib,
       cpv_code,
-      tender_count: g.winningPrices.length || g.discountPcts.length,
+      tender_count: g.tenders,
       avg_discount_pct: avg(g.discountPcts),
-      min_winning_price: g.winningPrices.length ? Math.min(...g.winningPrices) : null,
-      max_winning_price: g.winningPrices.length ? Math.max(...g.winningPrices) : null,
-      avg_winning_price: avg(g.winningPrices),
+      min_winning_price: null,
+      max_winning_price: null,
+      avg_winning_price: avg(g.values),
       avg_bidders_count: avg(g.biddersCounts),
       updated_at: new Date().toISOString(),
     };
   });
   await upsertChunked("authority_cpv_stats", authCpvRows, "authority_jib,cpv_code");
-  console.log(`   ✓ authority_cpv_stats: ${authCpvRows.length} redova`);
+  const authCpvWithDiscount = authCpvRows.filter((r) => r.avg_discount_pct !== null).length;
+  console.log(`   ✓ authority_cpv_stats: ${authCpvRows.length} redova (${authCpvWithDiscount} s discount metrikom)`);
 
   // ── company_stats + company_authority_stats + company_cpv_stats ────
   console.log("→ Gradim company_stats (iz awarda, kao wins-only baseline) …");
@@ -335,8 +457,13 @@ async function main() {
       .select("company_jib, tenders(contracting_authority_jib, cpv_code)")
       .range(from, from + PAGE_SIZE - 1);
     if (error) {
-      if (error.message?.includes("does not exist")) {
-        console.log("   (tender_participants ne postoji — preskačem appearances)");
+      // PGRST205 = "Could not find the table" — tablica nije u schemi, preskačemo
+      if (
+        error.code === "PGRST205" ||
+        error.message?.includes("does not exist") ||
+        error.message?.includes("Could not find the table")
+      ) {
+        console.log("   (tender_participants ne postoji — preskačem appearances; koristim wins-only baseline)");
         break;
       }
       throw error;
