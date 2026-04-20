@@ -39,7 +39,7 @@ if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const supabase: any = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
-const FROM_YEAR = Number(process.env.BACKFILL_FROM_YEAR ?? 2023);
+const FROM_YEAR = Number(process.env.BACKFILL_FROM_YEAR ?? 2016);
 const TO_DATE = process.env.BACKFILL_TO_DATE ?? new Date().toISOString();
 
 function chunk<T>(arr: T[], size: number): T[][] {
