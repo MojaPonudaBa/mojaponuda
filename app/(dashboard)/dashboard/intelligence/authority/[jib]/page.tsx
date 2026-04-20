@@ -3,8 +3,10 @@ import { createClient } from "@/lib/supabase/server";
 import { formatCurrencyKM } from "@/lib/currency";
 import { getSubscriptionStatus } from "@/lib/subscription";
 import { ProGate } from "@/components/subscription/pro-gate";
+import { WatchButton } from "@/components/watchlist/watch-button";
+import { isWatched } from "@/lib/watchlist";
 import Link from "next/link";
-import { ArrowLeft, Building2, FileCheck, Clock, CheckCircle, TrendingUp, Search } from "lucide-react";
+import { ArrowLeft, Building2, FileCheck, Clock, CheckCircle, TrendingUp, Users2, Percent } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const DOC_TYPE_LABELS: Record<string, string> = {
@@ -111,6 +113,24 @@ export default async function AuthorityProfilePage({
     .order("deadline", { ascending: true })
     .limit(20);
 
+  // Agregati iz analytics tablice + watch status
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const anySupabase = supabase as any;
+  const [statsResult, alreadyWatched] = await Promise.all([
+    anySupabase
+      .from("authority_stats")
+      .select("avg_contract_value, avg_bidders_count, avg_discount_pct, top_cpv_codes")
+      .eq("authority_jib", jib)
+      .maybeSingle(),
+    isWatched(user.id, "authority", jib),
+  ]);
+  const authorityStats = (statsResult?.data ?? null) as {
+    avg_contract_value: number | null;
+    avg_bidders_count: number | null;
+    avg_discount_pct: number | null;
+    top_cpv_codes: string[] | null;
+  } | null;
+
   return (
     <div className="space-y-8 max-w-[1200px]">
       {/* Header */}
@@ -135,6 +155,16 @@ export default async function AuthorityProfilePage({
               <span className="rounded-md bg-blue-50 px-2 py-0.5 text-xs font-bold text-blue-600 border border-blue-100">{authority.authority_type}</span>
             )}
           </div>
+        </div>
+        <div className="ml-auto">
+          <WatchButton
+            entityType="authority"
+            entityKey={jib}
+            entityLabel={authorityName}
+            isWatched={alreadyWatched}
+            redirectTo={`/dashboard/intelligence/authority/${jib}`}
+            size="sm"
+          />
         </div>
       </div>
 
@@ -168,6 +198,62 @@ export default async function AuthorityProfilePage({
           <p className="font-heading text-4xl font-extrabold text-slate-900">{awards?.length ?? 0}</p>
         </div>
       </div>
+
+      {/* Analytics iz agregata */}
+      {authorityStats && (
+        <div className="rounded-[1.5rem] border border-slate-100 bg-white p-6 shadow-sm">
+          <h2 className="mb-4 font-heading text-lg font-bold text-slate-900">Profil naručioca</h2>
+          <div className="grid gap-4 sm:grid-cols-3">
+            <div className="rounded-xl bg-slate-50 p-4">
+              <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                <TrendingUp className="size-3.5" />
+                Prosječna vrijednost ugovora
+              </div>
+              <div className="text-2xl font-heading font-bold text-slate-900">
+                {authorityStats.avg_contract_value !== null
+                  ? formatCurrencyKM(Number(authorityStats.avg_contract_value))
+                  : "—"}
+              </div>
+            </div>
+            <div className="rounded-xl bg-slate-50 p-4">
+              <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                <Users2 className="size-3.5" />
+                Prosj. broj ponuđača
+              </div>
+              <div className="text-2xl font-heading font-bold text-slate-900">
+                {authorityStats.avg_bidders_count !== null
+                  ? Number(authorityStats.avg_bidders_count).toFixed(1)
+                  : "—"}
+              </div>
+            </div>
+            <div className="rounded-xl bg-slate-50 p-4">
+              <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                <Percent className="size-3.5" />
+                Prosj. popust pobjednika
+              </div>
+              <div className="text-2xl font-heading font-bold text-slate-900">
+                {authorityStats.avg_discount_pct !== null
+                  ? `${Number(authorityStats.avg_discount_pct).toFixed(1)}%`
+                  : "—"}
+              </div>
+            </div>
+          </div>
+          {authorityStats.top_cpv_codes && authorityStats.top_cpv_codes.length > 0 && (
+            <div className="mt-4">
+              <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Top CPV kategorije
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {authorityStats.top_cpv_codes.slice(0, 5).map((cpv) => (
+                  <span key={cpv} className="rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700 border border-blue-100">
+                    CPV {cpv}*
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="grid gap-8 lg:grid-cols-2">
         {/* Najčešći pobjednici */}

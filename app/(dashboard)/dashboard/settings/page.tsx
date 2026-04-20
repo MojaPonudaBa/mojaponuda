@@ -1,8 +1,9 @@
 import { redirect } from "next/navigation";
-import { Building2, ShieldAlert, Users } from "lucide-react";
+import { Bell, Building2, ShieldAlert, Users } from "lucide-react";
 import { DangerZone } from "@/components/settings/danger-zone";
 import { ProfileSettings } from "@/components/settings/profile-settings";
 import { TeamSettings } from "@/components/settings/team-settings";
+import { NotificationSettings } from "@/components/settings/notification-settings";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getSubscriptionStatus, isAgencyPlan } from "@/lib/subscription";
 import { createClient } from "@/lib/supabase/server";
@@ -38,6 +39,10 @@ export default async function SettingsPage() {
               <Users className="size-4" />
               Tim
             </TabsTrigger>
+            <TabsTrigger value="notifications">
+              <Bell className="size-4" />
+              Obavještenja
+            </TabsTrigger>
             <TabsTrigger value="account">
               <ShieldAlert className="size-4" />
               Račun i opasna zona
@@ -46,6 +51,10 @@ export default async function SettingsPage() {
 
           <TabsContent value="team" className="focus-visible:ring-0">
             <TeamSettings status={status} />
+          </TabsContent>
+
+          <TabsContent value="notifications" className="focus-visible:ring-0">
+            <NotificationSettings />
           </TabsContent>
 
           <TabsContent value="account" className="focus-visible:ring-0">
@@ -87,6 +96,10 @@ export default async function SettingsPage() {
             <Users className="size-4" />
             Tim
           </TabsTrigger>
+          <TabsTrigger value="notifications">
+            <Bell className="size-4" />
+            Obavještenja
+          </TabsTrigger>
           <TabsTrigger value="account">
             <ShieldAlert className="size-4" />
             Račun i opasna zona
@@ -113,6 +126,10 @@ export default async function SettingsPage() {
 
         <TabsContent value="team" className="focus-visible:ring-0">
           <TeamSettings status={status} />
+        </TabsContent>
+
+        <TabsContent value="notifications" className="focus-visible:ring-0">
+          <NotificationSettings />
         </TabsContent>
 
         <TabsContent value="account" className="focus-visible:ring-0">

@@ -14,6 +14,8 @@ import { formatCurrencyKM } from "@/lib/currency";
 import { createClient } from "@/lib/supabase/server";
 import { getSubscriptionStatus } from "@/lib/subscription";
 import { ProGate } from "@/components/subscription/pro-gate";
+import { WatchButton } from "@/components/watchlist/watch-button";
+import { isWatched } from "@/lib/watchlist";
 
 function formatDate(value: string | null): string {
   if (!value) {
@@ -172,6 +174,7 @@ export default async function CompanyIntelligencePage({
   });
 
   const pageTitle = company?.name ?? `Firma ${jib}`;
+  const companyIsWatched = await isWatched(user.id, "company", jib);
 
   return (
     <div className="max-w-[1280px] space-y-8">
@@ -197,6 +200,16 @@ export default async function CompanyIntelligencePage({
               <span>{company.total_bids_count} ukupno ponuda</span>
             ) : null}
           </div>
+        </div>
+        <div className="ml-auto">
+          <WatchButton
+            entityType="company"
+            entityKey={jib}
+            entityLabel={pageTitle}
+            isWatched={companyIsWatched}
+            redirectTo={`/dashboard/intelligence/company/${jib}`}
+            size="sm"
+          />
         </div>
       </div>
 

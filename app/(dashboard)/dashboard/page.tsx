@@ -1,5 +1,7 @@
 import { redirect } from "next/navigation";
 import { DashboardHomeOverview } from "@/components/dashboard/home-overview";
+import { UserStatsCard } from "@/components/dashboard/user-stats-card";
+import { getUserBidStats } from "@/lib/user-bid-analytics";
 import { getProfileOptionLabel } from "@/lib/company-profile";
 import {
   demoBidSummaries,
@@ -443,27 +445,37 @@ export default async function DashboardPage() {
     subscription: subscriptionStatus.subscription,
   });
 
+  // Win rate / win trend / top naručioci — prikazujemo samo ako firma već
+  // ima predanih ponuda (card se sama skriva kad je 0 predanih).
+  const bidStats = await getUserBidStats(resolvedCompany.id);
+
   return (
-    <DashboardHomeOverview
-      companyName={resolvedCompany.name}
-      currentPlanName={currentPlanName}
-      profileLabel={profileLabel}
-      nextAction={nextAction}
-      focusCards={focusCards}
-      actionQueue={actionQueue}
-      dashboardBidRows={dashboardBidRows}
-      recommendedTenders={relevantTenders.slice(0, 4).map((tender) => ({
-        id: tender.id,
-        title: tender.title,
-        deadline: tender.deadline,
-        estimated_value: tender.estimated_value,
-        contracting_authority: tender.contracting_authority,
-      }))}
-      quickLinks={quickLinks}
-      preparationStatus={buildPreparationStatus(preparationSummary)}
-      subscriptionActive={subscriptionStatus.isSubscribed}
-      isLocked={subscriptionStatus.plan?.id === "basic"}
-      bidHrefBase="/dashboard/bids"
-    />
+    <>
+      <DashboardHomeOverview
+        companyName={resolvedCompany.name}
+        currentPlanName={currentPlanName}
+        profileLabel={profileLabel}
+        nextAction={nextAction}
+        focusCards={focusCards}
+        actionQueue={actionQueue}
+        dashboardBidRows={dashboardBidRows}
+        recommendedTenders={relevantTenders.slice(0, 4).map((tender) => ({
+          id: tender.id,
+          title: tender.title,
+          deadline: tender.deadline,
+          estimated_value: tender.estimated_value,
+          contracting_authority: tender.contracting_authority,
+        }))}
+        quickLinks={quickLinks}
+        preparationStatus={buildPreparationStatus(preparationSummary)}
+        subscriptionActive={subscriptionStatus.isSubscribed}
+        isLocked={subscriptionStatus.plan?.id === "basic"}
+        bidHrefBase="/dashboard/bids"
+      />
+
+      <div className="mx-auto mt-6 w-full max-w-[1400px] px-4 sm:px-6">
+        <UserStatsCard stats={bidStats} />
+      </div>
+    </>
   );
 }
