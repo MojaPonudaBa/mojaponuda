@@ -293,7 +293,7 @@ export default async function AgencyClientHomePage({
     {
       title: "Aktivne ponude",
       value: String((activeBidsCount ?? 0) > 0 ? (activeBidsCount ?? 0) : activePortfolioBids.length),
-      meta: `${submittedCount} predane · ${inReviewCount} u provjeri`,
+      meta: `${submittedCount} predane · ${inReviewCount} u pripremi`,
       href: `${clientBase}/bids`,
       icon: "briefcase" as const,
     },

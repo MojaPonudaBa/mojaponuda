@@ -1,4 +1,3 @@
-import "server-only";
 import { getOpenAIClient } from "@/lib/openai";
 
 export const EMBEDDING_MODEL = "text-embedding-3-small";

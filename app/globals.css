@@ -49,24 +49,23 @@
   --radius-4xl: calc(var(--radius) * 2.5);
 }
 
-/* Serious, professional theme (Bloomberg Terminal inspired) */
+/* Premium light SaaS theme */
 :root {
-  --background: #f8f9fa; /* Very light cool gray */
-  --foreground: #111827; /* Near black */
+  --background: #f7f9fc;
+  --foreground: #0f172a;
   --card: #ffffff;
-  --card-foreground: #111827;
+  --card-foreground: #0f172a;
   --popover: #ffffff;
-  --popover-foreground: #111827;
+  --popover-foreground: #0f172a;
   
-  /* Primary brand color - Dark Professional Blue */
-  --primary: #0f172a; 
+  --primary: #0b6ff6;
   --primary-foreground: #ffffff;
   
-  --secondary: #e2e8f0; /* Slate 200 */
-  --secondary-foreground: #0f172a; /* Slate 900 */
+  --secondary: #e8f1ff;
+  --secondary-foreground: #0f3f86;
   
-  --muted: #f1f5f9; /* Slate 100 */
-  --muted-foreground: #64748b; /* Slate 500 */
+  --muted: #eef4fb;
+  --muted-foreground: #64748b;
   
   --accent: #f8fafc;
   --accent-foreground: #0f172a;
@@ -74,26 +73,26 @@
   --destructive: #dc2626; /* Red 600 */
   --destructive-foreground: #ffffff;
   
-  --border: #cbd5e1; /* Slate 300 */
-  --input: #cbd5e1;
-  --ring: #0f172a; /* Dark blue focus */
+  --border: #dbe4f0;
+  --input: #dbe4f0;
+  --ring: #0b6ff6;
   
-  --chart-1: #0f172a;
-  --chart-2: #334155;
-  --chart-3: #475569;
-  --chart-4: #64748b;
-  --chart-5: #94a3b8;
+  --chart-1: #0b6ff6;
+  --chart-2: #10b981;
+  --chart-3: #f97316;
+  --chart-4: #f59e0b;
+  --chart-5: #06b6d4;
   
-  --radius: 0.25rem; /* Sharp, sleek corners */
+  --radius: 0.5rem;
   
-  --sidebar: #0f172a; /* Dark blue sidebar */
-  --sidebar-foreground: #f8fafc;
-  --sidebar-primary: #ffffff;
-  --sidebar-primary-foreground: #0f172a;
-  --sidebar-accent: #1e293b;
-  --sidebar-accent-foreground: #ffffff;
-  --sidebar-border: #1e293b;
-  --sidebar-ring: #cbd5e1;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #334155;
+  --sidebar-primary: #0b6ff6;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #eff6ff;
+  --sidebar-accent-foreground: #0b6ff6;
+  --sidebar-border: #dbe4f0;
+  --sidebar-ring: #0b6ff6;
 }
 
 @layer base {
@@ -114,8 +113,8 @@
     overflow-x: hidden;
   }
   h1, h2, h3, h4, h5, h6 {
-    font-family: var(--font-heading);
-    letter-spacing: -0.01em;
+    font-family: var(--font-sans);
+    letter-spacing: 0;
     text-wrap: balance;
   }
   code, pre {

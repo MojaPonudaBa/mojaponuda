@@ -7,6 +7,8 @@ import {
   CalendarDays,
   CheckCircle2,
   FileSearch,
+  Radar,
+  Target,
   Trophy,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -35,6 +37,17 @@ function formatPercent(value: number | null | undefined): string {
   }
 
   return `${Math.round(value * 10) / 10}%`;
+}
+
+function median(values: number[]): number | null {
+  const sorted = values.filter((value) => Number.isFinite(value) && value > 0).sort((a, b) => a - b);
+  if (sorted.length === 0) return null;
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
+}
+
+function percentShare(count: number, total: number): number | null {
+  return total > 0 ? Math.round((count / total) * 100) : null;
 }
 
 export default async function CompanyIntelligencePage({
@@ -151,6 +164,63 @@ export default async function CompanyIntelligencePage({
     .sort((a, b) => b.wins - a.wins || b.totalValue - a.totalValue)
     .slice(0, 6);
 
+  const recentCutoff = new Date();
+  recentCutoff.setDate(recentCutoff.getDate() - 90);
+  const recentAwards90d = awards.filter((award) => {
+    if (!award.award_date) return false;
+    return new Date(award.award_date) >= recentCutoff;
+  });
+  const recentValue90d = recentAwards90d.reduce((sum, award) => sum + (Number(award.winning_price) || 0), 0);
+  const topAuthority = topAuthorities[0] ?? null;
+  const topCategory = topCategories[0] ?? null;
+  const topAuthorityShare = topAuthority ? percentShare(topAuthority.wins, awards.length) : null;
+  const topCategoryShare = topCategory ? percentShare(topCategory.wins, awards.length) : null;
+  const priceSamples = awards.map((award) => Number(award.winning_price)).filter((value) => value > 0);
+  const medianWinValue = median(priceSamples);
+  const threatLevel = recentAwards90d.length >= 3 || totalWins >= 20
+    ? "Visok"
+    : recentAwards90d.length >= 1 || totalWins >= 8
+      ? "Srednji"
+      : "Nizak";
+  const competitorConclusions = [
+    {
+      title: "Jacina konkurenta",
+      value: threatLevel,
+      body: recentAwards90d.length > 0
+        ? `Ima ${recentAwards90d.length} poznatih pobjeda u zadnjih 90 dana (${formatCurrencyKM(recentValue90d)}). Pratite njihove nove dodjele i kategorije u kojima se ponavljaju.`
+        : "Nema poznatih skorih pobjeda u uzorku. Rizik raste ako se pojave kod istog narucioca ili u istoj CPV kategoriji.",
+      tone: threatLevel === "Visok" ? "border-rose-100 bg-rose-50 text-rose-800" : "border-blue-100 bg-blue-50 text-blue-800",
+      icon: Radar,
+    },
+    {
+      title: "Zavisnost od narucioca",
+      value: topAuthorityShare !== null && topAuthority ? `${topAuthorityShare}% kod ${topAuthority.name}` : "Nema obrasca",
+      body: topAuthorityShare !== null && topAuthorityShare >= 35
+        ? "Firma je posebno jaka kod jednog narucioca. Tu trazite dokazivu prednost ili birajte prilike gdje njihov obrazac nije izrazen."
+        : "Pobjede su rasirene na vise narucilaca; pratite kategorije i cijene, ne samo jedan odnos.",
+      tone: "border-amber-100 bg-amber-50 text-amber-800",
+      icon: Building2,
+    },
+    {
+      title: "Segment dominacije",
+      value: topCategoryShare !== null && topCategory ? `${topCategoryShare}% ${topCategory.category}` : "Nema dovoljno kategorija",
+      body: topCategoryShare !== null && topCategoryShare >= 35
+        ? "Najvise pobjeda dolazi iz jednog segmenta. U tom segmentu ih tretirajte kao primarnog konkurenta."
+        : "Nema jednog dominantnog segmenta u dostupnom uzorku, pa opasnost zavisi od konkretnog tendera.",
+      tone: "border-emerald-100 bg-emerald-50 text-emerald-800",
+      icon: Target,
+    },
+    {
+      title: "Cjenovni okvir",
+      value: medianWinValue !== null ? formatCurrencyKM(medianWinValue) : "Niska pouzdanost",
+      body: priceSamples.length >= 5
+        ? `Medijan poznatih pobjednickih cijena je zasnovan na ${priceSamples.length} dodjela. Koristite ga za red velicine, ne kao tacnu ponudu.`
+        : "Premalo poznatih cijena. Za cijenu se vise osloniti na CPV i narucioca nego na ovu firmu.",
+      tone: "border-slate-200 bg-white text-slate-800",
+      icon: CheckCircle2,
+    },
+  ];
+
   const recentWins = awards.map((award) => {
     const tender = award.tender_id ? tenderMap.get(award.tender_id) ?? null : null;
     const authority = award.contracting_authority_jib
@@ -237,7 +307,7 @@ export default async function CompanyIntelligencePage({
         <div className="rounded-[1.5rem] border border-slate-100 bg-white p-6 shadow-sm">
           <div className="mb-4 flex items-center justify-between">
             <p className="text-sm font-bold uppercase tracking-wide text-slate-500">Uspješnost / popust</p>
-            <div className="flex size-10 items-center justify-center rounded-xl bg-violet-50 text-violet-600">
+            <div className="flex size-10 items-center justify-center rounded-xl bg-sky-50 text-sky-600">
               <CheckCircle2 className="size-5" />
             </div>
           </div>
@@ -251,6 +321,32 @@ export default async function CompanyIntelligencePage({
               ? "Stopa uspješnosti firme"
               : "Prosječan ostvareni popust na dostupnim odlukama"}
           </p>
+        </div>
+      </div>
+
+      <div className="rounded-[1.5rem] border border-slate-100 bg-white p-6 shadow-sm">
+        <div className="mb-5">
+          <h2 className="font-heading text-lg font-bold text-slate-900">Konkurentski profil</h2>
+          <p className="mt-1 text-sm text-slate-500">
+            Prakticni zakljucci iz poznatih dodjela, bez pretpostavke da imamo kompletne podatke o svim ponudama.
+          </p>
+        </div>
+        <div className="grid gap-3 md:grid-cols-2">
+          {competitorConclusions.map((item) => {
+            const Icon = item.icon;
+            return (
+              <div key={item.title} className={`rounded-2xl border p-4 ${item.tone}`}>
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-sm font-bold">{item.title}</p>
+                    <p className="mt-1 text-lg font-heading font-extrabold">{item.value}</p>
+                  </div>
+                  <Icon className="mt-1 size-4 shrink-0 opacity-70" />
+                </div>
+                <p className="mt-3 text-sm leading-6 opacity-90">{item.body}</p>
+              </div>
+            );
+          })}
         </div>
       </div>
 

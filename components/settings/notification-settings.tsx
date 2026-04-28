@@ -10,21 +10,36 @@ interface EventDef {
 
 const EVENT_GROUPS: Array<{ label: string; events: EventDef[] }> = [
   {
-    label: "Pracenje trzista",
+    label: "Praćenje tržišta",
     events: [
       {
         key: "new_tender_watched_authority",
-        title: "Novi tender od pracenog narucioca",
-        description: "Kada se pojavi novi tender od narucioca kojeg pratite.",
+        title: "Novi tender od praćenog naručioca",
+        description: "Kada se pojavi novi tender od naručioca kojeg pratite.",
       },
       {
         key: "new_tender_watched_cpv",
-        title: "Novi tender u pracenoj CPV kategoriji",
+        title: "Novi tender u praćenoj CPV kategoriji",
         description: "Kada se pojavi novi tender u CPV kategoriji koju pratite.",
       },
       {
+        key: "planned_procurement_watched_authority",
+        title: "Planirana nabavka od praćenog naručioca",
+        description: "Rani signal iz plana nabavki prije objave tendera.",
+      },
+      {
+        key: "planned_procurement_watched_cpv",
+        title: "Planirana nabavka u praćenoj CPV kategoriji",
+        description: "Kada se u planovima pojavi nabavka iz kategorije koju pratite.",
+      },
+      {
+        key: "competitor_new_award",
+        title: "Praćeni konkurent dobio ugovor",
+        description: "Kada firma koju pratite dobije novu odluku o dodjeli.",
+      },
+      {
         key: "competitor_downloaded_td",
-        title: "Konkurent preuzeo TD",
+        title: "Konkurent preuzeo dokumentaciju",
         description: "Kada konkurent koga pratite preuzme tendersku dokumentaciju (uskoro).",
       },
     ],
@@ -33,28 +48,38 @@ const EVENT_GROUPS: Array<{ label: string; events: EventDef[] }> = [
     label: "Rokovi ponuda",
     events: [
       {
+        key: "decision_recommended_bid",
+        title: "Tender za ulazak u pripremu",
+        description: "Kada sistem odluke označi relevantan tender kao prioritet za pripremu.",
+      },
+      {
+        key: "decision_high_risk",
+        title: "Rizičan tender u preporukama",
+        description: "Kada preporučen tender ima ozbiljan rizik ili kratak rok.",
+      },
+      {
         key: "bid_deadline_7d",
         title: "7 dana do roka za ponudu",
-        description: "Sedam dana prije submission_deadline za ponude u izradi.",
+        description: "Sedam dana prije roka za ponude u izradi.",
       },
       {
         key: "bid_deadline_2d",
         title: "2 dana do roka za ponudu",
-        description: "Dva dana prije submission_deadline (hitno).",
+        description: "Dva dana prije roka za predaju (hitno).",
       },
     ],
   },
   {
-    label: "Vault dokumenti",
+    label: "Dokumenti",
     events: [
       {
         key: "vault_document_expires_30d",
-        title: "Dokument istice za 30 dana",
-        description: "Prvi podsjetnik za obnovu dokumenta u Vault-u.",
+        title: "Dokument ističe za 30 dana",
+        description: "Prvi podsjetnik za obnovu dokumenta u trezoru.",
       },
       {
         key: "vault_document_expires_7d",
-        title: "Dokument istice za 7 dana",
+        title: "Dokument ističe za 7 dana",
         description: "Hitan podsjetnik za obnovu (zadnja sedmica).",
       },
     ],
@@ -65,6 +90,11 @@ const EVENT_GROUPS: Array<{ label: string; events: EventDef[] }> = [
 const DEFAULT_ENABLED: Record<string, { email: boolean; in_app: boolean }> = {
   new_tender_watched_authority: { email: true, in_app: true },
   new_tender_watched_cpv: { email: true, in_app: true },
+  planned_procurement_watched_authority: { email: true, in_app: true },
+  planned_procurement_watched_cpv: { email: true, in_app: true },
+  competitor_new_award: { email: true, in_app: true },
+  decision_recommended_bid: { email: false, in_app: true },
+  decision_high_risk: { email: false, in_app: true },
   competitor_downloaded_td: { email: true, in_app: true },
   bid_deadline_7d: { email: true, in_app: true },
   bid_deadline_2d: { email: true, in_app: true },

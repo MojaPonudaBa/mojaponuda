@@ -138,7 +138,7 @@ export default async function AgencyClientIntelligencePage({
             <h2 className="mt-2 font-heading text-2xl font-bold text-slate-950">{summary.title}</h2>
           </div>
           <span className={`inline-flex w-fit items-center rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] ${summary.source === "ai" ? "bg-blue-50 text-blue-700" : "bg-slate-100 text-slate-600"}`}>
-            {summary.source === "ai" ? "AI uvid" : "Sažetak iz podataka"}
+            {summary.source === "ai" ? "Uvid iz podataka" : "Sažetak iz podataka"}
           </span>
         </div>
         <div className="mt-5 grid gap-3 lg:grid-cols-2">

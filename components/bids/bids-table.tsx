@@ -54,11 +54,11 @@ function formatDate(dateStr: string | null): string {
 }
 
 const STATUS_STYLES: Record<string, string> = {
-  draft: "border-slate-500/25 bg-slate-500/10 text-slate-100",
-  in_review: "border-amber-500/25 bg-amber-500/10 text-amber-100",
-  submitted: "border-sky-500/25 bg-sky-500/10 text-sky-100",
-  won: "border-emerald-500/25 bg-emerald-500/10 text-emerald-100",
-  lost: "border-rose-500/25 bg-rose-500/10 text-rose-100",
+  draft: "border-slate-200 bg-slate-50 text-slate-700",
+  in_review: "border-amber-200 bg-amber-50 text-amber-700",
+  submitted: "border-blue-200 bg-blue-50 text-blue-700",
+  won: "border-emerald-200 bg-emerald-50 text-emerald-700",
+  lost: "border-rose-200 bg-rose-50 text-rose-700",
 };
 
 export function BidsTable({
@@ -127,26 +127,26 @@ export function BidsTable({
 
   return (
     <div className="space-y-6">
-      <section className="rounded-3xl border border-slate-800 bg-[linear-gradient(180deg,#111827_0%,#0f172a_100%)] p-4 text-white shadow-[0_24px_60px_-42px_rgba(2,6,23,0.88)] sm:p-5">
+      <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex size-10 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-sky-300">
+            <div className="flex size-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
               <Filter className="size-4" />
             </div>
             <div>
-              <h3 className="font-heading text-lg font-bold text-white">Pregled ponuda</h3>
-              <p className="text-sm text-slate-400">Status, rokovi i akcije složeni za brzi operativni rad.</p>
+              <h3 className="font-heading text-lg font-bold text-slate-950">Pregled ponuda</h3>
+              <p className="text-sm text-slate-500">Status, rokovi i akcije složeni za brzi operativni rad.</p>
             </div>
           </div>
           <div className="w-full max-w-[240px]">
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="h-11 rounded-2xl border-white/10 bg-white/5 text-sm text-white">
+              <SelectTrigger className="h-11 rounded-xl border-slate-200 bg-white text-sm text-slate-900 shadow-sm">
                 <SelectValue placeholder="Svi statusi" />
               </SelectTrigger>
-              <SelectContent className="rounded-2xl border-slate-700 bg-slate-950 text-slate-200">
-                <SelectItem value="all" className="rounded-xl focus:bg-white/10 focus:text-white">Svi statusi</SelectItem>
+              <SelectContent className="rounded-xl border-slate-200 bg-white text-slate-900 shadow-xl">
+                <SelectItem value="all" className="rounded-xl focus:bg-blue-50 focus:text-blue-700">Svi statusi</SelectItem>
                 {BID_STATUSES.map((status) => (
-                  <SelectItem key={status} value={status} className="rounded-xl focus:bg-white/10 focus:text-white">
+                  <SelectItem key={status} value={status} className="rounded-xl focus:bg-blue-50 focus:text-blue-700">
                     {BID_STATUS_LABELS[status]}
                   </SelectItem>
                 ))}
@@ -157,14 +157,14 @@ export function BidsTable({
       </section>
 
       {filtered.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-white/10 bg-white/5 py-20 text-center">
-          <div className="mb-4 flex size-16 items-center justify-center rounded-full border border-white/10 bg-white/5">
-            <Briefcase className="size-8 text-slate-400" />
+        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-slate-200 bg-white py-20 text-center shadow-sm">
+          <div className="mb-4 flex size-16 items-center justify-center rounded-full bg-blue-50">
+            <Briefcase className="size-8 text-blue-600" />
           </div>
-          <h3 className="mb-2 font-heading text-lg font-bold text-white">
+          <h3 className="mb-2 font-heading text-lg font-bold text-slate-950">
             {rows.length === 0 ? "Nemate aktivnih ponuda" : "Nema rezultata"}
           </h3>
-          <p className="max-w-sm text-sm text-slate-400">
+          <p className="max-w-sm text-sm text-slate-500">
             {rows.length === 0
               ? 'Započnite klikom na dugme "Nova ponuda" iznad.'
               : "Pokušajte promijeniti filtere za pretragu."}
@@ -185,7 +185,7 @@ export function BidsTable({
             return (
               <article
                 key={bid.id}
-                className="rounded-2xl border border-slate-800 bg-[linear-gradient(180deg,#111827_0%,#0f172a_100%)] p-4 text-white shadow-[0_24px_60px_-42px_rgba(2,6,23,0.88)] sm:p-5"
+                className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-colors hover:border-blue-200 sm:p-5"
               >
                 <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
                   <div className="min-w-0 flex-1">
@@ -194,25 +194,25 @@ export function BidsTable({
                         {BID_STATUS_LABELS[bid.status]}
                       </span>
                       {showClientColumn && bid.clientName ? (
-                        <span className="inline-flex max-w-full items-center rounded-full border border-violet-500/25 bg-violet-500/10 px-3 py-1 text-xs font-semibold text-violet-100">
+                        <span className="inline-flex max-w-full items-center rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
                           <span className="truncate">{bid.clientName}</span>
                         </span>
                       ) : null}
                     </div>
 
-                    <h3 className="mt-4 line-clamp-2 text-lg font-semibold leading-7 text-white">
+                    <h3 className="mt-4 line-clamp-2 text-lg font-semibold leading-7 text-slate-950">
                       {bid.tender?.title ?? "Tender nije dostupan"}
                     </h3>
 
-                    <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-sm text-slate-300">
+                    <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-sm text-slate-500">
                       <span className="inline-flex max-w-full items-center gap-2">
-                        <Building2 className="size-4 shrink-0 text-slate-500" />
+                        <Building2 className="size-4 shrink-0 text-slate-400" />
                         <span className="truncate" title={bid.tender?.contracting_authority ?? ""}>
                           {bid.tender?.contracting_authority ?? "Nepoznat naručilac"}
                         </span>
                       </span>
                       <span className="inline-flex items-center gap-2">
-                        <Calendar className="size-4 shrink-0 text-slate-500" />
+                        <Calendar className="size-4 shrink-0 text-slate-400" />
                         {formatDate(bid.tender?.deadline ?? null)}
                       </span>
                     </div>
@@ -225,7 +225,7 @@ export function BidsTable({
                           variant="outline"
                           disabled={updatingId === bid.id}
                           onClick={() => updateBidStatus(bid.id, "won")}
-                          className="h-11 rounded-2xl border-emerald-500/25 bg-emerald-500/10 px-4 text-sm font-semibold text-emerald-100 hover:bg-emerald-500/20 hover:text-emerald-50"
+                          className="h-11 rounded-xl border-emerald-200 bg-emerald-50 px-4 text-sm font-semibold text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800"
                         >
                           {updatingId === bid.id ? <Loader2 className="mr-2 size-4 animate-spin" /> : <CheckCircle2 className="mr-2 size-4" />}
                           Dobijeno
@@ -234,7 +234,7 @@ export function BidsTable({
                           variant="outline"
                           disabled={updatingId === bid.id}
                           onClick={() => updateBidStatus(bid.id, "lost")}
-                          className="h-11 rounded-2xl border-rose-500/25 bg-rose-500/10 px-4 text-sm font-semibold text-rose-100 hover:bg-rose-500/20 hover:text-rose-50"
+                          className="h-11 rounded-xl border-rose-200 bg-rose-50 px-4 text-sm font-semibold text-rose-700 hover:bg-rose-100 hover:text-rose-800"
                         >
                           {updatingId === bid.id ? <Loader2 className="mr-2 size-4 animate-spin" /> : <XCircle className="mr-2 size-4" />}
                           Izgubljeno
@@ -243,7 +243,7 @@ export function BidsTable({
                           variant="outline"
                           disabled={deletingId === bid.id}
                           onClick={() => deleteBid(bid.id)}
-                          className="h-11 rounded-xl border-white/10 bg-white/5 px-4 text-sm font-semibold text-slate-200 hover:bg-white/10 hover:text-white"
+                          className="h-11 rounded-xl border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 shadow-sm hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700"
                         >
                           {deletingId === bid.id ? (
                             <Loader2 className="mr-2 size-4 animate-spin" />
@@ -258,7 +258,7 @@ export function BidsTable({
                     <Button
                       asChild
                       variant="outline"
-                      className="h-11 rounded-2xl border-white/10 bg-white/5 px-4 text-sm font-semibold text-slate-200 hover:bg-white/10 hover:text-white"
+                      className="h-11 rounded-xl border-blue-200 bg-blue-50 px-4 text-sm font-semibold text-blue-700 shadow-sm hover:bg-blue-100 hover:text-blue-800"
                     >
                       <Link href={bidHref} className="whitespace-nowrap">
                         <Edit className="mr-2 size-4" />

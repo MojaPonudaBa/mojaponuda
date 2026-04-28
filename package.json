@@ -10,7 +10,11 @@
     "test": "vitest --run",
     "test:watch": "vitest",
     "backfill:tender-areas": "npx tsx scripts/backfill-tender-areas.ts",
-    "backfill:authorities": "npx tsx scripts/backfill-contracting-authorities.ts"
+    "backfill:authorities": "npx tsx scripts/backfill-contracting-authorities.ts",
+    "backfill:analytics": "npx tsx scripts/backfill-analytics.ts",
+    "backfill:decision-insights": "npx tsx scripts/backfill-tender-decision-insights.ts",
+    "reconcile:award-links": "npx tsx scripts/reconcile-award-tender-links.ts",
+    "audit:decision-data": "node scripts/audit-decision-data.mjs"
   },
   "dependencies": {
     "@fontsource/ibm-plex-mono": "^5.2.7",

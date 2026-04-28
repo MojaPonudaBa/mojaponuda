@@ -5,16 +5,12 @@ import { getSubscriptionStatus } from "@/lib/subscription";
 import type { Tender } from "@/types/database";
 import { buildRegionSearchTerms } from "@/lib/constants/regions";
 import {
-  attachTenderLocationPriority,
   resolveTenderSort,
   sortRecommendedTenderItems,
-  sortStandardTenders,
 } from "@/lib/tender-sorting";
-import { classifyTenderRecommendationsWithAI } from "@/lib/tender-recommendation-rerank";
 import { ensureCompanyProfileEnrichment } from "@/lib/ai-profile-enrichment";
 import {
   buildRecommendationContext,
-  enrichTendersWithAuthorityGeo,
   fetchRecommendedTenderCandidates,
   hasRecommendationSignals,
   matchesTenderLocationTerms,
@@ -53,95 +49,42 @@ function getMultiParam(value: SearchParamValue): string[] {
   return typeof value === "string" && value.trim().length > 0 ? [value] : [];
 }
 
-async function fetchAllTendersForClientSort(
+async function fetchAuthorityJibsForLocationTerms(
   supabase: Awaited<ReturnType<typeof createClient>>,
-  filters: {
-    keyword: string;
-    contractType: string;
-    procedureType: string;
-    deadlineFrom: string;
-    deadlineTo: string;
-    valueMin: string;
-    valueMax: string;
-  },
-  sortParam: ReturnType<typeof resolveTenderSort>,
-) {
-  const orderBy =
-    sortParam === "value_desc" || sortParam === "value_asc"
-      ? "estimated_value"
-      : sortParam === "newest"
-        ? "created_at"
-        : "deadline";
-  const ascending = sortParam === "value_asc" || sortParam === "deadline_asc";
-  const batchSize = 1000;
-  let offset = 0;
-  const rows: Tender[] = [];
+  terms: string[],
+): Promise<string[]> {
+  const cleanTerms = [...new Set(
+    terms
+      .map((term) => term.trim())
+      .filter((term) => term.length >= 3)
+      .slice(0, 16),
+  )];
+  if (cleanTerms.length === 0) return [];
 
-  while (true) {
-    let query = supabase.from("tenders").select(TENDER_LIST_COLUMNS);
+  const conditions = cleanTerms.flatMap((term) => {
+    const safeTerm = term.replace(/,/g, " ");
+    return [
+      `name.ilike.%${safeTerm}%`,
+      `city.ilike.%${safeTerm}%`,
+      `municipality.ilike.%${safeTerm}%`,
+      `canton.ilike.%${safeTerm}%`,
+      `entity.ilike.%${safeTerm}%`,
+    ];
+  });
 
-    if (filters.keyword) {
-      const keyword = `%${filters.keyword}%`;
-      query = query.or(`title.ilike.${keyword},raw_description.ilike.${keyword}`);
-    }
+  const { data } = await supabase
+    .from("contracting_authorities")
+    .select("jib")
+    .or(conditions.join(","))
+    .limit(2500);
 
-    if (filters.contractType !== "all") {
-      query = query.ilike("contract_type", `%${filters.contractType}%`);
-    }
-
-    if (filters.procedureType !== "all") {
-      query = query.ilike("procedure_type", `%${filters.procedureType}%`);
-    }
-
-    if (filters.deadlineFrom) {
-      query = query.gte("deadline", new Date(filters.deadlineFrom).toISOString());
-    }
-
-    if (filters.deadlineTo) {
-      query = query.lte("deadline", new Date(`${filters.deadlineTo}T23:59:59`).toISOString());
-    }
-
-    if (filters.valueMin) {
-      query = query.gte("estimated_value", parseFloat(filters.valueMin));
-    }
-
-    if (filters.valueMax) {
-      query = query.lte("estimated_value", parseFloat(filters.valueMax));
-    }
-
-    const { data, error } = await query
-      .order(orderBy, {
-        ascending,
-        nullsFirst: false,
-      })
-      .range(offset, offset + batchSize - 1);
-
-    if (error) {
-      throw error;
-    }
-
-    const batch = (data ?? []) as Tender[];
-    if (batch.length === 0) {
-      break;
-    }
-
-    rows.push(...batch);
-
-    if (batch.length < batchSize) {
-      break;
-    }
-
-    offset += batchSize;
-  }
-
-  return rows;
+  return [...new Set((data ?? []).map((row) => row.jib).filter((value): value is string => Boolean(value)))];
 }
 
-async function TendersContent({ agencyClientId, companyId, recommendationContext, selectedRegions, searchParams }: {
+async function TendersContent({ agencyClientId, companyId, recommendationContext, searchParams }: {
   agencyClientId: string;
   companyId: string;
   recommendationContext: RecommendationContext;
-  selectedRegions: string[];
   searchParams: Promise<{ [key: string]: SearchParamValue }>;
 }) {
   const params = await searchParams;
@@ -163,6 +106,7 @@ async function TendersContent({ agencyClientId, companyId, recommendationContext
   const offset = (page - 1) * PAGE_SIZE;
   const activeTab = tabParam === "all" ? "all" : "recommended";
   const sortParam = resolveTenderSort(getSingleParam(params.sort), activeTab);
+  const defaultSortForTab = activeTab === "recommended" ? "nearest" : "deadline_asc";
 
   const hasFilters =
     keywordParam ||
@@ -173,7 +117,7 @@ async function TendersContent({ agencyClientId, companyId, recommendationContext
     valueMinParam ||
     valueMaxParam ||
     locationFilterValues.length > 0 ||
-    sortParam !== "nearest";
+    sortParam !== defaultSortForTab;
 
   let tenders: Tender[] = [];
   let totalCount = 0;
@@ -205,11 +149,6 @@ async function TendersContent({ agencyClientId, companyId, recommendationContext
       minimumResults: RECOMMENDATION_FULL_PAGE_MINIMUM_RESULTS,
     });
 
-    ranked = await classifyTenderRecommendationsWithAI(
-      ranked,
-      recommendationContext
-    );
-
     ranked = ranked.filter(({ tender }) =>
       tenderMatchesClientFilters(tender, {
         keyword: keywordParam,
@@ -232,64 +171,18 @@ async function TendersContent({ agencyClientId, companyId, recommendationContext
     tenders = ranked.slice(offset, offset + PAGE_SIZE).map(({ tender }) => tender as Tender);
   } else {
     // All tenders tab
-    if (locationFilterTerms.length > 0) {
-      const data = await fetchAllTendersForClientSort(
-        supabase,
-        {
-          keyword: keywordParam,
-          contractType: contractTypeParam,
-          procedureType: procedureTypeParam,
-          deadlineFrom: deadlineFromParam,
-          deadlineTo: deadlineToParam,
-          valueMin: valueMinParam,
-          valueMax: valueMaxParam,
-        },
-        sortParam,
-      );
+    const authorityJibs =
+      locationFilterTerms.length > 0
+        ? await fetchAuthorityJibsForLocationTerms(supabase, locationFilterTerms)
+        : null;
 
-      const enriched = await enrichTendersWithAuthorityGeo(
-        supabase,
-        (data ?? []) as Array<Tender & { authority_city: string | null; authority_municipality: string | null; authority_canton: string | null; authority_entity: string | null }>
-      );
-      const filtered = enriched.filter((t) => matchesTenderLocationTerms(t, locationFilterTerms));
-      const sorted = sortStandardTenders(
-        attachTenderLocationPriority(filtered, selectedRegions),
-        sortParam
-      );
-      totalCount = sorted.length;
-      tenders = sorted.slice(offset, offset + PAGE_SIZE).map((t) => t as Tender);
+    if (authorityJibs && authorityJibs.length === 0) {
+      tenders = [];
+      totalCount = 0;
     } else {
-      const shouldSortByNearest = sortParam === "nearest";
-
-      if (shouldSortByNearest) {
-        const data = await fetchAllTendersForClientSort(
-          supabase,
-          {
-            keyword: keywordParam,
-            contractType: contractTypeParam,
-            procedureType: procedureTypeParam,
-            deadlineFrom: deadlineFromParam,
-            deadlineTo: deadlineToParam,
-            valueMin: valueMinParam,
-            valueMax: valueMaxParam,
-          },
-          sortParam,
-        );
-
-        const enriched = await enrichTendersWithAuthorityGeo(
-          supabase,
-          (data ?? []) as Array<Tender & { authority_city: string | null; authority_municipality: string | null; authority_canton: string | null; authority_entity: string | null }>
-        );
-        const sorted = sortStandardTenders(
-          attachTenderLocationPriority(enriched, selectedRegions),
-          sortParam
-        );
-        totalCount = sorted.length;
-        tenders = sorted.slice(offset, offset + PAGE_SIZE).map((t) => t as Tender);
-      } else {
       let query = supabase
         .from("tenders")
-        .select(TENDER_LIST_COLUMNS, { count: "exact" });
+        .select(TENDER_LIST_COLUMNS, { count: "estimated" });
 
       if (keywordParam) {
         const kw = `%${keywordParam}%`;
@@ -301,6 +194,7 @@ async function TendersContent({ agencyClientId, companyId, recommendationContext
       if (deadlineToParam) query = query.lte("deadline", new Date(`${deadlineToParam}T23:59:59`).toISOString());
       if (valueMinParam) query = query.gte("estimated_value", parseFloat(valueMinParam));
       if (valueMaxParam) query = query.lte("estimated_value", parseFloat(valueMaxParam));
+      if (authorityJibs && authorityJibs.length > 0) query = query.in("contracting_authority_jib", authorityJibs);
 
       const { data, count } = await query
         .order(
@@ -320,7 +214,6 @@ async function TendersContent({ agencyClientId, companyId, recommendationContext
 
       tenders = (data ?? []) as Tender[];
       totalCount = count ?? 0;
-      }
     }
   }
 
@@ -489,7 +382,6 @@ export default async function AgencyClientTendersPage({ params, searchParams }: 
               agencyClientId={agencyClientId}
               companyId={company.id}
               recommendationContext={recommendationContext}
-              selectedRegions={company.operating_regions ?? []}
               searchParams={searchParams}
             />
           </Suspense>

@@ -37,8 +37,8 @@ export default function PrivacyPage() {
           </h2>
           <p className="mt-2">
             Prikupljamo podatke koje nam dobrovoljno pružite: email adresa, ime
-            firme, JIB, kontakt informacije, te dokumenti koje uploadujete u
-            Document Vault. Automatski prikupljamo tehničke podatke o korištenju
+            firme, JIB, kontakt informacije, te dokumenti koje pohranjujete u
+            trezor dokumenata. Automatski prikupljamo tehničke podatke o korištenju
             platforme.
           </p>
         </section>

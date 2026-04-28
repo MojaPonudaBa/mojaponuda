@@ -217,7 +217,7 @@ export async function analyzeTender(tender: Tender): Promise<AnalysisResult> {
 
   const rawContent = completion.choices[0]?.message?.content;
   if (!rawContent) {
-    throw new Error("AI nije vratio odgovor.");
+    throw new Error("Analiza nije vratila odgovor.");
   }
 
   const analysis: AnalysisResult = JSON.parse(rawContent);

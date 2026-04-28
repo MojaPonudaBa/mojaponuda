@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
   
   if (!isSubscribed) {
     return NextResponse.json(
-      { error: "Morate imati aktivnu pretplatu za AI analizu." },
+      { error: "Morate imati aktivnu pretplatu za naprednu analizu." },
       { status: 403 }
     );
   }
@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
   if (!plan.limits.features.advancedAnalysis) {
     return NextResponse.json(
       { 
-        error: "Napredna AI analiza nije dostupna u vašem paketu.",
+        error: "Napredna analiza nije dostupna u vašem paketu.",
         code: "FEATURE_LOCKED",
         feature: "advancedAnalysis",
         upgradeRequired: true
@@ -98,7 +98,7 @@ export async function POST(request: NextRequest) {
     console.error("AI analysis error:", err);
     const message = err instanceof Error ? err.message : String(err);
     return NextResponse.json(
-      { error: `AI analiza nije uspjela: ${message}` },
+      { error: `Napredna analiza nije uspjela: ${message}` },
       { status: 500 }
     );
   }

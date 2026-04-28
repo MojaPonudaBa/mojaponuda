@@ -125,7 +125,7 @@ export function DocumentsPanel({
     <div className="flex h-full flex-col gap-6 rounded-[1.6rem] border border-slate-200 bg-white/95 p-6 shadow-[0_24px_55px_-38px_rgba(15,23,42,0.18)] backdrop-blur-sm">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2.5 text-slate-900">
-          <div className="flex size-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
+          <div className="flex size-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
             <Paperclip className="size-5" />
           </div>
           <h3 className="font-heading text-lg font-bold">Dokumenti</h3>
@@ -158,9 +158,9 @@ export function DocumentsPanel({
             return (
               <div
                 key={attached.id}
-                className="group relative flex items-center gap-3 rounded-[1.1rem] border border-slate-200 bg-white p-3 transition-all hover:border-indigo-200 hover:shadow-md"
+                className="group relative flex items-center gap-3 rounded-[1.1rem] border border-slate-200 bg-white p-3 transition-all hover:border-blue-200 hover:shadow-md"
               >
-                <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
+                <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
                   <FileText className="size-5" />
                 </div>
 
@@ -222,7 +222,7 @@ export function DocumentsPanel({
                 void handleAttach(document.id);
               }}
               trigger={
-                <Button className="w-full rounded-xl border border-indigo-200 bg-indigo-50 font-bold text-indigo-700 shadow-sm hover:bg-indigo-100">
+                <Button className="w-full rounded-xl border border-blue-200 bg-blue-50 font-bold text-blue-700 shadow-sm hover:bg-blue-100">
                   <Plus className="mr-2 size-4" />
                   Novi dokument
                 </Button>
@@ -258,14 +258,14 @@ export function DocumentsPanel({
                     key={document.id}
                     type="button"
                     onClick={() => void handleAttach(document.id)}
-                    className="group flex w-full items-center gap-4 rounded-xl border border-slate-100 bg-white p-3 text-left transition-all hover:border-indigo-300 hover:bg-indigo-50 hover:shadow-md"
+                    className="group flex w-full items-center gap-4 rounded-xl border border-slate-100 bg-white p-3 text-left transition-all hover:border-blue-300 hover:bg-blue-50 hover:shadow-md"
                     disabled={isPending}
                   >
-                    <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-500 group-hover:bg-indigo-100 group-hover:text-indigo-600">
+                    <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-500 group-hover:bg-blue-100 group-hover:text-blue-600">
                       <FileText className="size-5" />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-bold text-slate-900 group-hover:text-indigo-900">
+                      <p className="truncate text-sm font-bold text-slate-900 group-hover:text-blue-900">
                         {document.name}
                       </p>
                       {document.type ? <p className="text-xs text-slate-500">{document.type}</p> : null}

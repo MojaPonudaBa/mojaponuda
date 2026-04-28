@@ -50,6 +50,33 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Firma nije pronađena." }, { status: 403 });
   }
 
+  let resolvedTenderId =
+    typeof tender_id === "string" && tender_id.trim().length > 0
+      ? tender_id.trim()
+      : null;
+
+  if (resolvedTenderId) {
+    const { data: existingBid } = await supabase
+      .from("bids")
+      .select("id")
+      .eq("company_id", access.companyId)
+      .eq("tender_id", resolvedTenderId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (existingBid?.id) {
+      return NextResponse.json(
+        {
+          bid: existingBid,
+          existing: true,
+          preparation_source: "existing",
+        },
+        { status: 200 },
+      );
+    }
+  }
+
   const { count: activeBidsCount, error: countError } = await supabase
     .from("bids")
     .select("*", { count: "exact", head: true })
@@ -77,8 +104,6 @@ export async function POST(request: NextRequest) {
   if (!tender_id && !tender_title) {
     return NextResponse.json({ error: "Unesite tender ili naziv tendera." }, { status: 400 });
   }
-
-  let resolvedTenderId = tender_id;
 
   if (!resolvedTenderId && tender_title) {
     const portalId = `manual_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;

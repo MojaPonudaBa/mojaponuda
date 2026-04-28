@@ -3,8 +3,8 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-
-type BidStatus = "draft" | "in_review" | "submitted" | "won" | "lost";
+import { BID_STATUSES } from "@/lib/bids/constants";
+import type { BidStatus } from "@/types/database";
 
 async function resolveUser() {
   const supabase = await createClient();
@@ -19,6 +19,7 @@ export async function updateBidStatusAction(formData: FormData) {
   const status = formData.get("status") as BidStatus | null;
   const position = Number(formData.get("position") ?? 0);
   if (!bidId || !status) return;
+  if (!BID_STATUSES.includes(status)) return;
 
   const { supabase } = await resolveUser();
   const patch: Record<string, unknown> = { status, kanban_position: position };
@@ -26,6 +27,7 @@ export async function updateBidStatusAction(formData: FormData) {
 
   await supabase.from("bids").update(patch).eq("id", bidId);
   revalidatePath("/dashboard/ponude");
+  revalidatePath("/dashboard/bids");
   revalidatePath(`/dashboard/bids/${bidId}`);
 }
 

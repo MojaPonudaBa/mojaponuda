@@ -1,11 +1,11 @@
 import type { BidStatus } from "@/types/database";
 
 export const BID_STATUS_LABELS: Record<BidStatus, string> = {
-  draft: "U pripremi",
-  in_review: "Interni pregled",
-  submitted: "Poslano",
-  won: "Prihvaćeno",
-  lost: "Odbijeno",
+  draft: "Nacrt",
+  in_review: "U pripremi",
+  submitted: "Predano",
+  won: "Dobijeno",
+  lost: "Izgubljeno",
 };
 
 export const BID_STATUS_CLASSES: Record<BidStatus, string> = {

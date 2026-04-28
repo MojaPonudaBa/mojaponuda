@@ -6,6 +6,11 @@ import { createClient } from "@/lib/supabase/server";
 const ALLOWED_EVENT_TYPES = new Set([
   "new_tender_watched_authority",
   "new_tender_watched_cpv",
+  "planned_procurement_watched_authority",
+  "planned_procurement_watched_cpv",
+  "competitor_new_award",
+  "decision_recommended_bid",
+  "decision_high_risk",
   "bid_deadline_7d",
   "bid_deadline_2d",
   "vault_document_expires_30d",

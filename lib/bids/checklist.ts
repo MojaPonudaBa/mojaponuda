@@ -251,7 +251,7 @@ export async function ensureBidChecklist({
     .eq("id", bidId);
 
   if (bidUpdateError) {
-    throw new Error(`Spremanje AI analize nije uspjelo: ${bidUpdateError.message}`);
+    throw new Error(`Spremanje analize nije uspjelo: ${bidUpdateError.message}`);
   }
 
   if (source === "ai") {

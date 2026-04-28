@@ -15,6 +15,7 @@ import { generateOpportunityContent, generateLegalSummary, aiReviewOpportunity }
 import { categorizeOpportunity } from "@/lib/category-classifier";
 import type { ScrapedOpportunity } from "./scrapers/types";
 import { embedNewTenders, cleanupOrphanedRelevance } from "@/lib/tender-relevance";
+import { precomputeTenderDecisionInsights } from "@/sync/tender-decision-precompute";
 
 function createServiceClient() {
   return createClient(
@@ -33,6 +34,8 @@ export interface PostSyncResult {
   expired_marked: number;
   tenders_embedded: number;
   relevance_cleaned: number;
+  decision_companies_processed: number;
+  decision_insights_upserted: number;
   errors: string[];
   duration_ms: number;
   execution_layer?: ExecutionLayer;
@@ -429,6 +432,24 @@ export async function runPostSyncPipeline(layer: ExecutionLayer = "layer1"): Pro
     }
   }
 
+  // ── 11. Precompute tender decision intelligence for active companies ──
+  let decisionCompaniesProcessed = 0;
+  let decisionInsightsUpserted = 0;
+  try {
+    const decision = await precomputeTenderDecisionInsights(supabase, {
+      maxCompanies: layer === "layer1" ? 100 : layer === "layer2" ? 300 : 800,
+      tenderLimit: layer === "layer1" ? 150 : layer === "layer2" ? 250 : 400,
+    });
+    decisionCompaniesProcessed = decision.companies_processed;
+    decisionInsightsUpserted = decision.insights_upserted;
+    for (const e of decision.errors) errors.push(`decision: ${e}`);
+    if (decisionInsightsUpserted > 0) {
+      console.log(`[PostSync] Precomputed ${decisionInsightsUpserted} decision insight rows`);
+    }
+  } catch (err) {
+    errors.push(`precomputeTenderDecisionInsights: ${String(err)}`);
+  }
+
   return {
     opportunities_processed: opProcessed,
     opportunities_published: opPublished,
@@ -438,6 +459,8 @@ export async function runPostSyncPipeline(layer: ExecutionLayer = "layer1"): Pro
     expired_marked: expiredCount,
     tenders_embedded: tendersEmbedded,
     relevance_cleaned: relevanceCleaned,
+    decision_companies_processed: decisionCompaniesProcessed,
+    decision_insights_upserted: decisionInsightsUpserted,
     errors,
     duration_ms: Date.now() - start,
     execution_layer: layer,

@@ -104,7 +104,7 @@ export async function getWinProbability(params: {
       probability *= Math.max(0.3, Math.min(3, adjFactor || 1));
       historyCount += data.appearances;
       factors.push(
-        `Vaša firma ima ${data.win_rate}% win rate kod ovog naručioca na osnovu ${data.appearances} ranijih nastupa.`
+        `Vaša firma ima ${data.win_rate}% stopu uspjeha kod ovog naručioca na osnovu ${data.appearances} ranijih nastupa.`
       );
     }
   }
@@ -124,7 +124,7 @@ export async function getWinProbability(params: {
       probability *= Math.max(0.4, Math.min(2.5, adjFactor || 1));
       historyCount += data.appearances;
       factors.push(
-        `Vaš win rate u ovoj kategoriji je ${data.win_rate}% (${data.appearances} nastupa).`
+        `Vaša stopa uspjeha u ovoj kategoriji je ${data.win_rate}% (${data.appearances} nastupa).`
       );
     }
   }

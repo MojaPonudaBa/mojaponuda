@@ -18,12 +18,14 @@ import { Button } from "@/components/ui/button";
 import { StartBidButton } from "@/components/tenders/start-bid-button";
 import { UpgradeButton } from "@/components/subscription/upgrade-button";
 import { TenderTimeline } from "@/components/tenders/tender-timeline";
-import { PricePredictionCard } from "@/components/intelligence/price-prediction-card";
-import { WinProbabilityCard } from "@/components/intelligence/win-probability-card";
+import { TenderDecisionSummary } from "@/components/tenders/tender-decision-summary";
 import { CompetitorsCard } from "@/components/intelligence/competitors-card";
 import { WatchButton } from "@/components/watchlist/watch-button";
-import { getPricePrediction } from "@/lib/price-prediction";
-import { getWinProbability } from "@/lib/win-probability";
+import {
+  getTenderDecisionInsights,
+  type TenderDecisionSignal,
+  type TenderDecisionTender,
+} from "@/lib/tender-decision";
 import { getCompetitors, getSimilarTenders } from "@/lib/competitor-intelligence";
 import { isWatched } from "@/lib/watchlist";
 import { getOpenAIClient } from "@/lib/openai";
@@ -117,13 +119,27 @@ export default async function TenderDetailPage({
 
   const [{ data: tenderData }, { data: companyData }] = await Promise.all([
     supabase.from("tenders").select("*").eq("id", id).maybeSingle(),
-    supabase.from("companies").select("id, jib").eq("user_id", user.id).maybeSingle(),
+    supabase
+      .from("companies")
+      .select("id, jib, industry, keywords, cpv_codes, operating_regions")
+      .eq("user_id", user.id)
+      .maybeSingle(),
   ]);
 
   const tender = tenderData as Tender | null;
   if (!tender) redirect("/dashboard/tenders");
 
   const company = companyData as Company | null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const relevanceResult = company
+    ? await (supabase as any)
+        .from("tender_relevance")
+        .select("score, confidence")
+        .eq("company_id", company.id)
+        .eq("tender_id", id)
+        .maybeSingle()
+    : { data: null };
+  const relevanceRow = relevanceResult.data as { score: number; confidence: number } | null;
 
   const [existingBidResult, tenderCountResult, awardsResult] = await Promise.all([
     company
@@ -184,22 +200,10 @@ export default async function TenderDetailPage({
     : null;
 
   // ── Nove intelligence sekcije: price, win probability, competitors ──
-  const [pricePred, winProb, competitors, similarTenders, isAuthorityWatched, isCpvWatched] =
+  const [competitors, similarTenders, isAuthorityWatched, isCpvWatched] =
     isLockedForFree
-      ? [null, null, [], [], false, false]
+      ? [[], [], false, false]
       : await Promise.all([
-          getPricePrediction({
-            estimatedValue: tender.estimated_value ?? null,
-            cpvCode: tender.cpv_code,
-            authorityJib: tender.contracting_authority_jib,
-          }),
-          company
-            ? getWinProbability({
-                companyJib: (company as Company & { jib: string }).jib,
-                cpvCode: tender.cpv_code,
-                authorityJib: tender.contracting_authority_jib,
-              })
-            : Promise.resolve(null),
           getCompetitors({
             cpvCode: tender.cpv_code,
             authorityJib: tender.contracting_authority_jib,
@@ -223,6 +227,32 @@ export default async function TenderDetailPage({
     { key: "published", label: "Objava", date: tender.created_at ?? null },
     { key: "bid_deadline", label: "Rok za ponude", date: tender.deadline ?? null },
   ];
+  const decisionSignals = new Map<string, TenderDecisionSignal>();
+  if (relevanceRow) {
+    decisionSignals.set(tender.id, {
+      relevanceScore: relevanceRow.score,
+      confidence: relevanceRow.confidence,
+      reasons: [`Usklađenost s profilom ${relevanceRow.score}/10`],
+    });
+  }
+  const decisionInsight =
+    !isLockedForFree
+      ? (await getTenderDecisionInsights(
+          supabase,
+          [tender as TenderDecisionTender],
+          company
+            ? {
+                id: company.id,
+                jib: company.jib,
+                industry: company.industry,
+                keywords: company.keywords,
+                cpv_codes: company.cpv_codes,
+                operating_regions: company.operating_regions,
+              }
+            : null,
+          decisionSignals,
+        )).get(tender.id) ?? null
+      : null;
 
   return (
     <div className="mx-auto max-w-6xl space-y-5 sm:space-y-6">
@@ -236,22 +266,19 @@ export default async function TenderDetailPage({
       </div>
 
       {isLockedForFree ? (
-        <div className="relative overflow-hidden rounded-[1.9rem] border border-blue-500/20 bg-[linear-gradient(110deg,#1e1b4b_0%,#0f172a_100%)] p-5 text-white shadow-2xl sm:rounded-[2.5rem] sm:p-8">
-          <div className="absolute right-0 top-0 p-8 opacity-10">
-            <Lock className="size-32 rotate-12" />
-          </div>
+        <div className="relative overflow-hidden rounded-xl border border-blue-100 bg-blue-50 p-5 shadow-sm sm:p-8">
           <div className="relative z-10 mx-auto flex max-w-2xl flex-col items-center py-4 text-center">
-            <div className="mb-6 flex size-16 items-center justify-center rounded-2xl bg-blue-500 shadow-[0_0_30px_rgba(59,130,246,0.5)]">
-              <Lock className="size-8 text-white" />
+            <div className="mb-6 flex size-16 items-center justify-center rounded-xl bg-white text-blue-600 shadow-sm">
+              <Lock className="size-8" />
             </div>
-            <h2 className="mb-4 text-3xl font-bold text-white">Puni detalji su rezervisani za pretplatnike</h2>
-            <p className="mb-8 text-lg leading-relaxed text-blue-100">
+            <h2 className="mb-4 text-3xl font-bold text-slate-950">Puni detalji su rezervisani za pretplatnike</h2>
+            <p className="mb-8 text-lg leading-relaxed text-slate-600">
               Kao korisnik Besplatnog naloga dobili ste signal da ovaj tender postoji. Da biste vidjeli sve detalje, CPV kodove, analitiku naručioca i pokrenuli pripremu, potrebno je aktivirati jedan od plaćenih paketa.
             </p>
             <UpgradeButton
               eventName="CLICK_UPGRADE_TENDER_DETAIL"
               metadata={{ tenderId: id }}
-              className="h-14 rounded-2xl bg-white px-10 text-lg font-bold text-slate-950 hover:bg-blue-50"
+              className="h-14 rounded-xl bg-blue-600 px-10 text-lg font-bold text-white shadow-sm hover:bg-blue-700"
             >
               Otključaj puni pristup
             </UpgradeButton>
@@ -294,37 +321,26 @@ export default async function TenderDetailPage({
           </div>
         </div>
 
-        {(company || isAgency) ? (
-          <div className="rounded-[1.6rem] bg-slate-950 px-5 py-6 shadow-xl shadow-slate-950/20 sm:rounded-[2rem] sm:px-8 sm:py-7">
-            <div className="flex flex-col gap-8 sm:flex-row sm:items-center sm:justify-between">
-              <div className="max-w-2xl text-white">
-                <p className="text-2xl font-heading font-bold leading-snug text-white">
-                  {existingBidId ? "Nastavite pripremu ponude" : "Pripremite ponudu profesionalno"}
-                </p>
-                <p className="mt-2 text-base leading-relaxed text-slate-400">
-                  Odmah dobijete početnu listu koraka, dokumenata i zahtjeva, bez ručnog sastavljanja.
-                </p>
-              </div>
-              <div className="flex-shrink-0 sm:pl-8">
-                {company ? (
-                  <StartBidButton
-                    tenderId={id}
-                    existingBidId={existingBidId}
-                    isSubscribed={isSubscribed}
-                    className="h-14 w-full rounded-2xl bg-blue-500 px-8 text-base font-bold text-white shadow-xl shadow-blue-500/20 transition-all hover:-translate-y-0.5 hover:bg-blue-400 hover:shadow-blue-500/30 sm:w-auto"
-                  />
-                ) : (
-                  <Button
-                    asChild
-                    className="h-14 w-full rounded-2xl bg-blue-500 px-8 text-base font-bold text-white shadow-xl shadow-blue-500/20 transition-all hover:-translate-y-0.5 hover:bg-blue-400 hover:shadow-blue-500/30 sm:w-auto"
-                  >
-                    <Link href="/dashboard/agency">Odaberi klijenta za pripremu</Link>
-                  </Button>
-                )}
-              </div>
-            </div>
-          </div>
-        ) : null}
+        <TenderDecisionSummary
+          insight={decisionInsight}
+          startBidSlot={
+            company ? (
+              <StartBidButton
+                tenderId={id}
+                existingBidId={existingBidId}
+                isSubscribed={isSubscribed}
+                className="h-11 w-full rounded-lg bg-blue-600 px-5 text-sm font-bold text-white shadow-sm transition-all hover:bg-blue-700 sm:w-auto"
+              />
+            ) : isAgency ? (
+              <Button
+                asChild
+                className="h-11 w-full rounded-lg bg-blue-600 px-5 text-sm font-bold text-white shadow-sm transition-all hover:bg-blue-700 sm:w-auto"
+              >
+                <Link href="/dashboard/agency">Odaberi klijenta za pripremu</Link>
+              </Button>
+            ) : null
+          }
+        />
 
         <div className="grid gap-6 lg:grid-cols-3">
           <div className="space-y-6 lg:col-span-2">
@@ -334,7 +350,7 @@ export default async function TenderDetailPage({
                   <Sparkles className="size-5 text-blue-500" />
                   Opis predmeta nabavke
                 </h3>
-                <p className="mb-4 text-xs font-medium text-blue-600">AI generiran na osnovu dostupnih podataka</p>
+                <p className="mb-4 text-xs font-medium text-blue-600">Generirano na osnovu dostupnih podataka</p>
                 <p className="text-sm leading-relaxed text-slate-700">{aiDescription}</p>
               </div>
             ) : (
@@ -393,12 +409,6 @@ export default async function TenderDetailPage({
             {/* Timeline nabavke */}
             <TenderTimeline phases={timelinePhases} />
 
-            {/* AI Price prediction */}
-            <PricePredictionCard p={pricePred} />
-
-            {/* Win probability */}
-            <WinProbabilityCard wp={winProb} />
-
             {/* Competitor intelligence */}
             <CompetitorsCard competitors={competitors} similar={similarTenders} />
 
@@ -422,7 +432,7 @@ export default async function TenderDetailPage({
                 </div>
                 {authorityStats.avgDiscount !== null && authorityStats.totalAwards > 0 ? (
                   <div className="mt-4 border-t border-slate-100 pt-4">
-                    <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-500">
+                    <p className="mb-2 text-xs font-semibold uppercase text-slate-500">
                       Prosječni popust pobjednika
                     </p>
                     <div className="flex items-baseline gap-2">
@@ -475,7 +485,7 @@ function InfoItem({
 }) {
   return (
     <div className="flex flex-col gap-1">
-      <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-400">
+      <div className="flex items-center gap-2 text-xs font-bold uppercase text-slate-400">
         {icon}
         {label}
       </div>

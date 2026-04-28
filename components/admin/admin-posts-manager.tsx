@@ -579,10 +579,10 @@ export function AdminPostsManager() {
 
               {/* AI section */}
               <div className="border-t border-slate-100 pt-5">
-                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">AI Sadržaj</p>
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Automatski sadržaj</p>
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1.5">AI Sažetak</label>
+                    <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1.5">Sažetak</label>
                     <textarea
                       value={editForm.ai_summary ?? ""}
                       onChange={(e) => setEditForm({ ...editForm, ai_summary: e.target.value || null })}

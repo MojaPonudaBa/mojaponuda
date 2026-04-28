@@ -166,7 +166,7 @@ export function ContentQualityDashboard({
                   {!opp.ai_content && (
                     <div className="flex items-start gap-2 text-sm text-orange-600 dark:text-orange-400">
                       <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                      <span>Missing AI content</span>
+                      <span>Nedostaje automatski sadržaj</span>
                     </div>
                   )}
 

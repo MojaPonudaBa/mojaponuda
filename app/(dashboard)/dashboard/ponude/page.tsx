@@ -3,6 +3,10 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { KanbanBoard, type KanbanBid } from "@/components/bids/kanban-board";
 import { Button } from "@/components/ui/button";
+import {
+  getTenderDecisionInsights,
+  type TenderDecisionTender,
+} from "@/lib/tender-decision";
 
 export const dynamic = "force-dynamic";
 
@@ -13,7 +17,7 @@ export default async function PonudePage() {
 
   const { data: company } = await supabase
     .from("companies")
-    .select("id")
+    .select("id, jib, industry, keywords, cpv_codes, operating_regions")
     .eq("user_id", user.id)
     .maybeSingle();
 
@@ -33,17 +37,37 @@ export default async function PonudePage() {
   const { data: rows } = await anySupabase
     .from("bids")
     .select(
-      "id, status, bid_value, submission_deadline, created_at, kanban_position, tender_id, tenders(id, title, contracting_authority, deadline, estimated_value)"
+      "id, status, bid_value, submission_deadline, created_at, kanban_position, tender_id, tenders(id, title, contracting_authority, contracting_authority_jib, deadline, estimated_value, contract_type, cpv_code, procedure_type, raw_description, ai_analysis, created_at)"
     )
     .eq("company_id", company.id)
     .order("kanban_position", { ascending: true })
     .order("created_at", { ascending: false });
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const tenderRows = ((rows ?? []) as any[])
+    .map((r) => Array.isArray(r.tenders) ? r.tenders[0] : r.tenders)
+    .filter(Boolean) as TenderDecisionTender[];
+  const decisionInsights = await getTenderDecisionInsights(
+    supabase,
+    tenderRows,
+    company
+      ? {
+          id: company.id,
+          jib: company.jib,
+          industry: company.industry,
+          keywords: company.keywords,
+          cpv_codes: company.cpv_codes,
+          operating_regions: company.operating_regions,
+        }
+      : null,
+  );
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const bids: KanbanBid[] = ((rows ?? []) as any[]).map((r) => {
     const t = Array.isArray(r.tenders) ? r.tenders[0] : r.tenders;
     const bidValue = r.bid_value ?? null;
     const submissionDeadline = r.submission_deadline ?? null;
+    const insight = t ? decisionInsights.get(t.id) : null;
     return {
       id: r.id,
       status: r.status,
@@ -53,6 +77,13 @@ export default async function PonudePage() {
       bid_value: bidValue,
       estimated_value: t?.estimated_value ?? null,
       deadline: submissionDeadline ?? t?.deadline ?? null,
+      priority_score: insight?.priorityScore ?? null,
+      win_probability:
+        insight && insight.winProbability > 0 && insight.winConfidence !== "low"
+          ? insight.winProbability
+          : null,
+      estimated_effort: insight?.estimatedEffort ?? null,
+      recommendation: insight?.recommendationLabel ?? null,
     };
   });
 
@@ -60,8 +91,8 @@ export default async function PonudePage() {
     <div className="mx-auto max-w-[1400px] space-y-6 px-2 py-4">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-2xl font-heading font-bold tracking-tight text-slate-900 sm:text-3xl">
-            Pipeline ponuda
+          <h1 className="text-2xl font-heading font-bold text-slate-900 sm:text-3xl">
+            Tok ponuda
           </h1>
           <p className="mt-1 text-sm text-slate-600">
             Pratite svaki projekat od nacrta do ishoda. Prevucite kartice između kolona.

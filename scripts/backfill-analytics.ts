@@ -335,6 +335,7 @@ async function main() {
   const authCpvAgg = new Map<string, {
     tenders: number;
     values: number[];
+    winningPrices: number[];
     discountPcts: number[];
     biddersCounts: number[];
   }>();
@@ -357,7 +358,7 @@ async function main() {
     if (t.authority_jib) {
       const key = `${t.authority_jib}|${p}`;
       const ag = authCpvAgg.get(key) ?? {
-        tenders: 0, values: [] as number[], discountPcts: [] as number[], biddersCounts: [] as number[],
+        tenders: 0, values: [] as number[], winningPrices: [] as number[], discountPcts: [] as number[], biddersCounts: [] as number[],
       };
       ag.tenders += 1;
       if (t.estimated_value !== null) ag.values.push(t.estimated_value);
@@ -378,6 +379,7 @@ async function main() {
       const key = `${a.contracting_authority_jib}|${p}`;
       const ag = authCpvAgg.get(key);
       if (ag) {
+        if (a.winning_price) ag.winningPrices.push(a.winning_price);
         if (a.discount_pct !== null) ag.discountPcts.push(a.discount_pct);
         if (a.total_bidders_count) ag.biddersCounts.push(a.total_bidders_count);
       }
@@ -404,9 +406,9 @@ async function main() {
       cpv_code,
       tender_count: g.tenders,
       avg_discount_pct: avg(g.discountPcts),
-      min_winning_price: null,
-      max_winning_price: null,
-      avg_winning_price: avg(g.values),
+      min_winning_price: g.winningPrices.length > 0 ? Math.min(...g.winningPrices) : null,
+      max_winning_price: g.winningPrices.length > 0 ? Math.max(...g.winningPrices) : null,
+      avg_winning_price: avg(g.winningPrices) ?? avg(g.values),
       avg_bidders_count: avg(g.biddersCounts),
       updated_at: new Date().toISOString(),
     };
@@ -501,15 +503,18 @@ async function main() {
     if (data.length < PAGE_SIZE) break;
     from += PAGE_SIZE;
   }
+  const hasParticipantData = appearancesByCompany.size > 0;
 
   const companyRows = [...byCompany.entries()].map(([jib, g]) => {
-    const apps = appearancesByCompany.get(jib) ?? g.wins; // fallback: wins only
+    const apps = appearancesByCompany.get(jib) ?? g.wins; // fallback only for volume, not rate
     return {
       company_jib: jib,
       company_name: g.name,
       total_bids: apps,
       total_wins: g.wins,
-      win_rate: apps > 0 ? Math.round((g.wins / apps) * 10000) / 100 : null,
+      win_rate: hasParticipantData && appearancesByCompany.has(jib) && apps > 0
+        ? Math.round((g.wins / apps) * 10000) / 100
+        : null,
       total_won_value: g.winningPrices.reduce((a, b) => a + b, 0),
       avg_discount_pct: avg(g.discountPcts),
       top_cpv_codes: topKeys(g.cpvCounter, 5),
@@ -528,7 +533,9 @@ async function main() {
       authority_jib,
       appearances: apps,
       wins: v.wins,
-      win_rate: apps > 0 ? Math.round((v.wins / apps) * 10000) / 100 : null,
+      win_rate: hasParticipantData && appearancesByCompanyAuth.has(key) && apps > 0
+        ? Math.round((v.wins / apps) * 10000) / 100
+        : null,
       updated_at: new Date().toISOString(),
     };
   });
@@ -543,7 +550,9 @@ async function main() {
       cpv_code,
       appearances: apps,
       wins: v.wins,
-      win_rate: apps > 0 ? Math.round((v.wins / apps) * 10000) / 100 : null,
+      win_rate: hasParticipantData && appearancesByCompanyCpv.has(key) && apps > 0
+        ? Math.round((v.wins / apps) * 10000) / 100
+        : null,
       updated_at: new Date().toISOString(),
     };
   });

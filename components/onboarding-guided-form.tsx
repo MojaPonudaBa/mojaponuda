@@ -78,7 +78,7 @@ const STEPS = [
   {
     id: "description",
     title: "Dopunite svojim riječima",
-    description: "Kratak opis firme daje AI-u dodatni kontekst za preciznije preporuke.",
+    description: "Kratak opis firme daje sistemu dodatni kontekst za preciznije preporuke.",
     icon: Compass,
   },
 ] as const;

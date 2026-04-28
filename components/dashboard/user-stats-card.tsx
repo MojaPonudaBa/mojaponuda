@@ -18,7 +18,7 @@ export function UserStatsCard({ stats }: { stats: UserBidStats }) {
           <h2 className="text-base font-semibold text-slate-900">Vaša statistika</h2>
         </div>
         <Link href="/dashboard/ponude" className="text-xs text-blue-600 hover:underline">
-          Pipeline →
+          Tok ponuda →
         </Link>
       </div>
 
@@ -32,7 +32,7 @@ export function UserStatsCard({ stats }: { stats: UserBidStats }) {
           <div className="mt-1 text-xl font-heading font-bold text-emerald-700">{stats.totalWins}</div>
         </div>
         <div className="rounded-xl bg-slate-50 p-3">
-          <div className="text-[11px] font-medium uppercase tracking-wide text-slate-500">Win rate</div>
+          <div className="text-[11px] font-medium uppercase tracking-wide text-slate-500">Stopa uspjeha</div>
           <div className="mt-1 text-xl font-heading font-bold text-blue-700">
             {stats.winRate !== null ? `${stats.winRate}%` : "—"}
           </div>
@@ -65,7 +65,7 @@ export function UserStatsCard({ stats }: { stats: UserBidStats }) {
           <div>
             <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-600">
               <TrendingUp className="size-4" />
-              Najbolje CPV kategorije (win rate)
+              Najbolje CPV kategorije (stopa uspjeha)
             </div>
             <ul className="space-y-1.5">
               {stats.topCpvByWinRate.map((c) => (

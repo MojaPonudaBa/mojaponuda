@@ -18,8 +18,11 @@ import { TenderDocUpload } from "@/components/bids/workspace/tender-doc-upload";
 import { PaywallOverlay } from "@/components/subscription/paywall-overlay";
 import { getSubscriptionStatus, isAgencyPlan } from "@/lib/subscription";
 import { BidComments, type BidComment } from "@/components/bids/bid-comments";
-import { PricePredictionCard } from "@/components/intelligence/price-prediction-card";
-import { getPricePrediction } from "@/lib/price-prediction";
+import { PreparationPlanCard } from "@/components/bids/preparation-plan-card";
+import {
+  getTenderDecisionInsights,
+  type TenderDecisionTender,
+} from "@/lib/tender-decision";
 
 const MAX_FREE_BIDS = 3;
 
@@ -74,6 +77,12 @@ export default async function BidWorkspacePage({
   if (!bid || bid.company_id !== access.companyId) {
     redirect("/dashboard/bids");
   }
+
+  const { data: companyData } = await supabase
+    .from("companies")
+    .select("id, jib, industry, keywords, cpv_codes, operating_regions")
+    .eq("id", access.companyId)
+    .maybeSingle();
 
   const { data: checklistData } = await supabase
     .from("bid_checklist_items")
@@ -135,13 +144,24 @@ export default async function BidWorkspacePage({
   const comments: BidComment[] = (commentRows ?? []) as BidComment[];
 
   // ── Price prediction na osnovu tendera ──────────────────────────────
-  const pricePrediction = bid.tenders
-    ? await getPricePrediction({
-        estimatedValue: bid.tenders.estimated_value ?? null,
-        cpvCode: bid.tenders.cpv_code,
-        authorityJib: bid.tenders.contracting_authority_jib,
-      })
-    : null;
+  const missingChecklistCount = checklistItems.filter((item) => item.status === "missing").length;
+  const decisionInsight =
+    bid.tenders
+      ? (await getTenderDecisionInsights(
+          supabase,
+          [bid.tenders as TenderDecisionTender],
+          companyData
+            ? {
+                id: companyData.id,
+                jib: companyData.jib,
+                industry: companyData.industry,
+                keywords: companyData.keywords,
+                cpv_codes: companyData.cpv_codes,
+                operating_regions: companyData.operating_regions,
+              }
+            : null,
+        )).get(bid.tenders.id) ?? null
+      : null;
 
   return (
     <div className="mx-auto max-w-[1400px] space-y-6">
@@ -152,6 +172,13 @@ export default async function BidWorkspacePage({
         currentStatus={bid.status as BidStatus}
         initialRiskFlags={extractRiskFlags(bid.ai_analysis)}
         hasMissingItems={hasMissingItems}
+      />
+
+      <PreparationPlanCard
+        tender={bid.tenders as TenderDecisionTender | null}
+        insight={decisionInsight}
+        checklistCount={checklistItems.length}
+        missingChecklistCount={missingChecklistCount}
       />
 
       {showPaywall ? (
@@ -195,8 +222,7 @@ export default async function BidWorkspacePage({
       )}
 
       {!showPaywall && (
-        <div className="grid gap-6 lg:grid-cols-2">
-          <PricePredictionCard p={pricePrediction} />
+        <div>
           <BidComments bidId={id} comments={comments} currentUserId={user.id} />
         </div>
       )}

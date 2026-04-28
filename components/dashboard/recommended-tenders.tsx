@@ -52,6 +52,8 @@ export async function RecommendedTenders() {
         minimumResults: RECOMMENDATION_SUMMARY_MINIMUM_RESULTS,
         limit: 3,
         shortlistSize: 6,
+        classify: false,
+        rerank: false,
       })
     : null;
   const hasRecommendationSignals = recommendationResult?.hasSignals ?? false;
@@ -79,7 +81,7 @@ export async function RecommendedTenders() {
             <div className="pt-2">
               <Link
                 href="/dashboard/settings"
-                className="inline-flex h-10 items-center rounded-xl bg-slate-950 px-4 text-sm font-semibold text-white transition-all hover:bg-blue-700"
+                className="inline-flex h-10 items-center rounded-xl bg-blue-600 px-4 text-sm font-semibold text-white transition-all hover:bg-blue-700"
               >
                 Podesi profil
               </Link>
@@ -119,7 +121,7 @@ export async function RecommendedTenders() {
               </Link>
               <Link
                 href="/dashboard/settings"
-                className="inline-flex h-10 items-center rounded-xl bg-slate-950 px-4 text-sm font-semibold text-white transition-all hover:bg-blue-700"
+                className="inline-flex h-10 items-center rounded-xl bg-blue-600 px-4 text-sm font-semibold text-white transition-all hover:bg-blue-700"
               >
                 Doradi profil
               </Link>
@@ -158,7 +160,7 @@ export async function RecommendedTenders() {
                 </span>
               ))}
               {(regionLabels.length > 0 ? regionLabels : ["Cijela BiH"]).slice(0, 2).map((label) => (
-                <span key={label} className="rounded-full border border-violet-100 bg-violet-50 px-2.5 py-1 text-[11px] font-semibold text-violet-700">
+                <span key={label} className="rounded-full border border-cyan-100 bg-cyan-50 px-2.5 py-1 text-[11px] font-semibold text-cyan-700">
                   Regija: {label}
                 </span>
               ))}

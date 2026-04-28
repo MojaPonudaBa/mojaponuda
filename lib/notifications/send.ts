@@ -30,6 +30,11 @@ type AnyClient = any;
 export type NotificationEventType =
   | "new_tender_watched_authority"
   | "new_tender_watched_cpv"
+  | "planned_procurement_watched_authority"
+  | "planned_procurement_watched_cpv"
+  | "competitor_new_award"
+  | "decision_recommended_bid"
+  | "decision_high_risk"
   | "competitor_downloaded_td"
   | "bid_deadline_7d"
   | "bid_deadline_2d"
@@ -57,17 +62,29 @@ export interface SendNotificationResult {
   delivered?: boolean;
 }
 
-async function isEventEnabled(
+async function isChannelEnabled(
   supabase: AnyClient,
   userId: string,
-  eventType: NotificationEventType
+  eventType: NotificationEventType,
+  channel: "email" | "in_app"
 ): Promise<boolean> {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("notification_preferences")
     .select("enabled")
     .eq("user_id", userId)
     .eq("event_type", eventType)
+    .eq("channel", channel)
     .maybeSingle();
+
+  if (error) {
+    const { data: legacyData } = await supabase
+      .from("notification_preferences")
+      .select("enabled")
+      .eq("user_id", userId)
+      .eq("event_type", eventType)
+      .maybeSingle();
+    return legacyData?.enabled !== false;
+  }
 
   // Default: uključeno ako nema zapisa.
   return data?.enabled !== false;
@@ -78,7 +95,12 @@ export async function sendNotification(
 ): Promise<SendNotificationResult> {
   const supabase: AnyClient = createAdminClient();
 
-  if (!(await isEventEnabled(supabase, input.userId, input.eventType))) {
+  const [emailEnabled, inAppEnabled] = await Promise.all([
+    isChannelEnabled(supabase, input.userId, input.eventType, "email"),
+    isChannelEnabled(supabase, input.userId, input.eventType, "in_app"),
+  ]);
+
+  if (!emailEnabled && !inAppEnabled) {
     return { skipped: "disabled_by_user" };
   }
 
@@ -118,6 +140,7 @@ export async function sendNotification(
   }
 
   // ─── PLACEHOLDER: logiraj umjesto slanja ─────────────────────────────
+  if (emailEnabled) {
   console.log(
     "[notifications:PLACEHOLDER] →",
     JSON.stringify(
@@ -132,6 +155,7 @@ export async function sendNotification(
     )
   );
   console.log("   body:", input.bodyText);
+  }
 
   // TODO(resend): zamijeniti blok iznad sa stvarnim pozivom:
   //
@@ -147,10 +171,12 @@ export async function sendNotification(
   //   if (emailError) { return { delivered: false }; }
   // ─────────────────────────────────────────────────────────────────────
 
-  await supabase
-    .from("notifications")
-    .update({ delivered_at: new Date().toISOString() })
-    .eq("id", notificationId);
+  if (emailEnabled) {
+    await supabase
+      .from("notifications")
+      .update({ delivered_at: new Date().toISOString() })
+      .eq("id", notificationId);
+  }
 
   return { delivered: true, notificationId };
 }

@@ -465,7 +465,7 @@ export function ProfileSettings({ company }: ProfileSettingsProps) {
                 className="min-h-[120px] rounded-2xl"
               />
               <p className="text-xs text-slate-500">
-                3–5 rečenica. Navedite šta radite i, ako smatrate korisnim, šta NE radite — to pomaže AI-u da iz preporuka izbaci tendere koji vam ne odgovaraju.
+                3–5 rečenica. Navedite šta radite i, ako smatrate korisnim, šta NE radite — to pomaže sistemu da iz preporuka izbaci tendere koji vam ne odgovaraju.
               </p>
             </div>
 

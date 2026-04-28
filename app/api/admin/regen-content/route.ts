@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
       .select("*", { count: "exact", head: true })
       .eq("published", true);
     return NextResponse.json({
-      message: `Svi postovi već imaju AI sadržaj. Ukupno objavljenih: ${count ?? 0}.`,
+      message: `Svi postovi već imaju automatski sadržaj. Ukupno objavljenih: ${count ?? 0}.`,
       processed: 0,
     });
   }

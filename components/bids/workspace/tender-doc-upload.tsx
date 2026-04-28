@@ -38,7 +38,7 @@ const STATUS_TEXT: Record<UploadStatus, string> = {
   idle: "",
   uploading: "Uploadam dokument...",
   extracting: "Čitam i izvlačim tekst iz dokumenta...",
-  analyzing: "AI analizira zahtjeve iz dokumentacije...",
+  analyzing: "Analiziram zahtjeve iz dokumentacije...",
   ready: "Analiza završena",
   error: "Greška pri analizi",
 };
@@ -191,7 +191,7 @@ export function TenderDocUpload({ bidId, existingUpload }: TenderDocUploadProps)
   // Processing state – show progress
   if (["uploading", "extracting", "analyzing"].includes(status)) {
     return (
-      <div className="rounded-2xl border border-blue-100 bg-gradient-to-br from-blue-50/80 to-indigo-50/50 p-6">
+      <div className="rounded-2xl border border-blue-100 bg-blue-50/80 p-6">
         <div className="flex items-start gap-4">
           <div className="relative flex size-12 shrink-0 items-center justify-center">
             <div className="absolute inset-0 rounded-xl bg-blue-100 animate-pulse" />
@@ -376,7 +376,7 @@ export function TenderDocUpload({ bidId, existingUpload }: TenderDocUploadProps)
               </span>
               <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-slate-400">
                 <Sparkles className="size-3" />
-                AI analiza zahtjeva
+                Analiza zahtjeva
               </span>
             </div>
           </div>

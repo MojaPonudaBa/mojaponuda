@@ -219,7 +219,7 @@ function getReasonLabel(code: TenderAreaGapReasonCode): string {
     case "insufficient_tender_text":
       return "Tekst nema dovoljno signala";
     case "manual_review_required":
-      return "Treba AI ili ručna provjera";
+      return "Treba automatska ili ručna provjera";
   }
 }
 
@@ -298,7 +298,7 @@ function classifyGapReason(params: {
   return {
     code: "manual_review_required",
     detail:
-      "Tender ima određene signale, ali nijedan nije dovoljno pouzdan za automatsku dodjelu područja bez AI ili ručne provjere.",
+      "Tender ima određene signale, ali nijedan nije dovoljno pouzdan za automatsku dodjelu područja bez dodatne ili ručne provjere.",
   };
 }
 

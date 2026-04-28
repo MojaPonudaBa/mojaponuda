@@ -71,7 +71,7 @@ export default function TermsPage() {
           </h2>
           <p className="mt-2">
             Tendersistem.com je alat za pomoć u pripremi ponuda i ne garantira
-            uspjeh na tenderima. AI analiza je informativnog karaktera i ne
+            uspjeh na tenderima. Automatska analiza je informativnog karaktera i ne
             zamjenjuje pravni savjet. Korisnik je odgovoran za tačnost i
             kompletnost svoje ponude.
           </p>

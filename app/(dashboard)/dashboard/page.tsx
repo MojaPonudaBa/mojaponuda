@@ -19,7 +19,12 @@ import {
   RECOMMENDATION_FULL_PAGE_MINIMUM_RESULTS,
 } from "@/lib/tender-recommendations";
 import { getPreparationUsageSummary } from "@/lib/preparation-credits";
-import type { BidStatus, Document as DocType } from "@/types/database";
+import {
+  getTenderDecisionInsights,
+  type TenderDecisionInsight,
+  type TenderDecisionSignal,
+} from "@/lib/tender-decision";
+import type { BidStatus, Document as DocType, Json } from "@/types/database";
 
 function formatCompactCurrency(value: number | null | undefined): string {
   if (!value) return "—";
@@ -43,6 +48,14 @@ function formatDeadlineMeta(days: number | null): string {
   if (days <= 0) return "Rok je danas";
   if (days === 1) return "1 dan do roka";
   return `${days} dana do roka`;
+}
+
+function getDashboardTenderAction(insight: TenderDecisionInsight | null): string {
+  if (!insight) return "Otvori i provjeri uslove prije odluke.";
+  if (insight.recommendation === "bid") return "Započni pripremu i odmah potvrdi cijenu.";
+  if (insight.recommendation === "skip") return "Preskoči osim ako imate posebnu internu prednost.";
+  if (insight.riskLevel === "high") return "Prvo provjeri rizike, dokumente i poznate konkurente.";
+  return "Provjeri uslove i prebaci u tok ponuda ako nema blokera.";
 }
 
 function buildPreparationStatus(summary: Awaited<ReturnType<typeof getPreparationUsageSummary>>) {
@@ -246,11 +259,16 @@ export default async function DashboardPage() {
     contracting_authority: string | null;
     contracting_authority_jib: string | null;
     contract_type: string | null;
+    procedure_type?: string | null;
     raw_description: string | null;
+    cpv_code?: string | null;
+    ai_analysis?: Json | null;
+    created_at?: string | null;
   };
 
   let relevantTenders: DashboardTenderRow[] = [];
   let relevantTenderCount = 0;
+  const dashboardDecisionSignals = new Map<string, TenderDecisionSignal>();
 
   const llmScored = await getRecommendedTenders<DashboardTenderRow>(
     supabase,
@@ -261,6 +279,13 @@ export default async function DashboardPage() {
   if (llmScored.length > 0) {
     const gated = llmScored.filter(({ tender }) => !existingBidTenderIds.has(tender.id));
     relevantTenders = gated.map(({ tender }) => tender);
+    for (const item of gated) {
+      dashboardDecisionSignals.set(item.tender.id, {
+        relevanceScore: item.score,
+        confidence: item.confidence,
+        reasons: [`Usklađenost iz preporuka: ${item.score}/10`],
+      });
+    }
     relevantTenderCount = relevantTenders.length;
   } else {
     // Fallback: company without profile_embedding (pre-backfill) — use legacy
@@ -277,11 +302,43 @@ export default async function DashboardPage() {
       rerank: false,
     });
     relevantTenders = legacy.recommendations.map(({ tender }) => tender);
+    for (const item of legacy.recommendations) {
+      dashboardDecisionSignals.set(item.tender.id, {
+        matchScore: Math.min(96, Math.max(45, 52 + item.score * 3)),
+        reasons: item.reasons,
+      });
+    }
     relevantTenderCount = legacy.totalCount;
   }
   const relevantTenderValue = relevantTenders.reduce((sum, tender) => sum + (Number(tender.estimated_value) || 0), 0);
   const documentsCount = documentsCountValue ?? demoDocuments.length;
   const dashboardBidRows = portfolioBids.slice(0, 6);
+  const dashboardTenderSlice = relevantTenders.slice(0, 4);
+  const dashboardDecisionInsights = dashboardTenderSlice.length > 0
+    ? await getTenderDecisionInsights(
+        supabase,
+        dashboardTenderSlice,
+        resolvedCompany,
+        dashboardDecisionSignals,
+      )
+    : new Map<string, TenderDecisionInsight>();
+  const dashboardRecommendedTenders = dashboardTenderSlice.map((tender) => {
+    const insight = dashboardDecisionInsights.get(tender.id) ?? null;
+    return {
+      id: tender.id,
+      title: tender.title,
+      deadline: tender.deadline,
+      estimated_value: tender.estimated_value,
+      contracting_authority: tender.contracting_authority,
+      decisionLabel: insight?.recommendationLabel ?? "Provjeri",
+      priorityScore: insight?.priorityScore ?? null,
+      matchScore: insight?.matchScore ?? null,
+      riskLevel: insight?.riskLevel ?? null,
+      nextStep: getDashboardTenderAction(insight),
+    };
+  }).sort((first, second) => (second.priorityScore ?? 0) - (first.priorityScore ?? 0));
+  const bestOpportunity = [...dashboardRecommendedTenders]
+    .sort((first, second) => (second.priorityScore ?? 0) - (first.priorityScore ?? 0))[0] ?? null;
   const nextDeadlineInDays = urgentBidDeadlines[0]?.tenders.deadline
     ? daysUntil(urgentBidDeadlines[0].tenders.deadline)
     : null;
@@ -318,13 +375,15 @@ export default async function DashboardPage() {
             meta: `${expiring.length} dokumenata pred istekom`,
             tone: "attention" as const,
           }
-        : relevantTenders[0]
+        : bestOpportunity
           ? {
-              title: "Pogledajte novu priliku",
-              description: `Tender "${relevantTenders[0].title}" izgleda kao realna prilika na osnovu vašeg profila firme.`,
-              href: `/dashboard/tenders/${relevantTenders[0].id}`,
-              cta: "Otvori tender",
-              meta: `${relevantTenderCount} relevantnih tendera`,
+              title: bestOpportunity.decisionLabel === "Uđi" ? "Krenite u najbolju priliku" : "Provjerite najbolju priliku",
+              description: `${bestOpportunity.title}: ${bestOpportunity.nextStep}`,
+              href: `/dashboard/tenders/${bestOpportunity.id}`,
+              cta: bestOpportunity.decisionLabel === "Preskoči" ? "Provjeri razlog" : "Otvori i odluči",
+              meta: bestOpportunity.priorityScore !== null
+                ? `Prioritet ${bestOpportunity.priorityScore}/100 · ${relevantTenderCount} relevantnih tendera`
+                : `${relevantTenderCount} relevantnih tendera`,
               tone: "opportunity" as const,
             }
             : {
@@ -340,7 +399,7 @@ export default async function DashboardPage() {
     {
       title: "Aktivne ponude",
       value: String((activeBidsCount ?? 0) > 0 ? (activeBidsCount ?? 0) : activePortfolioBids.length),
-      meta: `${submittedCount} predane · ${inReviewCount} u provjeri`,
+      meta: `${submittedCount} predane · ${inReviewCount} u pripremi`,
       href: "/dashboard/bids",
       icon: "briefcase" as const,
     },
@@ -402,13 +461,13 @@ export default async function DashboardPage() {
           tone: "attention" as const,
         }]
       : []),
-    ...(relevantTenders[0]
+    ...(bestOpportunity
       ? [{
-          id: `relevant-${relevantTenders[0].id}`,
-          title: "Pogledajte sljedeći tender",
-          description: `Vrijedi provjeriti: ${relevantTenders[0].title}`,
-          href: `/dashboard/tenders/${relevantTenders[0].id}`,
-          badge: "Nova prilika",
+          id: `relevant-${bestOpportunity.id}`,
+          title: bestOpportunity.decisionLabel === "Uđi" ? "Započnite najbolji tender" : "Provjerite sljedeći tender",
+          description: `${bestOpportunity.title}: ${bestOpportunity.nextStep}`,
+          href: `/dashboard/tenders/${bestOpportunity.id}`,
+          badge: bestOpportunity.priorityScore !== null ? `${bestOpportunity.priorityScore}/100` : "Prilika",
           tone: "opportunity" as const,
         }]
       : []),
@@ -459,13 +518,7 @@ export default async function DashboardPage() {
         focusCards={focusCards}
         actionQueue={actionQueue}
         dashboardBidRows={dashboardBidRows}
-        recommendedTenders={relevantTenders.slice(0, 4).map((tender) => ({
-          id: tender.id,
-          title: tender.title,
-          deadline: tender.deadline,
-          estimated_value: tender.estimated_value,
-          contracting_authority: tender.contracting_authority,
-        }))}
+        recommendedTenders={dashboardRecommendedTenders}
         quickLinks={quickLinks}
         preparationStatus={buildPreparationStatus(preparationSummary)}
         subscriptionActive={subscriptionStatus.isSubscribed}

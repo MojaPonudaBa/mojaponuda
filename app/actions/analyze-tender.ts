@@ -19,11 +19,11 @@ export async function analyzeTenderAction(tenderId: string) {
   const { isSubscribed, plan } = await getSubscriptionStatus(user.id, user.email);
   
   if (!isSubscribed) {
-    throw new Error("Morate imati aktivnu pretplatu za AI analizu.");
+    throw new Error("Morate imati aktivnu pretplatu za naprednu analizu.");
   }
 
   if (!plan.limits.features.advancedAnalysis) {
-    throw new Error("Napredna AI analiza nije dostupna u vašem paketu. Nadogradite na Pro.");
+    throw new Error("Napredna analiza nije dostupna u vašem paketu. Nadogradite na Pro.");
   }
 
   // Fetch tender
@@ -45,6 +45,6 @@ export async function analyzeTenderAction(tenderId: string) {
     return analysis;
   } catch (err) {
     console.error("Analysis error:", err);
-    throw new Error("Došlo je do greške prilikom AI analize.");
+    throw new Error("Došlo je do greške prilikom napredne analize.");
   }
 }

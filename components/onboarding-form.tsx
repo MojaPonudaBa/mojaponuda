@@ -197,7 +197,7 @@ export function OnboardingForm({
     let generatedKeywords = initialKeywords;
 
     // AI Profiliranje
-    setLoadingText("AI pronalazi idealne tendere...");
+    setLoadingText("Sistem pronalazi idealne tendere...");
     try {
       const res = await fetch("/api/onboarding/generate-profile", {
         method: "POST",
@@ -425,7 +425,7 @@ export function OnboardingForm({
               className="min-h-[120px] rounded-xl border-slate-200 bg-white"
             />
             <p className="text-xs text-slate-500">
-              Naš AI će na osnovu ovog opisa automatski pronalaziti tendere koji vam odgovaraju. Što detaljnije opišete usluge i proizvode, rezultati će biti bolji.
+              Sistem će na osnovu ovog opisa automatski pronalaziti tendere koji vam odgovaraju. Što detaljnije opišete usluge i proizvode, rezultati će biti bolji.
             </p>
           </div>
 

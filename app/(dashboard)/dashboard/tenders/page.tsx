@@ -7,9 +7,7 @@ import {
   attachTenderLocationPriority,
   resolveTenderSort,
   sortRecommendedTenderItems,
-  sortStandardTenders,
 } from "@/lib/tender-sorting";
-import { classifyTenderRecommendationsWithAI } from "@/lib/tender-recommendation-rerank";
 import { ensureCompanyProfileEnrichment } from "@/lib/ai-profile-enrichment";
 import { getSubscriptionStatus } from "@/lib/subscription";
 import { getRecommendedTenders, classifyTier } from "@/lib/tender-relevance";
@@ -37,6 +35,12 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { UpgradeButton } from "@/components/subscription/upgrade-button";
+import {
+  getTenderDecisionInsights,
+  type TenderDecisionInsight,
+  type TenderDecisionSignal,
+  type TenderDecisionTender,
+} from "@/lib/tender-decision";
 
 const PAGE_SIZE = 20;
 
@@ -58,88 +62,36 @@ function getMultiParam(value: SearchParamValue): string[] {
   return typeof value === "string" && value.trim().length > 0 ? [value] : [];
 }
 
-async function fetchAllTendersForClientSort(
+async function fetchAuthorityJibsForLocationTerms(
   supabase: Awaited<ReturnType<typeof createClient>>,
-  filters: {
-    keyword: string;
-    contractType: string;
-    procedureType: string;
-    deadlineFrom: string;
-    deadlineTo: string;
-    valueMin: string;
-    valueMax: string;
-  },
-  sortParam: ReturnType<typeof resolveTenderSort>,
-) {
-  const orderBy =
-    sortParam === "value_desc" || sortParam === "value_asc"
-      ? "estimated_value"
-      : sortParam === "newest"
-        ? "created_at"
-        : "deadline";
-  const ascending = sortParam === "value_asc" || sortParam === "deadline_asc";
-  const batchSize = 1000;
-  let offset = 0;
-  const rows: Tender[] = [];
+  terms: string[],
+): Promise<string[]> {
+  const cleanTerms = [...new Set(
+    terms
+      .map((term) => term.trim())
+      .filter((term) => term.length >= 3)
+      .slice(0, 16),
+  )];
+  if (cleanTerms.length === 0) return [];
 
-  while (true) {
-    let query = supabase.from("tenders").select(TENDER_LIST_COLUMNS);
+  const conditions = cleanTerms.flatMap((term) => {
+    const safeTerm = term.replace(/,/g, " ");
+    return [
+      `name.ilike.%${safeTerm}%`,
+      `city.ilike.%${safeTerm}%`,
+      `municipality.ilike.%${safeTerm}%`,
+      `canton.ilike.%${safeTerm}%`,
+      `entity.ilike.%${safeTerm}%`,
+    ];
+  });
 
-    if (filters.keyword) {
-      const keyword = `%${filters.keyword}%`;
-      query = query.or(`title.ilike.${keyword},raw_description.ilike.${keyword}`);
-    }
+  const { data } = await supabase
+    .from("contracting_authorities")
+    .select("jib")
+    .or(conditions.join(","))
+    .limit(2500);
 
-    if (filters.contractType !== "all") {
-      query = query.ilike("contract_type", `%${filters.contractType}%`);
-    }
-
-    if (filters.procedureType !== "all") {
-      query = query.ilike("procedure_type", `%${filters.procedureType}%`);
-    }
-
-    if (filters.deadlineFrom) {
-      query = query.gte("deadline", new Date(filters.deadlineFrom).toISOString());
-    }
-
-    if (filters.deadlineTo) {
-      query = query.lte("deadline", new Date(`${filters.deadlineTo}T23:59:59`).toISOString());
-    }
-
-    if (filters.valueMin) {
-      query = query.gte("estimated_value", parseFloat(filters.valueMin));
-    }
-
-    if (filters.valueMax) {
-      query = query.lte("estimated_value", parseFloat(filters.valueMax));
-    }
-
-    const { data, error } = await query
-      .order(orderBy, {
-        ascending,
-        nullsFirst: false,
-      })
-      .range(offset, offset + batchSize - 1);
-
-    if (error) {
-      throw error;
-    }
-
-    const batch = (data ?? []) as Tender[];
-    if (batch.length === 0) {
-      break;
-    }
-
-    rows.push(...batch);
-
-    if (batch.length < batchSize) {
-      break;
-    }
-
-    offset += batchSize;
-  }
-
-  return rows;
+  return [...new Set((data ?? []).map((row) => row.jib).filter((value): value is string => Boolean(value)))];
 }
 
 async function TendersContent({
@@ -170,6 +122,7 @@ async function TendersContent({
   const offset = (page - 1) * PAGE_SIZE;
   const activeTab = tabParam === "all" ? "all" : "recommended";
   const sortParam = resolveTenderSort(getSingleParam(params.sort), activeTab);
+  const defaultSortForTab = activeTab === "recommended" ? "nearest" : "deadline_asc";
 
   // Agency: multi-client recommendation data
   interface AgencyClientCompany {
@@ -188,6 +141,7 @@ async function TendersContent({
   let recommendationContext: RecommendationContext | null = null;
   let companyProfile: {
     id: string;
+    jib: string | null;
     industry: string | null;
     keywords: string[] | null;
     cpv_codes: string[] | null;
@@ -197,6 +151,7 @@ async function TendersContent({
   let hasProfile = false;
   let hasRecommendationSignalsForProfile = false;
   let existingBidTenderIds = new Set<string>();
+  const decisionSignals = new Map<string, TenderDecisionSignal>();
 
   if (activeTab === "recommended" && userId && isAgency) {
     // Fetch all agency client companies
@@ -302,6 +257,12 @@ async function TendersContent({
       // Store paginated results for rendering
       for (const item of filtered.slice(offset, offset + PAGE_SIZE)) {
         agencyTenderClientMap.set(item.tender.id, item);
+        decisionSignals.set(item.tender.id, {
+          matchScore: Math.min(96, Math.max(45, 52 + item.score * 3)),
+          reasons: item.clientNames.length > 0
+            ? [`Preporučeno za: ${item.clientNames.slice(0, 2).join(", ")}`]
+            : [],
+        });
       }
 
       // Use first client's context as fallback for the outer page shell
@@ -316,7 +277,7 @@ async function TendersContent({
     const { data: company } = await supabase
       .from("companies")
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .select("id, industry, keywords, cpv_codes, operating_regions, profile_embedded_at" as any)
+      .select("id, jib, industry, keywords, cpv_codes, operating_regions, profile_embedded_at" as any)
       .eq("user_id", userId)
       .single();
 
@@ -419,7 +380,7 @@ async function TendersContent({
     valueMinParam ||
     valueMaxParam ||
     locationFilterValues.length > 0 ||
-    sortParam !== "nearest";
+    sortParam !== defaultSortForTab;
 
   let tenders: Tender[] = [];
   let totalCount = 0;
@@ -519,7 +480,14 @@ async function TendersContent({
     totalCount = items.length;
     tenders = items
       .slice(offset, offset + PAGE_SIZE)
-      .map(({ tender }) => tender as Tender);
+      .map(({ tender, score, confidence }) => {
+        decisionSignals.set(tender.id, {
+          relevanceScore: score,
+          confidence,
+          reasons: [`Usklađenost s profilom ${score}/10`],
+        });
+        return tender as Tender;
+      });
 
     // Touch classifyTier so the import remains used for future UI badges.
     void classifyTier;
@@ -547,11 +515,6 @@ async function TendersContent({
       }
     );
 
-    rankedRecommendations = await classifyTenderRecommendationsWithAI(
-      rankedRecommendations,
-      recommendationContext
-    );
-
     rankedRecommendations = rankedRecommendations.filter(({ tender }) =>
       tenderMatchesClientFilters(tender, {
         keyword: keywordParam,
@@ -575,84 +538,26 @@ async function TendersContent({
     totalCount = rankedRecommendations.length;
     tenders = rankedRecommendations
       .slice(offset, offset + PAGE_SIZE)
-      .map(({ tender }) => tender as Tender);
+      .map(({ tender, score, reasons }) => {
+        decisionSignals.set(tender.id, {
+          matchScore: Math.min(96, Math.max(42, 52 + score * 3)),
+          reasons,
+        });
+        return tender as Tender;
+      });
   } else {
-    if (locationFilterTerms.length > 0) {
-      const data = await fetchAllTendersForClientSort(
-        supabase,
-        {
-          keyword: keywordParam,
-          contractType: contractTypeParam,
-          procedureType: procedureTypeParam,
-          deadlineFrom: deadlineFromParam,
-          deadlineTo: deadlineToParam,
-          valueMin: valueMinParam,
-          valueMax: valueMaxParam,
-        },
-        sortParam,
-      );
+      const authorityJibs =
+        locationFilterTerms.length > 0
+          ? await fetchAuthorityJibsForLocationTerms(supabase, locationFilterTerms)
+          : null;
 
-      const enrichedRows = await enrichTendersWithAuthorityGeo(
-        supabase,
-        ((data ?? []) as Array<
-          Tender & {
-            authority_city: string | null;
-            authority_municipality: string | null;
-            authority_canton: string | null;
-            authority_entity: string | null;
-          }
-        >)
-      );
-      const filteredRows = enrichedRows.filter((tender) =>
-        matchesTenderLocationTerms(tender, locationFilterTerms)
-      );
-
-      const sortedRows = sortStandardTenders(
-        attachTenderLocationPriority(filteredRows, companyProfile?.operating_regions ?? []),
-        sortParam
-      );
-      totalCount = sortedRows.length;
-      tenders = sortedRows.slice(offset, offset + PAGE_SIZE).map((tender) => tender as Tender);
-    } else {
-      const shouldSortByNearest = sortParam === "nearest";
-
-      if (shouldSortByNearest) {
-        const data = await fetchAllTendersForClientSort(
-          supabase,
-          {
-            keyword: keywordParam,
-            contractType: contractTypeParam,
-            procedureType: procedureTypeParam,
-            deadlineFrom: deadlineFromParam,
-            deadlineTo: deadlineToParam,
-            valueMin: valueMinParam,
-            valueMax: valueMaxParam,
-          },
-          sortParam,
-        );
-
-        const enrichedRows = await enrichTendersWithAuthorityGeo(
-          supabase,
-          ((data ?? []) as Array<
-            Tender & {
-              authority_city: string | null;
-              authority_municipality: string | null;
-              authority_canton: string | null;
-              authority_entity: string | null;
-            }
-          >)
-        );
-
-        const sortedRows = sortStandardTenders(
-          attachTenderLocationPriority(enrichedRows, companyProfile?.operating_regions ?? []),
-          sortParam
-        );
-        totalCount = sortedRows.length;
-        tenders = sortedRows.slice(offset, offset + PAGE_SIZE).map((tender) => tender as Tender);
+      if (authorityJibs && authorityJibs.length === 0) {
+        tenders = [];
+        totalCount = 0;
       } else {
       let query = supabase
         .from("tenders")
-        .select(TENDER_LIST_COLUMNS, { count: "exact" });
+        .select(TENDER_LIST_COLUMNS, { count: "estimated" });
 
       if (keywordParam) {
         const kw = `%${keywordParam}%`;
@@ -681,6 +586,10 @@ async function TendersContent({
         query = query.lte("estimated_value", parseFloat(valueMaxParam));
       }
 
+      if (authorityJibs && authorityJibs.length > 0) {
+        query = query.in("contracting_authority_jib", authorityJibs);
+      }
+
       const { data, count } = await query
         .order(
           sortParam === "value_desc" || sortParam === "value_asc"
@@ -700,10 +609,28 @@ async function TendersContent({
       tenders = (data ?? []) as Tender[];
       totalCount = count ?? 0;
       }
-    }
   }
 
   const totalPages = Math.ceil(totalCount / PAGE_SIZE);
+  const companyForDecision = companyProfile
+    ? {
+        id: companyProfile.id,
+        jib: companyProfile.jib,
+        industry: companyProfile.industry,
+        keywords: companyProfile.keywords,
+        cpv_codes: companyProfile.cpv_codes,
+        operating_regions: companyProfile.operating_regions,
+      }
+    : null;
+  const decisionInsights: Map<string, TenderDecisionInsight> =
+    tenders.length > 0 && !isLocked
+      ? await getTenderDecisionInsights(
+          supabase,
+          tenders as TenderDecisionTender[],
+          companyForDecision,
+          decisionSignals,
+        )
+      : new Map();
 
   return (
     <>
@@ -735,7 +662,7 @@ async function TendersContent({
               : "Podaci se automatski sinhronizuju sa e-Nabavke portala."}
           </p>
           {activeTab === "recommended" && (
-            <Button className="mt-6 rounded-xl bg-slate-950 px-5 text-white shadow-[0_16px_35px_-20px_rgba(15,23,42,0.6)] transition-all hover:bg-slate-800" asChild>
+            <Button className="mt-6 rounded-xl bg-blue-600 px-5 text-white shadow-sm transition-all hover:bg-blue-700" asChild>
                <Link href="/dashboard/settings">Ažuriraj Profil</Link>
             </Button>
           )}
@@ -743,21 +670,21 @@ async function TendersContent({
       ) : (
         <div className="space-y-3">
           {isLocked && tenders.length > 0 && (
-             <div className="mb-6 rounded-[1.5rem] bg-[linear-gradient(110deg,#1e1b4b_0%,#0f172a_100%)] p-6 text-white shadow-xl relative overflow-hidden">
+             <div className="relative mb-6 overflow-hidden rounded-xl border border-blue-100 bg-blue-50 p-6 shadow-sm">
                 <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-6">
                   <div>
-                    <h3 className="text-xl font-bold text-white mb-2 flex items-center gap-2">
-                      <Lock className="size-5 text-blue-400" />
+                    <h3 className="mb-2 flex items-center gap-2 text-xl font-bold text-slate-950">
+                      <Lock className="size-5 text-blue-600" />
                       Ovo je samo pregled dostupnih prilika
                     </h3>
-                      <p className="text-slate-300 text-sm leading-relaxed max-w-xl">
+                      <p className="max-w-xl text-sm leading-relaxed text-slate-600">
                       Pronašli smo stvarne prilike za vas. Kao korisnik besplatnog naloga trenutno možete vidjeti samo signal da ponude postoje.
                       </p>
                   </div>
                   <UpgradeButton 
                     eventName="CLICK_UPGRADE_FEED" 
                     metadata={{ tab: activeTab }}
-                    className="shrink-0 whitespace-nowrap bg-blue-600 text-white rounded-xl font-semibold h-11 hover:bg-blue-500 shadow-[0_0_20px_rgba(37,99,235,0.4)]"
+                    className="h-11 shrink-0 whitespace-nowrap rounded-xl bg-blue-600 font-semibold text-white shadow-sm hover:bg-blue-700"
                   >
                     Otključaj tendere za vašu firmu
                   </UpgradeButton>
@@ -771,6 +698,7 @@ async function TendersContent({
               tender={tender}
               locked={isLocked}
               clientNames={agencyTenderClientMap.get(tender.id)?.clientNames}
+              insight={decisionInsights.get(tender.id)}
             />
           ))}
         </div>
@@ -806,7 +734,7 @@ export default async function TendersPage(props: TendersPageProps) {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-3xl font-heading font-bold text-slate-900 tracking-tight">
+          <h1 className="text-3xl font-heading font-bold text-slate-900">
             Tenderi i preporuke
           </h1>
           <p className="mt-1.5 text-base text-slate-500">

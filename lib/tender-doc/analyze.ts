@@ -210,7 +210,7 @@ export async function analyzeTenderDocumentation(
 
   const rawContent = completion.choices[0]?.message?.content;
   if (!rawContent) {
-    throw new Error("AI nije vratio odgovor pri analizi tenderske dokumentacije.");
+    throw new Error("Analiza nije vratila odgovor pri obradi tenderske dokumentacije.");
   }
 
   return JSON.parse(rawContent) as TenderDocAnalysisResult;

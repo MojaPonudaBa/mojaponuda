@@ -76,21 +76,21 @@ const STEPS = [
   {
     id: "focus",
     title: "Čime se bavite",
-    description: "Odaberite šta vaša firma stvarno radi. U sljedećem koraku dodajemo kontekst koji AI koristi za preporuke.",
+    description: "Odaberite šta vaša firma stvarno radi. U sljedećem koraku dodajemo kontekst koji sistem koristi za preporuke.",
     icon: Brain,
     completionLabel: "Korak 1 / 4",
   },
   {
     id: "profile",
     title: "Recite nam više o svojoj firmi",
-    description: "Što više kažete, to preciznije preporuke. AI čita sve ovo i pronalazi tendere koji stvarno odgovaraju vašem poslu.",
+    description: "Što više kažete, to preciznije preporuke. Sistem koristi ovaj opis da pronađe tendere koji stvarno odgovaraju vašem poslu.",
     icon: Target,
     completionLabel: "Korak 2 / 4",
   },
   {
     id: "preview",
     title: "Prvi pregled tendera",
-    description: "Na osnovu profila koji smo upravo izgradili, AI je već odabrao tendere koji najbolje odgovaraju vašoj firmi.",
+    description: "Na osnovu profila koji smo upravo izgradili, sistem je već odabrao tendere koji najbolje odgovaraju vašoj firmi.",
     icon: Search,
     completionLabel: "Korak 3 / 4",
   },
@@ -891,7 +891,7 @@ export function OnboardingValueFirstForm({
               className="min-h-[120px] rounded-2xl border-slate-200 bg-white"
             />
             <p className="text-xs text-slate-500">
-              3–5 rečenica. Navedite šta radite i, ako smatrate korisnim, šta NE radite — to pomaže AI-u da iz preporuka izbaci tendere koji vam ne odgovaraju.
+              3–5 rečenica. Navedite šta radite i, ako smatrate korisnim, šta NE radite — to pomaže sistemu da iz preporuka izbaci tendere koji vam ne odgovaraju.
             </p>
           </div>
 
@@ -914,7 +914,7 @@ export function OnboardingValueFirstForm({
           {embeddingSaving ? (
             <div className="flex items-center gap-2 rounded-2xl border border-blue-100 bg-blue-50/70 p-4 text-sm text-blue-800">
               <Loader2 className="size-4 animate-spin" />
-              Spremam profil firme za AI preporuke...
+              Spremam profil firme za preporuke...
             </div>
           ) : null}
         </div>
@@ -1132,7 +1132,7 @@ export function OnboardingValueFirstForm({
             {embeddingSaving ? (
               <>
                 <Loader2 className="mr-2 size-4 animate-spin" />
-                Pripremam AI profil...
+                Pripremam profil preporuka...
               </>
             ) : (
               <>

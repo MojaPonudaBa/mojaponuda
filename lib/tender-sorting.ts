@@ -155,6 +155,7 @@ export function resolveTenderSort(
 
   switch (normalized) {
     case "nearest":
+      return tab === "recommended" ? "nearest" : "deadline_asc";
     case "deadline_asc":
     case "deadline_desc":
     case "value_desc":
@@ -162,9 +163,9 @@ export function resolveTenderSort(
     case "newest":
       return normalized;
     case "recommended":
-      return tab === "recommended" ? "recommended" : "nearest";
+      return tab === "recommended" ? "recommended" : "deadline_asc";
     default:
-      return "nearest";
+      return tab === "recommended" ? "nearest" : "deadline_asc";
   }
 }
 

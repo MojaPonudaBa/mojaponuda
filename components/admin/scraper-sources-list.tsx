@@ -229,12 +229,12 @@ export function ScraperSourcesList({ initialLogs }: ScraperSourcesListProps) {
           onClick={() => handleRegenContent(30)}
           disabled={regenStatus?.loading}
           className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-slate-300 disabled:cursor-not-allowed transition-colors text-sm font-semibold shadow-sm"
-          title="Regeneriraj AI sadržaj (ai_content) za postojeće postove koji ga nemaju"
+          title="Regeneriraj automatski sadržaj (ai_content) za postojeće postove koji ga nemaju"
         >
           {regenStatus?.loading ? (
             <><Loader2 className="w-4 h-4 animate-spin" />Regeneriram...</>
           ) : (
-            <><RefreshCw className="w-4 h-4" />Regen AI sadržaj (30)
+            <><RefreshCw className="w-4 h-4" />Regeneriraj sadržaj (30)
             </>
           )}
         </button>
@@ -434,7 +434,7 @@ export function ScraperSourcesList({ initialLogs }: ScraperSourcesListProps) {
                       )}
                       {status.result.itemsRejectedByAi !== undefined && status.result.itemsRejectedByAi > 0 && (
                         <div className="mt-2 text-xs text-purple-700">
-                          AI odbio: {status.result.itemsRejectedByAi} stavki
+                          Automatski odbijeno: {status.result.itemsRejectedByAi} stavki
                           {status.result.aiRejectReasons && status.result.aiRejectReasons.length > 0 && (
                             <ul className="mt-1 ml-3 list-disc text-purple-600">
                               {status.result.aiRejectReasons.map((r, i) => (

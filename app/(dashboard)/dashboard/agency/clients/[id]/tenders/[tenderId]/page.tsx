@@ -240,7 +240,7 @@ export default async function AgencyClientTenderDetailPage({
                 <Sparkles className="size-5 text-blue-500" />
                 Opis predmeta nabavke
               </h3>
-              <p className="mb-4 text-xs font-medium text-blue-600">AI generiran na osnovu dostupnih podataka</p>
+              <p className="mb-4 text-xs font-medium text-blue-600">Generirano na osnovu dostupnih podataka</p>
               <p className="text-sm leading-relaxed text-slate-700">{aiDescription}</p>
             </div>
           ) : (

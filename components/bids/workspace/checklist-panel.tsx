@@ -356,7 +356,7 @@ export function ChecklistPanel({ bidId, items, vaultDocuments, onViewPage }: Che
             type="button"
             variant="outline"
             onClick={openFinishFlow}
-            className="rounded-xl border-slate-200 bg-slate-950 font-bold text-white hover:bg-slate-800"
+            className="rounded-xl border-blue-600 bg-blue-600 font-bold text-white hover:bg-blue-700"
           >
             Završi pripremu
             <ChevronRight className="ml-2 size-4" />
@@ -691,7 +691,7 @@ export function ChecklistPanel({ bidId, items, vaultDocuments, onViewPage }: Che
                   firstAttentionRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
                 });
               }}
-              className="rounded-xl bg-slate-950 font-semibold text-white hover:bg-slate-800"
+              className="rounded-xl bg-blue-600 font-semibold text-white hover:bg-blue-700"
             >
               Vrati se na pripremu
             </Button>
@@ -724,7 +724,7 @@ export function ChecklistPanel({ bidId, items, vaultDocuments, onViewPage }: Che
             <Button
               type="button"
               onClick={handleDownloadPackage}
-              className="rounded-xl bg-slate-950 font-semibold text-white hover:bg-slate-800"
+              className="rounded-xl bg-blue-600 font-semibold text-white hover:bg-blue-700"
             >
               Preuzmi
             </Button>

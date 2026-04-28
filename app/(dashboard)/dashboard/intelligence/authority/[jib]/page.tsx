@@ -33,6 +33,17 @@ const DOC_TYPE_LABELS: Record<string, string> = {
   "Ostalo": "Ostalo"
 };
 
+function median(values: number[]): number | null {
+  const sorted = values.filter((value) => Number.isFinite(value) && value > 0).sort((a, b) => a - b);
+  if (sorted.length === 0) return null;
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
+}
+
+function share(count: number, total: number): number | null {
+  return total > 0 ? Math.round((count / total) * 100) : null;
+}
+
 export default async function AuthorityProfilePage({
   params,
 }: {
@@ -58,21 +69,17 @@ export default async function AuthorityProfilePage({
   const authorityName = authority?.name ?? `Naručilac ${jib}`;
 
   // Tenderi
-  const { data: tenders } = await supabase
+  const { count: totalTenderCount } = await supabase
     .from("tenders")
-    .select("id, estimated_value")
+    .select("id", { count: "exact", head: true })
     .eq("contracting_authority_jib", jib);
 
-  const totalTenders = tenders?.length ?? 0;
-  const totalValue = (tenders ?? []).reduce(
-    (sum, t) => sum + (Number(t.estimated_value) || 0),
-    0
-  );
+  const totalTenders = totalTenderCount ?? 0;
 
   // Odluke
   const { data: awards } = await supabase
     .from("award_decisions")
-    .select("winner_name, winner_jib, winning_price")
+    .select("winner_name, winner_jib, winning_price, total_bidders_count, discount_pct, award_date, contract_type")
     .eq("contracting_authority_jib", jib)
     .not("winner_jib", "is", null);
 
@@ -88,6 +95,24 @@ export default async function AuthorityProfilePage({
     else winnerMap.set(key, { name: a.winner_name ?? key, jib: key, wins: 1, total_value: price });
   }
   const topWinners = [...winnerMap.values()].sort((a, b) => b.wins - a.wins).slice(0, 10);
+  const awardCount = awards?.length ?? 0;
+  const totalValue = (awards ?? []).reduce((sum, award) => sum + (Number(award.winning_price) || 0), 0);
+  const topWinner = topWinners[0] ?? null;
+  const topWinnerShare = topWinner ? share(topWinner.wins, awardCount) : null;
+  const priceSamples = (awards ?? []).map((award) => Number(award.winning_price)).filter((value) => value > 0);
+  const medianAwardValue = median(priceSamples);
+  const bidderSamples = (awards ?? [])
+    .map((award) => Number(award.total_bidders_count))
+    .filter((value) => Number.isFinite(value) && value > 0);
+  const avgBidders = bidderSamples.length > 0
+    ? bidderSamples.reduce((sum, value) => sum + value, 0) / bidderSamples.length
+    : null;
+  const discountSamples = (awards ?? [])
+    .map((award) => Number(award.discount_pct))
+    .filter((value) => Number.isFinite(value) && value > 0);
+  const avgDiscount = discountSamples.length > 0
+    ? discountSamples.reduce((sum, value) => sum + value, 0) / discountSamples.length
+    : null;
 
   // Tipični zahtjevi
   const { data: patterns } = await supabase
@@ -130,6 +155,41 @@ export default async function AuthorityProfilePage({
     avg_discount_pct: number | null;
     top_cpv_codes: string[] | null;
   } | null;
+
+  const authorityConclusions = [
+    {
+      title: topWinnerShare !== null && topWinnerShare >= 35 ? "Koncentrisana dodjela" : "Otvoreniji obrazac dodjele",
+      value: topWinnerShare !== null && topWinner ? `${topWinnerShare}% kod ${topWinner.name}` : "Nema dovoljno pobjednika",
+      body: topWinnerShare !== null && topWinnerShare >= 35
+        ? "Jedan dobavljac uzima veliki dio poznatih dodjela. Prije ulaska provjerite da li imate jasnu diferencijaciju ili bolju cijenu."
+        : "Poznate dodjele nisu vezane za jednog dominantnog dobavljaca, pa je prostor za nove ponude realniji.",
+      tone: "border-blue-100 bg-blue-50 text-blue-800",
+    },
+    {
+      title: "Cjenovni kontekst",
+      value: medianAwardValue !== null ? formatCurrencyKM(medianAwardValue) : "Niska pouzdanost",
+      body: priceSamples.length >= 5
+        ? `Medijan poznatih pobjednickih cijena je izracunat iz ${priceSamples.length} dodjela. Koristite ga kao okvir, ne kao tacnu procjenu budzeta.`
+        : "Premalo poznatih cijena kod ovog narucioca. Cijenu osloniti na slicne CPV dodjele i vlastitu kalkulaciju.",
+      tone: "border-emerald-100 bg-emerald-50 text-emerald-800",
+    },
+    {
+      title: "Konkurencija",
+      value: avgBidders !== null ? `${avgBidders.toFixed(1)} ponudjaca` : `${winnerMap.size} poznatih pobjednika`,
+      body: avgBidders !== null
+        ? `Broj ponudjaca je zasnovan na ${bidderSamples.length} dodjela gdje je taj podatak objavljen.`
+        : "Broj ponudjaca nije dovoljno popunjen, pa sistem koristi sirinu poznatih pobjednika kao indirektan signal.",
+      tone: "border-amber-100 bg-amber-50 text-amber-800",
+    },
+    {
+      title: "Akcija",
+      value: (activeTenders ?? []).length > 0 ? `${(activeTenders ?? []).length} aktivnih tendera` : "Pratiti naredne objave",
+      body: (activeTenders ?? []).length > 0
+        ? "Postoje otvoreni rokovi kod ovog narucioca. Otvorite aktivne tendere i odmah provjerite uskladjenost, rizik i potrebne dokumente."
+        : "Nema otvorenih rokova, ali pracenje ovog narucioca je korisno ako se pojavljuje u vasim CPV kategorijama.",
+      tone: "border-slate-200 bg-white text-slate-800",
+    },
+  ];
 
   return (
     <div className="space-y-8 max-w-[1200px]">
@@ -181,17 +241,17 @@ export default async function AuthorityProfilePage({
         </div>
         <div className="rounded-[1.5rem] border border-slate-100 bg-white p-6 shadow-sm flex flex-col justify-between group hover:border-emerald-200 transition-colors">
           <div className="flex items-center justify-between mb-4">
-            <p className="text-sm font-bold text-slate-500 uppercase tracking-wide">Ukupna vrijednost</p>
+            <p className="text-sm font-bold text-slate-500 uppercase tracking-wide">Vrijednost dodjela</p>
             <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
               <TrendingUp className="size-4" />
             </div>
           </div>
           <p className="font-heading text-4xl font-extrabold text-slate-900 tracking-tight">{formatCurrencyKM(totalValue)}</p>
         </div>
-        <div className="rounded-[1.5rem] border border-slate-100 bg-white p-6 shadow-sm flex flex-col justify-between group hover:border-purple-200 transition-colors">
+        <div className="rounded-[1.5rem] border border-slate-100 bg-white p-6 shadow-sm flex flex-col justify-between group hover:border-amber-200 transition-colors">
           <div className="flex items-center justify-between mb-4">
             <p className="text-sm font-bold text-slate-500 uppercase tracking-wide">Odluke o dodjeli</p>
-            <div className="size-8 rounded-lg bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-purple-50 group-hover:text-purple-500 transition-colors">
+            <div className="size-8 rounded-lg bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-amber-50 group-hover:text-amber-600 transition-colors">
               <Clock className="size-4" />
             </div>
           </div>
@@ -255,6 +315,36 @@ export default async function AuthorityProfilePage({
         </div>
       )}
 
+      <div className="rounded-[1.5rem] border border-slate-100 bg-white p-6 shadow-sm">
+        <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h2 className="font-heading text-lg font-bold text-slate-900">Zakljucci za odluku</h2>
+            <p className="mt-1 text-sm text-slate-500">
+              Kratak prevod dostupnih historijskih podataka u prakticne poteze za sljedecu ponudu.
+            </p>
+          </div>
+          {avgDiscount !== null ? (
+            <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-600">
+              Prosj. poznati popust {avgDiscount.toFixed(1)}%
+            </span>
+          ) : null}
+        </div>
+        <div className="grid gap-3 md:grid-cols-2">
+          {authorityConclusions.map((item) => (
+            <div key={item.title} className={`rounded-2xl border p-4 ${item.tone}`}>
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-sm font-bold">{item.title}</p>
+                  <p className="mt-1 text-lg font-heading font-extrabold">{item.value}</p>
+                </div>
+                <CheckCircle className="mt-1 size-4 shrink-0 opacity-70" />
+              </div>
+              <p className="mt-3 text-sm leading-6 opacity-90">{item.body}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
       <div className="grid gap-8 lg:grid-cols-2">
         {/* Najčešći pobjednici */}
         <div className="rounded-[1.5rem] border border-slate-100 bg-white shadow-sm overflow-hidden flex flex-col">
@@ -302,7 +392,7 @@ export default async function AuthorityProfilePage({
           <div className="p-0 flex-1">
             {typicalRequirements.length === 0 ? (
               <div className="py-12 text-center text-slate-500">
-                <p className="text-sm font-medium">Nema AI analiza za ovog naručioca.</p>
+                <p className="text-sm font-medium">Nema automatskih analiza za ovog naručioca.</p>
               </div>
             ) : (
               <div className="divide-y divide-slate-50">

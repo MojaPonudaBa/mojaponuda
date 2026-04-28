@@ -1,4 +1,3 @@
-import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getOpenAIClient } from "@/lib/openai";
 import {
@@ -12,6 +11,7 @@ import {
   parseCompanyProfile,
 } from "@/lib/company-profile";
 import { expandKeywordVariants } from "@/lib/cyrillic-transliterate";
+import { timed } from "@/lib/performance-log";
 import type { Database } from "@/types/database";
 
 // ── Constants ─────────────────────────────────────────────────────────
@@ -271,6 +271,11 @@ export interface GetRecommendedOptions {
   nowIso?: string;
   /** When true, return all scored items regardless of minScore (for admin/debug). */
   includeHidden?: boolean;
+  /**
+   * When true, missing relevance rows are scored with the model inline.
+   * Page navigation should keep this false and rely on the background cache.
+   */
+  scoreMissing?: boolean;
 }
 
 interface CompanyRow {
@@ -279,6 +284,16 @@ interface CompanyRow {
   profile_text: string | null;
   profile_embedding: unknown;
 }
+
+type SupabaseMaybeResult<T> = {
+  data: T | null;
+  error: { message?: string } | null;
+};
+
+type SupabaseListResult<T> = {
+  data: T[] | null;
+  error: { message?: string } | null;
+};
 
 export async function getRecommendedTenders<T extends { id: string } = Record<string, unknown> & { id: string }>(
   supabase: SupabaseClient<Database>,
@@ -291,11 +306,16 @@ export async function getRecommendedTenders<T extends { id: string } = Record<st
 
   // Load company
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: company, error: companyErr } = await (supabase as any)
-    .from("companies")
-    .select("id, industry, profile_text, profile_embedding")
-    .eq("id", companyId)
-    .maybeSingle();
+  const { data: company, error: companyErr } = await timed<SupabaseMaybeResult<CompanyRow>>(
+    "recommended.company",
+    () =>
+      (supabase as any)
+        .from("companies")
+        .select("id, industry, profile_text, profile_embedding")
+        .eq("id", companyId)
+        .maybeSingle(),
+    { meta: { companyId } },
+  );
 
   if (companyErr || !company) return [];
   const row = company as CompanyRow;
@@ -309,12 +329,14 @@ export async function getRecommendedTenders<T extends { id: string } = Record<st
   //       happens to push those tenders below top-K.
   // The LLM gate >=6 later filters false positives from (b), so widening
   // recall here is safe and dramatically reduces missed matches.
-  const [embeddingCandidates, keywordCandidateIds] = await Promise.all([
-    retrieveEmbeddingCandidates(supabase, embedding as number[] | string, {
-      topK,
-      nowIso: options.nowIso,
-    }),
-    (async () => {
+  const [embeddingCandidates, keywordCandidateIds] = await timed(
+    "recommended.retrieve_candidates",
+    () => Promise.all([
+      retrieveEmbeddingCandidates(supabase, embedding as number[] | string, {
+        topK,
+        nowIso: options.nowIso,
+      }),
+      (async () => {
       const parsed = parseCompanyProfile(row.industry);
       const keywords = buildRetrievalKeywordSeeds(parsed);
       const cpvPrefixes = buildBroadRetrievalCpvPrefixes(parsed);
@@ -323,8 +345,10 @@ export async function getRecommendedTenders<T extends { id: string } = Record<st
         nowIso: options.nowIso,
         limit: KEYWORD_RETRIEVAL_LIMIT,
       });
-    })(),
-  ]);
+      })(),
+    ]),
+    { meta: { companyId, topK } },
+  );
 
   if (embeddingCandidates.length === 0 && keywordCandidateIds.length === 0) return [];
 
@@ -341,11 +365,20 @@ export async function getRecommendedTenders<T extends { id: string } = Record<st
   for (let i = 0; i < candidateIds.length; i += IN_CHUNK_SIZE) {
     const slice = candidateIds.slice(i, i + IN_CHUNK_SIZE);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: existingRows } = await (supabase as any)
-      .from("tender_relevance")
-      .select("tender_id, score, confidence")
-      .eq("company_id", companyId)
-      .in("tender_id", slice);
+    const { data: existingRows } = await timed<SupabaseListResult<{
+      tender_id: string;
+      score: number;
+      confidence: number;
+    }>>(
+      "recommended.relevance_cache",
+      () =>
+        (supabase as any)
+          .from("tender_relevance")
+          .select("tender_id, score, confidence")
+          .eq("company_id", companyId)
+          .in("tender_id", slice),
+      { thresholdMs: 250, meta: { companyId, count: slice.length } },
+    );
     for (const r of (existingRows ?? []) as Array<{
       tender_id: string;
       score: number;
@@ -358,7 +391,7 @@ export async function getRecommendedTenders<T extends { id: string } = Record<st
   const missingIds = candidateIds.filter((id) => !cached.has(id));
 
   // Step B: LLM reranking for missing pairs (batched 7, max 10 parallel)
-  if (missingIds.length > 0) {
+  if (missingIds.length > 0 && options.scoreMissing === true) {
     const rowsById = new Map<
       string,
       { id: string; title: string | null; raw_description: string | null; cpv_code: string | null }
@@ -366,10 +399,20 @@ export async function getRecommendedTenders<T extends { id: string } = Record<st
     for (let i = 0; i < missingIds.length; i += IN_CHUNK_SIZE) {
       const slice = missingIds.slice(i, i + IN_CHUNK_SIZE);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: tenderRows } = await (supabase as any)
-        .from("tenders")
-        .select("id, title, raw_description, cpv_code, contract_type, contracting_authority")
-        .in("id", slice);
+      const { data: tenderRows } = await timed<SupabaseListResult<{
+        id: string;
+        title: string | null;
+        raw_description: string | null;
+        cpv_code: string | null;
+      }>>(
+        "recommended.load_missing_tenders",
+        () =>
+          (supabase as any)
+            .from("tenders")
+            .select("id, title, raw_description, cpv_code, contract_type, contracting_authority")
+            .in("id", slice),
+        { thresholdMs: 250, meta: { count: slice.length } },
+      );
       for (const r of (tenderRows ?? []) as Array<{
         id: string;
         title: string | null;
@@ -406,11 +449,16 @@ export async function getRecommendedTenders<T extends { id: string } = Record<st
       if (batch.length > 0) batches.push(batch);
     }
 
-    const results = await runPool(
-      batches,
-      LLM_MAX_PARALLEL,
-      (batch) => scoreBatch(profileText, industry, batch),
-      LLM_BATCH_DELAY_MS
+    const results = await timed(
+      "recommended.llm_score_missing",
+      () =>
+        runPool(
+          batches,
+          LLM_MAX_PARALLEL,
+          (batch) => scoreBatch(profileText, industry, batch),
+          LLM_BATCH_DELAY_MS,
+        ),
+      { thresholdMs: 1, meta: { companyId, missing: missingIds.length, batches: batches.length } },
     );
 
     const upserts: Array<{
@@ -447,19 +495,29 @@ export async function getRecommendedTenders<T extends { id: string } = Record<st
   }
 
   // Final: load tender rows for all scored candidates (chunked)
+  const scoredIds = candidateIds.filter((id) => {
+    const entry = cached.get(id);
+    return entry && entry.score >= minScore;
+  });
+
   const tenderMap = new Map<string, T>();
-  for (let i = 0; i < candidateIds.length; i += IN_CHUNK_SIZE) {
-    const slice = candidateIds.slice(i, i + IN_CHUNK_SIZE);
+  for (let i = 0; i < scoredIds.length; i += IN_CHUNK_SIZE) {
+    const slice = scoredIds.slice(i, i + IN_CHUNK_SIZE);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: allTenderRows } = await (supabase as any)
-      .from("tenders")
-      .select("*")
-      .in("id", slice);
+    const { data: allTenderRows } = await timed<SupabaseListResult<T>>(
+      "recommended.load_scored_tenders",
+      () =>
+        (supabase as any)
+          .from("tenders")
+          .select("*")
+          .in("id", slice),
+      { thresholdMs: 250, meta: { count: slice.length } },
+    );
     for (const r of ((allTenderRows ?? []) as T[])) tenderMap.set(r.id, r);
   }
 
   const scored: Array<ScoredTender<T>> = [];
-  for (const id of candidateIds) {
+  for (const id of scoredIds) {
     const entry = cached.get(id);
     const tender = tenderMap.get(id);
     if (!entry || !tender) continue;

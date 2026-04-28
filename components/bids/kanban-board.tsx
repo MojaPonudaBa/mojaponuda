@@ -3,8 +3,8 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { updateBidStatusAction } from "@/app/actions/bids";
-
-type BidStatus = "draft" | "in_review" | "submitted" | "won" | "lost";
+import { BID_STATUS_LABELS } from "@/lib/bids/constants";
+import type { BidStatus } from "@/types/database";
 
 export interface KanbanBid {
   id: string;
@@ -15,6 +15,10 @@ export interface KanbanBid {
   bid_value: number | null;
   estimated_value: number | null;
   deadline: string | null;
+  priority_score?: number | null;
+  win_probability?: number | null;
+  estimated_effort?: string | null;
+  recommendation?: string | null;
 }
 
 export interface KanbanColumn {
@@ -25,11 +29,11 @@ export interface KanbanColumn {
 }
 
 export const KANBAN_COLUMNS: KanbanColumn[] = [
-  { status: "draft",     label: "Nacrt",      accent: "bg-slate-50 border-slate-200",     dotClass: "bg-slate-400" },
-  { status: "in_review", label: "U pripremi", accent: "bg-amber-50 border-amber-200",     dotClass: "bg-amber-500" },
-  { status: "submitted", label: "Predano",    accent: "bg-blue-50 border-blue-200",       dotClass: "bg-blue-500" },
-  { status: "won",       label: "Dobijeno",   accent: "bg-emerald-50 border-emerald-200", dotClass: "bg-emerald-500" },
-  { status: "lost",      label: "Izgubljeno", accent: "bg-rose-50 border-rose-200",       dotClass: "bg-rose-500" },
+  { status: "draft",     label: BID_STATUS_LABELS.draft,     accent: "bg-slate-50 border-slate-200",     dotClass: "bg-slate-400" },
+  { status: "in_review", label: BID_STATUS_LABELS.in_review, accent: "bg-amber-50 border-amber-200",     dotClass: "bg-amber-500" },
+  { status: "submitted", label: BID_STATUS_LABELS.submitted, accent: "bg-blue-50 border-blue-200",       dotClass: "bg-blue-500" },
+  { status: "won",       label: BID_STATUS_LABELS.won,       accent: "bg-emerald-50 border-emerald-200", dotClass: "bg-emerald-500" },
+  { status: "lost",      label: BID_STATUS_LABELS.lost,      accent: "bg-rose-50 border-rose-200",       dotClass: "bg-rose-500" },
 ];
 
 function fmtMoney(v: number | null): string {
@@ -98,6 +102,12 @@ export function KanbanBoard({ initialBids }: { initialBids: KanbanBid[] }) {
   const totalActive = bids
     .filter((b) => b.status === "draft" || b.status === "in_review" || b.status === "submitted")
     .reduce((s, b) => s + (b.bid_value ?? b.estimated_value ?? 0), 0);
+  const weightedActive = bids
+    .filter((b) => b.status === "draft" || b.status === "in_review" || b.status === "submitted")
+    .reduce((s, b) => s + (b.bid_value ?? b.estimated_value ?? 0) * ((b.win_probability ?? 0) / 100), 0);
+  const avgPriority = bids.length > 0
+    ? Math.round(bids.reduce((s, b) => s + (b.priority_score ?? 0), 0) / bids.length)
+    : 0;
 
   return (
     <div className="space-y-6">
@@ -108,6 +118,20 @@ export function KanbanBoard({ initialBids }: { initialBids: KanbanBid[] }) {
           <div className="mt-1 text-2xl font-heading font-bold tracking-tight text-slate-900">{fmtMoney(totalActive)}</div>
           <div className="mt-1 text-xs text-slate-500">
             Nacrt + U pripremi + Predano
+          </div>
+        </div>
+        <div className="col-span-2 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:col-span-2">
+          <div className="text-xs font-medium uppercase tracking-wide text-slate-500">Ponderisana vrijednost</div>
+          <div className="mt-1 text-2xl font-heading font-bold tracking-tight text-slate-900">{fmtMoney(weightedActive)}</div>
+          <div className="mt-1 text-xs text-slate-500">
+            Vrijednost × šansa za pobjedu
+          </div>
+        </div>
+        <div className="col-span-2 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:col-span-2">
+          <div className="text-xs font-medium uppercase tracking-wide text-slate-500">Prosječni prioritet</div>
+          <div className="mt-1 text-2xl font-heading font-bold tracking-tight text-slate-900">{avgPriority}/100</div>
+          <div className="mt-1 text-xs text-slate-500">
+            Šansa + vrijednost + rizik
           </div>
         </div>
         {KANBAN_COLUMNS.map((c) => (
@@ -192,6 +216,17 @@ export function KanbanBoard({ initialBids }: { initialBids: KanbanBid[] }) {
                             {b.deadline ? fmtDate(b.deadline) : "—"}
                             {d !== null && d >= 0 && d <= 7 && ` · ${d}d`}
                             {d !== null && d < 0 && " · istekao"}
+                          </span>
+                        </div>
+                        <div className="mt-3 grid grid-cols-3 gap-1.5 text-[10px]">
+                          <span className="rounded-lg bg-blue-50 px-2 py-1 font-semibold text-blue-700">
+                            P {b.priority_score ?? "—"}
+                          </span>
+                          <span className="rounded-lg bg-emerald-50 px-2 py-1 font-semibold text-emerald-700">
+                            Šansa {b.win_probability !== null && b.win_probability !== undefined ? `${b.win_probability}%` : "—"}
+                          </span>
+                          <span className="truncate rounded-lg bg-slate-50 px-2 py-1 font-semibold text-slate-600" title={b.estimated_effort ?? undefined}>
+                            {b.recommendation ?? "Plan"}
                           </span>
                         </div>
                       </Link>

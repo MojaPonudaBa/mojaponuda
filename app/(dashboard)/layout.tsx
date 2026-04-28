@@ -49,11 +49,7 @@ export default async function DashboardLayout({
   }
 
   return (
-    <div className="relative min-h-screen overflow-x-hidden bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.09),transparent_28%),radial-gradient(circle_at_top_right,rgba(14,165,233,0.08),transparent_24%),linear-gradient(180deg,#f8fbff_0%,#f3f7fb_42%,#eef3f8_100%)]">
-      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,rgba(148,163,184,0.16)_1px,transparent_1px),linear-gradient(to_bottom,rgba(148,163,184,0.16)_1px,transparent_1px)] bg-[size:88px_88px] [mask-image:radial-gradient(circle_at_top_left,#000_18%,transparent_78%)]" />
-      <div className="pointer-events-none absolute -right-24 top-0 h-[280px] w-[280px] rounded-full bg-blue-500/10 blur-[96px] sm:h-[420px] sm:w-[420px] sm:blur-[120px]" />
-      <div className="pointer-events-none absolute left-0 top-20 h-[220px] w-[220px] rounded-full bg-sky-300/10 blur-[88px] sm:left-[220px] sm:top-24 sm:h-[320px] sm:w-[320px] sm:blur-[120px]" />
-      <div className="pointer-events-none absolute bottom-0 right-1/4 h-[180px] w-[180px] rounded-full bg-slate-900/5 blur-[88px] sm:h-[260px] sm:w-[260px] sm:blur-[120px]" />
+    <div className="min-h-screen overflow-x-hidden bg-[#f7f9fc]">
       <DashboardSidebar
         userEmail={user.email ?? ""}
         companyName={company?.name}
@@ -61,8 +57,8 @@ export default async function DashboardLayout({
         isAgency={isAgency}
         agencyClients={agencyClients}
       />
-      <main className="relative z-10 min-h-screen min-w-0 pt-[4.75rem] lg:pl-[244px] lg:pt-0">
-        <div className="mx-auto min-h-screen w-full max-w-[1760px] px-3 py-4 sm:px-5 sm:py-5 lg:px-8 lg:py-8 xl:px-12 xl:py-10 2xl:px-14">
+      <main className="min-h-screen min-w-0 pt-[4.75rem] lg:pl-[244px] lg:pt-0">
+        <div className="mx-auto min-h-screen w-full max-w-[1720px] px-4 py-5 sm:px-6 lg:px-7 xl:px-8">
           {children}
         </div>
       </main>

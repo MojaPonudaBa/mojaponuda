@@ -1,20 +1,25 @@
 import Link from "next/link";
-import type { Tender } from "@/types/database";
 import {
-  ArrowUpRight,
+  ArrowRight,
   Banknote,
   Building2,
   Clock3,
   FileText,
   Lock,
+  MapPin,
   Users,
 } from "lucide-react";
+import type { Tender } from "@/types/database";
+import type { TenderDecisionInsight } from "@/lib/tender-decision";
+import { TenderDecisionMetrics } from "@/components/tenders/tender-decision-metrics";
+import { cn } from "@/lib/utils";
 
 interface TenderCardProps {
   tender: Tender;
   locked?: boolean;
   clientNames?: string[];
   href?: string;
+  insight?: TenderDecisionInsight | null;
 }
 
 function formatDate(dateStr: string | null): string {
@@ -28,102 +33,84 @@ function formatDate(dateStr: string | null): string {
 
 function formatValue(value: number | null): string {
   if (value === null || value === undefined) return "Vrijednost nije objavljena";
-  return (
-    new Intl.NumberFormat("bs-BA", {
-      style: "decimal",
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(value) + " KM"
-  );
+  return `${new Intl.NumberFormat("bs-BA", { maximumFractionDigits: 0 }).format(value)} KM`;
 }
 
-function getDeadlineStatus(deadline: string | null): {
-  text: string;
-  cardClass: string;
-  accentClass: string;
-  textClass: string;
+function getDeadlineMeta(deadline: string | null): {
+  label: string;
+  className: string;
 } {
-  const baseCardClass =
-    "border-slate-800/90 bg-[radial-gradient(circle_at_top_right,rgba(59,130,246,0.08),transparent_28%),linear-gradient(180deg,#0f172a_0%,#111827_100%)] shadow-[0_28px_68px_-42px_rgba(2,6,23,0.92)]";
-
   if (!deadline) {
-    return {
-      text: "Rok nije objavljen",
-      cardClass: baseCardClass,
-      accentClass: "bg-slate-500",
-      textClass: "text-slate-300",
-    };
+    return { label: "Rok nije objavljen", className: "text-slate-500" };
   }
 
-  const diffDays = Math.ceil((new Date(deadline).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-
-  if (diffDays <= 3) {
-    return {
-      text: diffDays <= 0 ? "Rok je danas" : `Još ${diffDays} dana`,
-      cardClass: baseCardClass,
-      accentClass: "bg-rose-500",
-      textClass: "text-rose-200",
-    };
-  }
-
-  if (diffDays <= 10) {
-    return {
-      text: `Još ${diffDays} dana`,
-      cardClass: baseCardClass,
-      accentClass: "bg-amber-400",
-      textClass: "text-amber-100",
-    };
-  }
-
-  return {
-    text: formatDate(deadline),
-    cardClass: baseCardClass,
-    accentClass: "bg-emerald-400",
-    textClass: "text-emerald-200",
-  };
+  const days = Math.ceil((new Date(deadline).getTime() - Date.now()) / 86_400_000);
+  if (days < 0) return { label: "Rok istekao", className: "text-slate-400 line-through" };
+  if (days === 0) return { label: "Rok danas", className: "text-rose-600 font-bold" };
+  if (days <= 7) return { label: `${days} dana`, className: "text-rose-600 font-bold" };
+  if (days <= 21) return { label: `${days} dana`, className: "text-amber-600 font-bold" };
+  return { label: formatDate(deadline), className: "text-slate-700" };
 }
 
-const TYPE_COLORS: Record<string, string> = {
-  Robe: "border-sky-500/30 bg-sky-500/12 text-sky-100",
-  Usluge: "border-fuchsia-500/30 bg-fuchsia-500/12 text-fuchsia-100",
-  Radovi: "border-amber-500/30 bg-amber-500/12 text-amber-100",
-};
+function getRiskClass(tone: "critical" | "warning" | "info") {
+  if (tone === "critical") return "border-rose-200 bg-rose-50 text-rose-700";
+  if (tone === "warning") return "border-amber-200 bg-amber-50 text-amber-700";
+  return "border-blue-200 bg-blue-50 text-blue-700";
+}
 
-export function TenderCard({ tender, locked = false, clientNames, href }: TenderCardProps) {
-  const deadline = getDeadlineStatus(tender.deadline);
-  const typeColor = tender.contract_type
-    ? TYPE_COLORS[tender.contract_type] ?? "border-slate-700 bg-slate-800/80 text-slate-200"
-    : "border-slate-700 bg-slate-800/80 text-slate-200";
+function decisionActionText(insight: TenderDecisionInsight): string {
+  if (insight.recommendation === "bid") {
+    return "Započni pripremu: ovo je tender koji zaslužuje radni prostor.";
+  }
+  if (insight.recommendation === "skip") {
+    return "Preskoči za sada: zadrži ga kao tržišni signal, ne kao prioritet.";
+  }
+  if (insight.riskLevel === "high") {
+    return "Provjeri rizike prije ulaska: uslovi, rok i konkurencija su ključni.";
+  }
+  return "Provjeri pa odluči: ako nema blokera, prebaci u tok ponuda.";
+}
+
+export function TenderCard({
+  tender,
+  locked = false,
+  clientNames,
+  href,
+  insight,
+}: TenderCardProps) {
+  const deadline = getDeadlineMeta(tender.deadline);
   const resolvedHref = href ?? (locked ? "/dashboard/subscription" : `/dashboard/tenders/${tender.id}`);
 
   return (
     <Link href={resolvedHref} prefetch className="group block">
-      <article
-        className={`relative overflow-hidden rounded-2xl border p-5 text-white transition-all duration-200 hover:-translate-y-0.5 hover:brightness-[1.04] ${deadline.cardClass}`}
-      >
-        <div className={`absolute inset-y-0 left-0 w-1.5 ${deadline.accentClass}`} />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.06),transparent_34%)] opacity-80" />
-        <div className="flex flex-col gap-5 pl-3 lg:flex-row lg:items-start lg:justify-between">
+      <article className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm transition-all duration-150 hover:border-blue-200 hover:shadow-md">
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
           <div className="min-w-0 flex-1">
-            <div className="flex items-start gap-4">
-              <div className="hidden size-11 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/[0.07] text-slate-100 sm:flex">
+            <div className="flex items-start gap-3">
+              <div className="hidden size-10 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600 sm:flex">
                 <FileText className="size-5" />
               </div>
               <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-start gap-2">
-                  <span className={`inline-flex shrink-0 items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] ${typeColor}`}>
-                    {tender.contract_type ?? "Ostalo"}
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="inline-flex items-center rounded-md border border-blue-200 bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-700">
+                    {tender.contract_type ?? "Tender"}
                   </span>
-                  <h3 className={`min-w-[220px] flex-1 line-clamp-2 text-lg font-semibold leading-7 sm:text-[1.15rem] ${locked ? "blur-sm select-none" : "text-white"}`}>
-                    {locked ? `Tender #${tender.id.slice(0, 4)} - ${tender.contract_type ?? "Javna nabavka"}` : tender.title}
-                  </h3>
+                  {tender.procedure_type ? (
+                    <span className="inline-flex items-center rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs font-medium text-slate-600">
+                      {tender.procedure_type}
+                    </span>
+                  ) : null}
                 </div>
+                <h3 className={cn("mt-2 line-clamp-2 text-base font-bold leading-6 text-slate-950 sm:text-lg", locked && "select-none blur-sm")}>
+                  {locked ? `Tender #${tender.id.slice(0, 4)} - ${tender.contract_type ?? "Javna nabavka"}` : tender.title}
+                </h3>
+
                 {clientNames?.length ? (
                   <div className="mt-2 flex flex-wrap items-center gap-2">
                     {clientNames.map((name) => (
                       <span
                         key={name}
-                        className="inline-flex max-w-full items-center gap-1 rounded-full border border-violet-500/30 bg-violet-500/12 px-2.5 py-1 text-[11px] font-semibold text-violet-100"
+                        className="inline-flex max-w-full items-center gap-1 rounded-md border border-blue-200 bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-700"
                       >
                         <Users className="size-3 shrink-0" />
                         <span className="truncate">{name}</span>
@@ -131,35 +118,63 @@ export function TenderCard({ tender, locked = false, clientNames, href }: Tender
                     ))}
                   </div>
                 ) : null}
-                <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-sm text-slate-300">
-                  <span className={`inline-flex max-w-full items-center gap-2 ${locked ? "blur-sm select-none" : ""}`}>
-                    <Building2 className="size-4 shrink-0 text-slate-500" />
+
+                <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-sm text-slate-600">
+                  <span className={cn("inline-flex max-w-full items-center gap-1.5", locked && "select-none blur-sm")}>
+                    <Building2 className="size-4 shrink-0 text-slate-400" />
                     <span className="truncate" title={tender.contracting_authority ?? ""}>
-                      {locked ? "Javni naručilac" : (tender.contracting_authority ?? "Nepoznat naručilac")}
+                      {locked ? "Javni naručilac" : tender.contracting_authority ?? "Nepoznat naručilac"}
                     </span>
                   </span>
-                  <span className={`inline-flex items-center gap-2 font-medium ${deadline.textClass}`}>
-                    <Clock3 className="size-4 shrink-0" />
-                    {deadline.text}
+                  <span className="inline-flex items-center gap-1.5">
+                    <Clock3 className="size-4 shrink-0 text-slate-400" />
+                    <span className={deadline.className}>{deadline.label}</span>
                   </span>
-                  <span className={`inline-flex items-center gap-2 font-semibold ${locked ? "blur-sm select-none text-slate-400" : "text-emerald-200"}`}>
-                    <Banknote className="size-4 shrink-0" />
+                  <span className={cn("inline-flex items-center gap-1.5 font-semibold text-slate-800", locked && "select-none blur-sm")}>
+                    <Banknote className="size-4 shrink-0 text-slate-400" />
                     {locked ? "XXX.XXX KM" : formatValue(tender.estimated_value)}
                   </span>
+                  {tender.cpv_code ? (
+                    <span className="inline-flex items-center gap-1.5 text-slate-500">
+                      <MapPin className="size-4 shrink-0 text-slate-400" />
+                      CPV {tender.cpv_code}
+                    </span>
+                  ) : null}
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="flex shrink-0 items-center justify-between gap-3 border-t border-white/10 pt-4 lg:min-w-[132px] lg:flex-col lg:items-end lg:justify-start lg:border-l lg:border-t-0 lg:pt-0 lg:pl-5">
-            <span className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-300">
-              Otvori detalje
+          <div className="flex shrink-0 items-center justify-between gap-3 border-t border-slate-100 pt-3 xl:min-w-[128px] xl:flex-col xl:items-end xl:border-l xl:border-t-0 xl:pl-4 xl:pt-0">
+            <span className="text-xs font-semibold uppercase text-slate-500">
+              Detalji
             </span>
-            <div className="flex size-10 items-center justify-center rounded-xl border border-white/10 bg-white/[0.07] text-slate-300 transition-colors group-hover:bg-white/10 group-hover:text-white">
-              {locked ? <Lock className="size-4" /> : <ArrowUpRight className="size-4" />}
-            </div>
+            <span className="flex size-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition-colors group-hover:border-blue-200 group-hover:bg-blue-50 group-hover:text-blue-700">
+              {locked ? <Lock className="size-4" /> : <ArrowRight className="size-4" />}
+            </span>
           </div>
         </div>
+
+        {insight && !locked ? (
+          <div className="mt-4 border-t border-slate-100 pt-4">
+            <TenderDecisionMetrics insight={insight} compact />
+            <div className="mt-3 flex flex-wrap gap-2">
+              {insight.riskIndicators.slice(0, 3).map((risk) => (
+                <span key={risk.label} className={cn("inline-flex rounded-md border px-2 py-0.5 text-xs font-semibold", getRiskClass(risk.tone))}>
+                  {risk.label}
+                </span>
+              ))}
+              {insight.keyReasons[0] ? (
+                <span className="inline-flex rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs font-medium text-slate-600">
+                  {insight.keyReasons[0]}
+                </span>
+              ) : null}
+            </div>
+            <div className="mt-3 rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-xs font-semibold leading-5 text-blue-800">
+              Šta uraditi: {decisionActionText(insight)}
+            </div>
+          </div>
+        ) : null}
       </article>
     </Link>
   );

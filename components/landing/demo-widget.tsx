@@ -73,7 +73,7 @@ export function DemoWidget() {
           <div className="size-3 rounded-full bg-emerald-400/50" />
         </div>
         <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-          AI Analiza Demo
+          Demo analize
         </div>
       </div>
 
@@ -206,10 +206,10 @@ export function DemoWidget() {
                   <h4 className="font-bold text-slate-900 text-sm">Šta Tendersistem radi za vas</h4>
                   <ul className="space-y-2">
                     {[
-                      { name: "Identifikacija svih potrebnih dokumenata", type: "AI" },
-                      { name: "Detekcija rizika diskvalifikacije", type: "AI" },
-                      { name: "Automatsko uparivanje s vašim Document Vaultom", type: "Auto" },
-                      { name: "Praćenje rokova i notifikacije", type: "Auto" },
+                      { name: "Identifikacija svih potrebnih dokumenata", type: "Automatski" },
+                      { name: "Detekcija rizika diskvalifikacije", type: "Automatski" },
+                      { name: "Automatsko uparivanje s vašim trezorom dokumenata", type: "Automatski" },
+                      { name: "Praćenje rokova i obavijesti", type: "Automatski" },
                     ].map((item, i) => (
                       <li key={i} className="flex items-center justify-between p-2 rounded-lg border border-slate-100 bg-white">
                         <div className="flex items-center gap-2">

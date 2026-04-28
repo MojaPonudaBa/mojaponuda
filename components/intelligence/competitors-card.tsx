@@ -52,7 +52,7 @@ export function CompetitorsCard({
                 <span className="text-sm font-heading font-bold text-slate-900">
                   {c.win_rate !== null ? `${c.win_rate}%` : `${Math.round((c.wins / Math.max(1, c.appearances)) * 100)}%`}
                 </span>
-                <span className="text-[10px] uppercase tracking-wide text-slate-500">win rate</span>
+                <span className="text-[10px] uppercase tracking-wide text-slate-500">stopa uspjeha</span>
               </div>
             </li>
           ))}

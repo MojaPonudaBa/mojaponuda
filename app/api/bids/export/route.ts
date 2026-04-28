@@ -10,19 +10,12 @@ import type {
 } from "@/types/database";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
+import { BID_STATUS_LABELS } from "@/lib/bids/constants";
 
 const STATUS_LABELS: Record<ChecklistStatus, string> = {
   missing: "Nedostaje",
   attached: "Prilozeno",
   confirmed: "Potvrdeno",
-};
-
-const BID_STATUS_LABELS: Record<string, string> = {
-  draft: "Draft",
-  in_review: "U pregledu",
-  submitted: "Predana",
-  won: "Pobijedeno",
-  lost: "Izgubljeno",
 };
 
 function formatDate(dateStr: string | null): string {

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { resolveBidAccess } from "@/lib/bids/access";
+import { BID_STATUSES } from "@/lib/bids/constants";
+import type { BidStatus } from "@/types/database";
 
 export async function PATCH(
   request: NextRequest,
@@ -24,7 +26,16 @@ export async function PATCH(
   const body = await request.json();
   const updates: Record<string, unknown> = {};
 
-  if (body.status !== undefined) updates.status = body.status;
+  if (body.status !== undefined) {
+    if (!BID_STATUSES.includes(body.status as BidStatus)) {
+      return NextResponse.json({ error: "Status ponude nije ispravan." }, { status: 400 });
+    }
+
+    updates.status = body.status;
+    if (body.status === "submitted") {
+      updates.submitted_at = new Date().toISOString();
+    }
+  }
   if (body.notes !== undefined) updates.notes = body.notes;
 
   if (Object.keys(updates).length === 0) {

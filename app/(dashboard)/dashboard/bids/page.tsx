@@ -48,7 +48,7 @@ function BidsPageFallback() {
   return (
     <div className="mx-auto max-w-[1200px] space-y-6">
       <section className="rounded-[2rem] border border-amber-200 bg-amber-50 p-6 text-slate-900 shadow-sm sm:p-8">
-        <h1 className="text-2xl font-heading font-bold tracking-tight">
+        <h1 className="text-2xl font-heading font-bold">
           Ponude trenutno nisu dostupne
         </h1>
           <p className="mt-2 max-w-2xl text-sm leading-7 text-slate-600 sm:text-base">
@@ -56,7 +56,7 @@ function BidsPageFallback() {
             trenutaka ili se vratite na početnu stranicu dok provjerimo podatke u pozadini.
           </p>
           <div className="mt-5">
-            <Button asChild className="rounded-xl bg-slate-950 text-white hover:bg-slate-800">
+            <Button asChild className="rounded-xl bg-blue-600 text-white hover:bg-blue-700">
               <Link href="/dashboard">Nazad na početnu</Link>
             </Button>
           </div>
@@ -68,21 +68,20 @@ function BidsPageFallback() {
 function AgencyBidsShell({ bids }: { bids: BidRow[] }) {
   return (
     <div className="mx-auto max-w-[1200px] space-y-6">
-      <section className="relative overflow-hidden rounded-[2rem] border border-slate-800 bg-[radial-gradient(circle_at_top_left,rgba(56,189,248,0.14),transparent_28%),radial-gradient(circle_at_top_right,rgba(59,130,246,0.14),transparent_30%),linear-gradient(180deg,#111827_0%,#0f172a_58%,#0b1120_100%)] p-6 text-white shadow-[0_35px_90px_-45px_rgba(2,6,23,0.92)] sm:p-8">
-        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,rgba(148,163,184,0.06)_1px,transparent_1px),linear-gradient(to_bottom,rgba(148,163,184,0.06)_1px,transparent_1px)] bg-[size:52px_52px] [mask-image:radial-gradient(circle_at_top_left,#000_15%,transparent_75%)]" />
-        <div className="relative flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+      <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+        <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <h1 className="text-3xl font-heading font-bold tracking-tight text-white sm:text-4xl">
+            <h1 className="text-3xl font-heading font-bold text-slate-950 sm:text-4xl">
               Ponude svih klijenata
             </h1>
-            <p className="mt-2 max-w-3xl text-sm leading-7 text-slate-300 sm:text-base">
+            <p className="mt-2 max-w-3xl text-sm leading-7 text-slate-500 sm:text-base">
               Sve ponude vasih klijenata na jednom mjestu, sa cistim status
               signalima i brzim akcijama bez guzve u tabeli.
             </p>
           </div>
           <Button
             asChild
-              className="h-11 rounded-xl bg-white px-6 font-bold text-slate-950 shadow-lg shadow-slate-950/20 transition-all hover:-translate-y-0.5 hover:bg-slate-100"
+              className="h-11 rounded-xl bg-blue-600 px-6 font-bold text-white shadow-sm transition-all hover:-translate-y-0.5 hover:bg-blue-700"
             >
               <Link href="/dashboard/agency">Odaberi klijenta za novu ponudu</Link>
             </Button>
@@ -106,14 +105,13 @@ function PersonalBidsShell({
 }) {
   return (
     <div className="mx-auto max-w-[1200px] space-y-6">
-      <section className="relative overflow-hidden rounded-[2rem] border border-slate-800 bg-[radial-gradient(circle_at_top_left,rgba(56,189,248,0.14),transparent_28%),radial-gradient(circle_at_top_right,rgba(59,130,246,0.14),transparent_30%),linear-gradient(180deg,#111827_0%,#0f172a_58%,#0b1120_100%)] p-6 text-white shadow-[0_35px_90px_-45px_rgba(2,6,23,0.92)] sm:p-8">
-        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,rgba(148,163,184,0.06)_1px,transparent_1px),linear-gradient(to_bottom,rgba(148,163,184,0.06)_1px,transparent_1px)] bg-[size:52px_52px] [mask-image:radial-gradient(circle_at_top_left,#000_15%,transparent_75%)]" />
-        <div className="relative flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+      <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+        <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <h1 className="text-3xl font-heading font-bold tracking-tight text-white sm:text-4xl">
+            <h1 className="text-3xl font-heading font-bold text-slate-950 sm:text-4xl">
               Moje ponude
               </h1>
-              <p className="mt-2 max-w-3xl text-sm leading-7 text-slate-300 sm:text-base">
+              <p className="mt-2 max-w-3xl text-sm leading-7 text-slate-500 sm:text-base">
                 Sve aktivne i završene ponude na jednom mjestu, sa jasnim statusom i brzim akcijama.
               </p>
           </div>

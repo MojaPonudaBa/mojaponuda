@@ -273,12 +273,12 @@ function LeadRow({ lead, onSaved }: { lead: AdminPortalLead; onSaved: (lead: Adm
               tone="amber"
             />
             <LeadSignalCard
-              title="Pipeline naručioca"
+              title="Tok naručioca"
               value={lead.authorityPlannedCount90d > 0 ? String(lead.authorityPlannedCount90d) : "Za sada nema"}
               hint={
                 lead.authorityPlannedCount90d > 0
-                  ? `${lead.mainAuthorityName ?? "Dominantni naručilac"} ima novi planirani pipeline u narednih 90 dana.`
-                  : "Kod dominantnog naručioca trenutno ne vidimo novi planirani pipeline."
+                  ? `${lead.mainAuthorityName ?? "Dominantni naručilac"} ima nove planirane nabavke u narednih 90 dana.`
+                  : "Kod dominantnog naručioca trenutno ne vidimo nove planirane nabavke."
               }
               tone="blue"
             />

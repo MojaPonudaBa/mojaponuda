@@ -47,7 +47,6 @@ const RECOMMENDED_SORT_OPTIONS = [
 ];
 
 const ALL_TENDERS_SORT_OPTIONS = [
-  { value: "nearest", label: "Po blizini" },
   { value: "deadline_asc", label: "Rok najskoriji" },
   { value: "deadline_desc", label: "Rok najdalji" },
   { value: "value_desc", label: "Najveća vrijednost" },
@@ -154,9 +153,9 @@ function LocalizedDateFilter({
   }
 
   return (
-    <div className="group flex h-11 w-full min-w-0 items-center gap-2 rounded-2xl border border-white/12 bg-white/[0.07] px-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+    <div className="group flex h-11 w-full min-w-0 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 shadow-sm transition-colors focus-within:border-blue-300 focus-within:ring-4 focus-within:ring-blue-100/70">
       <div className="min-w-0 flex-1">
-        <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-200">
+        <div className="text-[11px] font-semibold uppercase text-slate-500">
           {label}
         </div>
         <Input
@@ -166,13 +165,13 @@ function LocalizedDateFilter({
           value={textValue}
           onChange={(event) => handleTextChange(event.target.value)}
           onBlur={handleBlur}
-          className="h-5 border-0 bg-transparent px-0 py-0 text-sm font-medium text-white placeholder:text-slate-200/85 focus-visible:border-0 focus-visible:ring-0"
+          className="h-5 border-0 bg-transparent px-0 py-0 text-sm font-medium text-slate-900 placeholder:text-slate-400 focus-visible:border-0 focus-visible:ring-0"
         />
       </div>
       <button
         type="button"
         onClick={openPicker}
-        className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-slate-300 transition-colors hover:bg-white/10 hover:text-white"
+        className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-blue-50 hover:text-blue-600"
         aria-label={`${label} - otvori kalendar`}
       >
         <CalendarDays className="size-4" />
@@ -197,7 +196,7 @@ export function TenderFilters({ basePath = "/dashboard/tenders" }: { basePath?: 
   const activeTab = searchParams.get("tab") === "all" ? "all" : "recommended";
   const sortOptions =
     activeTab === "recommended" ? RECOMMENDED_SORT_OPTIONS : ALL_TENDERS_SORT_OPTIONS;
-  const defaultSort = "nearest";
+  const defaultSort = activeTab === "recommended" ? "nearest" : "deadline_asc";
   const initialSort =
     sortOptions.find((option) => option.value === searchParams.get("sort"))?.value ?? defaultSort;
 
@@ -269,24 +268,24 @@ export function TenderFilters({ basePath = "/dashboard/tenders" }: { basePath?: 
   }
 
   const compactTriggerClassName =
-    "h-11 w-full min-w-0 rounded-2xl border-white/12 bg-white/[0.07] px-3 text-sm font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] hover:bg-white/[0.1] [&_span]:text-white [&_svg]:text-slate-300";
+    "h-11 w-full min-w-0 rounded-xl border-slate-200 bg-white px-3 text-sm font-medium text-slate-900 shadow-sm hover:border-blue-200 hover:bg-blue-50/40 [&_span]:text-slate-900 [&_svg]:text-slate-500";
   const compactContentClassName =
-    "rounded-2xl border border-slate-700 bg-slate-950 text-slate-100 shadow-2xl [&_[data-slot=select-item]]:text-slate-100 [&_[data-slot=select-item]_*]:text-inherit [&_[data-slot=select-item][data-highlighted]]:bg-white/10 [&_[data-slot=select-item][data-highlighted]]:text-white [&_[data-slot=select-item][data-highlighted]_*]:text-white [&_[data-slot=select-item][data-state=checked]]:text-white";
+    "rounded-xl border border-slate-200 bg-white text-slate-900 shadow-xl [&_[data-slot=select-item]]:text-slate-700 [&_[data-slot=select-item]_*]:text-inherit [&_[data-slot=select-item][data-highlighted]]:bg-blue-50 [&_[data-slot=select-item][data-highlighted]]:text-blue-700 [&_[data-slot=select-item][data-highlighted]_*]:text-blue-700 [&_[data-slot=select-item][data-state=checked]]:text-blue-700";
   const compactItemClassName = "rounded-xl px-3 py-2";
   const locationContentClassName =
-    "rounded-2xl border border-slate-700 bg-slate-950 text-slate-100 shadow-2xl [&_[data-slot=command]]:bg-slate-950 [&_[data-slot=command]]:text-slate-100 [&_[data-slot=command-input-wrapper]]:border-b [&_[data-slot=command-input-wrapper]]:border-white/10 [&_[data-slot=command-input-wrapper]]:bg-slate-950 [&_[data-slot=command-group]]:text-slate-100 [&_[data-slot=command-group]_[cmdk-group-heading]]:text-slate-400 [&_[data-slot=command-input]]:text-slate-100 [&_[data-slot=command-input]::placeholder]:text-slate-500 [&_[data-slot=command-item]]:text-slate-100 [&_[data-slot=command-item]_*]:text-inherit [&_[data-slot=command-item][data-selected=true]]:bg-white/10 [&_[data-slot=command-item][data-selected=true]]:text-white [&_[data-slot=command-item][data-selected=true]_*]:text-white";
+    "rounded-xl border border-slate-200 bg-white text-slate-900 shadow-xl [&_[data-slot=command]]:bg-white [&_[data-slot=command]]:text-slate-900 [&_[data-slot=command-input-wrapper]]:border-b [&_[data-slot=command-input-wrapper]]:border-slate-100 [&_[data-slot=command-input-wrapper]]:bg-white [&_[data-slot=command-group]]:text-slate-700 [&_[data-slot=command-group]_[cmdk-group-heading]]:text-slate-500 [&_[data-slot=command-input]]:text-slate-900 [&_[data-slot=command-input]::placeholder]:text-slate-400 [&_[data-slot=command-item]]:text-slate-700 [&_[data-slot=command-item]_*]:text-inherit [&_[data-slot=command-item][data-selected=true]]:bg-blue-50 [&_[data-slot=command-item][data-selected=true]]:text-blue-700 [&_[data-slot=command-item][data-selected=true]_*]:text-blue-700";
 
   return (
-    <section className="mb-6 rounded-3xl border border-slate-800/90 bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.14),transparent_26%),linear-gradient(180deg,#0f172a_0%,#111827_100%)] p-3.5 text-white shadow-[0_26px_60px_-40px_rgba(2,6,23,0.9)]">
+    <section className="mb-6 rounded-xl border border-slate-200 bg-white p-3.5 shadow-sm">
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-12">
         <div className="relative md:col-span-2 xl:col-span-4">
-          <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-300" />
+          <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
           <Input
             placeholder="Pretraži naziv, naručioca ili opis tendera"
             value={keyword}
             onChange={(event) => setKeyword(event.target.value)}
             onKeyDown={handleKeyDown}
-            className="h-11 rounded-2xl border-white/12 bg-white/[0.07] pl-10 text-sm font-medium text-white placeholder:text-slate-200/90 focus-visible:border-sky-400/40 focus-visible:ring-sky-400/20"
+            className="h-11 rounded-xl border-slate-200 bg-white pl-10 text-sm font-medium text-slate-900 shadow-sm placeholder:text-slate-400 focus-visible:border-blue-300 focus-visible:ring-blue-100"
           />
         </div>
 
@@ -295,10 +294,10 @@ export function TenderFilters({ basePath = "/dashboard/tenders" }: { basePath?: 
             selectedRegions={locations}
             onChange={setLocations}
             placeholder="Lokacija tendera"
-            triggerClassName="min-h-[44px] rounded-xl border-white/12 bg-white/[0.07] px-3 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] hover:bg-white/[0.1]"
+            triggerClassName="min-h-[44px] rounded-xl border-slate-200 bg-white px-3 text-slate-900 shadow-sm hover:border-blue-200 hover:bg-blue-50/40"
             contentClassName={locationContentClassName}
-            chipClassName="border border-sky-500/20 bg-sky-500/10 text-sky-100"
-            placeholderClassName="text-white"
+            chipClassName="border border-blue-100 bg-blue-50 text-blue-700"
+            placeholderClassName="text-slate-500"
           />
         </div>
 
@@ -336,7 +335,7 @@ export function TenderFilters({ basePath = "/dashboard/tenders" }: { basePath?: 
           <Select value={sort} onValueChange={setSort}>
             <SelectTrigger className={compactTriggerClassName}>
               <div className="flex items-center gap-2">
-                <SlidersHorizontal className="size-3.5 text-slate-200" />
+                <SlidersHorizontal className="size-3.5 text-slate-500" />
                 <SelectValue />
               </div>
             </SelectTrigger>
@@ -358,8 +357,8 @@ export function TenderFilters({ basePath = "/dashboard/tenders" }: { basePath?: 
           <LocalizedDateFilter label="Rok do" value={deadlineTo} onChange={setDeadlineTo} />
         </div>
 
-        <div className="flex h-11 min-w-0 items-center gap-2 rounded-2xl border border-white/12 bg-white/[0.07] px-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] xl:col-span-2">
-          <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-200">
+        <div className="flex h-11 min-w-0 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 shadow-sm xl:col-span-2">
+          <span className="text-[11px] font-semibold uppercase text-slate-500">
             KM od
           </span>
           <Input
@@ -369,12 +368,12 @@ export function TenderFilters({ basePath = "/dashboard/tenders" }: { basePath?: 
             value={valueMin}
             onChange={(event) => setValueMin(event.target.value)}
             placeholder="50000"
-            className="h-9 border-0 bg-transparent px-0 text-sm font-medium text-white placeholder:text-slate-200/80 focus-visible:border-0 focus-visible:ring-0"
+            className="h-9 border-0 bg-transparent px-0 text-sm font-medium text-slate-900 placeholder:text-slate-400 focus-visible:border-0 focus-visible:ring-0"
           />
         </div>
 
-        <div className="flex h-11 min-w-0 items-center gap-2 rounded-2xl border border-white/12 bg-white/[0.07] px-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] xl:col-span-2">
-          <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-200">
+        <div className="flex h-11 min-w-0 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 shadow-sm xl:col-span-2">
+          <span className="text-[11px] font-semibold uppercase text-slate-500">
             KM do
           </span>
           <Input
@@ -384,7 +383,7 @@ export function TenderFilters({ basePath = "/dashboard/tenders" }: { basePath?: 
             value={valueMax}
             onChange={(event) => setValueMax(event.target.value)}
             placeholder="500000"
-            className="h-9 border-0 bg-transparent px-0 text-sm font-medium text-white placeholder:text-slate-200/80 focus-visible:border-0 focus-visible:ring-0"
+            className="h-9 border-0 bg-transparent px-0 text-sm font-medium text-slate-900 placeholder:text-slate-400 focus-visible:border-0 focus-visible:ring-0"
           />
         </div>
 
@@ -392,14 +391,14 @@ export function TenderFilters({ basePath = "/dashboard/tenders" }: { basePath?: 
           <Button
             variant="outline"
             onClick={resetFilters}
-            className="h-11 w-full rounded-xl border-white/12 bg-white/[0.07] px-4 text-sm font-semibold text-white hover:bg-white/[0.11] hover:text-white sm:w-auto"
+            className="h-11 w-full rounded-xl border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 shadow-sm hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 sm:w-auto"
           >
             <RotateCcw className="mr-2 size-4" />
             Očisti
           </Button>
           <Button
             onClick={applyFilters}
-            className="h-11 w-full rounded-xl bg-white px-5 text-sm font-semibold text-slate-950 hover:bg-slate-100 sm:w-auto"
+            className="h-11 w-full rounded-xl bg-blue-600 px-5 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 sm:w-auto"
           >
             <Filter className="mr-2 size-4" />
             Primijeni
