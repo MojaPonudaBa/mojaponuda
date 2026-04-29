@@ -284,6 +284,7 @@ async function main() {
     discountPcts: number[];
     biddersCounts: number[];
     cpvCounter: Map<string, number>;
+    winnerCounter: Map<string, number>;
   }>();
   for (const a of awards) {
     if (!a.contracting_authority_jib) continue;
@@ -292,12 +293,15 @@ async function main() {
       discountPcts: [] as number[],
       biddersCounts: [] as number[],
       cpvCounter: new Map<string, number>(),
+      winnerCounter: new Map<string, number>(),
     };
     if (a.winning_price) g.winningPrices.push(a.winning_price);
     if (a.discount_pct !== null) g.discountPcts.push(a.discount_pct);
     if (a.total_bidders_count) g.biddersCounts.push(a.total_bidders_count);
     const p = cpvPrefix(a.tender_cpv);
     if (p) g.cpvCounter.set(p, (g.cpvCounter.get(p) ?? 0) + 1);
+    const winnerKey = a.winner_jib ?? a.winner_name;
+    if (winnerKey) g.winnerCounter.set(winnerKey, (g.winnerCounter.get(winnerKey) ?? 0) + 1);
     byAuth.set(a.contracting_authority_jib, g);
   }
   const authorityRows = [...byAuth.entries()].map(([jib, g]) => {
@@ -311,6 +315,10 @@ async function main() {
       avg_bidders_count: avg(g.biddersCounts),
       avg_discount_pct: avg(g.discountPcts),
       top_cpv_codes: topKeys(g.cpvCounter, 5),
+      price_sample_count: g.winningPrices.length,
+      discount_sample_count: g.discountPcts.length,
+      bidders_sample_count: g.biddersCounts.length,
+      unique_winner_count: g.winnerCounter.size,
       updated_at: new Date().toISOString(),
     };
   });
@@ -331,6 +339,7 @@ async function main() {
     discountPcts: number[];
     biddersCounts: number[];
     authorityCounter: Map<string, number>;
+    winnerCounter: Map<string, number>;
   }>();
   const authCpvAgg = new Map<string, {
     tenders: number;
@@ -338,6 +347,7 @@ async function main() {
     winningPrices: number[];
     discountPcts: number[];
     biddersCounts: number[];
+    winnerCounter: Map<string, number>;
   }>();
 
   // (1) Primarni izvor — sve tendere iz `tenders` (imaju CPV + authority).
@@ -346,7 +356,7 @@ async function main() {
     if (!p) continue;
     const cg = cpvAgg.get(p) ?? {
       tenders: 0, values: [] as number[], discountPcts: [] as number[],
-      biddersCounts: [] as number[], authorityCounter: new Map<string, number>(),
+      biddersCounts: [] as number[], authorityCounter: new Map<string, number>(), winnerCounter: new Map<string, number>(),
     };
     cg.tenders += 1;
     if (t.estimated_value !== null) cg.values.push(t.estimated_value);
@@ -358,7 +368,7 @@ async function main() {
     if (t.authority_jib) {
       const key = `${t.authority_jib}|${p}`;
       const ag = authCpvAgg.get(key) ?? {
-        tenders: 0, values: [] as number[], winningPrices: [] as number[], discountPcts: [] as number[], biddersCounts: [] as number[],
+        tenders: 0, values: [] as number[], winningPrices: [] as number[], discountPcts: [] as number[], biddersCounts: [] as number[], winnerCounter: new Map<string, number>(),
       };
       ag.tenders += 1;
       if (t.estimated_value !== null) ag.values.push(t.estimated_value);
@@ -374,6 +384,8 @@ async function main() {
     if (cg) {
       if (a.discount_pct !== null) cg.discountPcts.push(a.discount_pct);
       if (a.total_bidders_count) cg.biddersCounts.push(a.total_bidders_count);
+      const winnerKey = a.winner_jib ?? a.winner_name;
+      if (winnerKey) cg.winnerCounter.set(winnerKey, (cg.winnerCounter.get(winnerKey) ?? 0) + 1);
     }
     if (a.contracting_authority_jib) {
       const key = `${a.contracting_authority_jib}|${p}`;
@@ -382,6 +394,8 @@ async function main() {
         if (a.winning_price) ag.winningPrices.push(a.winning_price);
         if (a.discount_pct !== null) ag.discountPcts.push(a.discount_pct);
         if (a.total_bidders_count) ag.biddersCounts.push(a.total_bidders_count);
+        const winnerKey = a.winner_jib ?? a.winner_name;
+        if (winnerKey) ag.winnerCounter.set(winnerKey, (ag.winnerCounter.get(winnerKey) ?? 0) + 1);
       }
     }
   }
@@ -393,6 +407,10 @@ async function main() {
     avg_bidders_count: avg(g.biddersCounts),
     avg_discount_pct: avg(g.discountPcts),
     top_authorities: topKeys(g.authorityCounter, 5),
+    price_sample_count: g.values.length,
+    discount_sample_count: g.discountPcts.length,
+    bidders_sample_count: g.biddersCounts.length,
+    unique_winner_count: g.winnerCounter.size,
     updated_at: new Date().toISOString(),
   }));
   await upsertChunked("cpv_stats", cpvRows, "cpv_code");
@@ -410,6 +428,10 @@ async function main() {
       max_winning_price: g.winningPrices.length > 0 ? Math.max(...g.winningPrices) : null,
       avg_winning_price: avg(g.winningPrices) ?? avg(g.values),
       avg_bidders_count: avg(g.biddersCounts),
+      price_sample_count: g.winningPrices.length,
+      discount_sample_count: g.discountPcts.length,
+      bidders_sample_count: g.biddersCounts.length,
+      unique_winner_count: g.winnerCounter.size,
       updated_at: new Date().toISOString(),
     };
   });

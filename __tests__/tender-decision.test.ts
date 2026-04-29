@@ -94,11 +94,33 @@ describe("tender decision insights", () => {
     expect(insight).toBeDefined();
     expect(insight?.winProbability).toBe(0);
     expect(insight?.winConfidence).toBe("low");
-    expect(insight?.expectedBiddersRange.min).toBeNull();
+    expect(insight?.expectedBiddersRange.confidence).toBe("low");
+    expect(insight?.expectedBiddersRange.min).toBe(2);
     expect(insight?.competitionLabel).toContain("indirektan signal");
     expect(insight?.priceRange.basedOn).toBe("authority+cpv");
     expect(insight?.priceRange.sampleCount).toBe(5);
     expect(insight?.recommendation).toBe("risky");
+  });
+
+  it("does not present a single weak winner as a competitor count", async () => {
+    const supabase = createSupabaseMock({
+      award_decisions: [
+        award({ winner_jib: "winner-1", winner_name: "Jedan dobavljac", winning_price: 95_000 }),
+      ],
+    });
+
+    const insights = await computeTenderDecisionInsights(
+      supabase as never,
+      [tender()],
+      { id: "company-1", jib: "111", industry: null, keywords: ["gradjevina"], cpv_codes: [], operating_regions: [] },
+      new Map([["tender-1", { matchScore: 82, confidence: 4, reasons: ["Profil odgovara kategoriji."] }]]),
+    );
+
+    const insight = insights.get("tender-1");
+    expect(insight?.activeCompetitors).toBe(1);
+    expect(insight?.competitionLevel).toBe("unknown");
+    expect(insight?.expectedBiddersRange.min).toBeNull();
+    expect(insight?.competitionLabel).not.toContain("(1");
   });
 
   it("uses actual bidder samples before showing a win probability", async () => {

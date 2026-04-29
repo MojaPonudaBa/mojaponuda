@@ -54,6 +54,7 @@ export interface TenderWinningDiscountRange {
   typical: number | null;
   confidence: DecisionConfidence;
   sampleCount: number;
+  variabilityPct?: number | null;
   explanation: string;
 }
 
@@ -68,6 +69,9 @@ export interface TenderTopCompetitor {
   jib: string | null;
   name: string;
   wins: number;
+  evidenceScore?: number;
+  confidence?: DecisionConfidence;
+  signals?: string[];
 }
 
 export interface TenderAuthorityProfile {
@@ -111,6 +115,10 @@ interface AuthorityStatsRow {
   avg_bidders_count: number | null;
   avg_discount_pct: number | null;
   top_cpv_codes: string[] | null;
+  price_sample_count?: number | null;
+  discount_sample_count?: number | null;
+  bidders_sample_count?: number | null;
+  unique_winner_count?: number | null;
 }
 
 interface CpvStatsRow {
@@ -119,6 +127,10 @@ interface CpvStatsRow {
   avg_estimated_value: number | null;
   avg_bidders_count: number | null;
   avg_discount_pct: number | null;
+  price_sample_count?: number | null;
+  discount_sample_count?: number | null;
+  bidders_sample_count?: number | null;
+  unique_winner_count?: number | null;
 }
 
 interface AuthorityCpvStatsRow {
@@ -130,6 +142,10 @@ interface AuthorityCpvStatsRow {
   max_winning_price: number | null;
   avg_winning_price: number | null;
   avg_bidders_count: number | null;
+  price_sample_count?: number | null;
+  discount_sample_count?: number | null;
+  bidders_sample_count?: number | null;
+  unique_winner_count?: number | null;
 }
 
 interface CompanySegmentStatsRow {
@@ -139,6 +155,18 @@ interface CompanySegmentStatsRow {
   appearances: number;
   wins: number;
   win_rate: number | null;
+}
+
+interface CompanyStatsRow {
+  company_jib: string;
+  company_name: string | null;
+  total_bids: number;
+  total_wins: number;
+  win_rate: number | null;
+  total_won_value: number | null;
+  avg_discount_pct: number | null;
+  top_cpv_codes: string[] | null;
+  top_authorities: string[] | null;
 }
 
 interface AwardDecisionRow {
@@ -160,9 +188,14 @@ interface BulkDecisionData {
   authorityCpvStatsByKey: Map<string, AuthorityCpvStatsRow>;
   companyAuthorityStatsByJib: Map<string, CompanySegmentStatsRow>;
   companyCpvStatsByPrefix: Map<string, CompanySegmentStatsRow>;
+  competitorAuthorityStatsByAuthority: Map<string, CompanySegmentStatsRow[]>;
+  competitorCpvStatsByPrefix: Map<string, CompanySegmentStatsRow[]>;
+  companyStatsByJib: Map<string, CompanyStatsRow>;
   awardsByScope: Map<string, AwardDecisionRow[]>;
   awardsByAuthority: Map<string, AwardDecisionRow[]>;
 }
+
+const DECISION_SOURCE_VERSION = "decision-v2";
 
 function normalizeCpvPrefix(value: string | null | undefined): string | null {
   const normalized = value?.replace(/[^0-9]/g, "") ?? "";
@@ -205,6 +238,27 @@ function confidenceFromSample(count: number, medium = 8, high = 25): DecisionCon
   if (count >= high) return "high";
   if (count >= medium) return "medium";
   return "low";
+}
+
+function sampleCount(value: unknown): number {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : 0;
+}
+
+function variabilityPct(values: number[]): number | null {
+  if (values.length < 5) return null;
+  const median = percentile(values, 0.5);
+  const q1 = percentile(values, 0.25);
+  const q3 = percentile(values, 0.75);
+  if (!median || median <= 0 || q1 === null || q3 === null) return null;
+  return round(((q3 - q1) / median) * 100, 1);
+}
+
+function variabilityLabel(value: number | null): string {
+  if (value === null) return "varijabilnost nije pouzdano izmjerena";
+  if (value <= 20) return "varijabilnost je niska";
+  if (value <= 45) return "varijabilnost je srednja";
+  return "varijabilnost je visoka";
 }
 
 function uniq(values: Array<string | null | undefined>): string[] {
@@ -333,11 +387,12 @@ function buildHistoricalPriceFallback(
   input: {
     basedOn: TenderDecisionPriceRange["basedOn"];
     explanation: string;
+    minimumSamples?: number;
     mediumThreshold?: number;
     highThreshold?: number;
   },
 ): TenderDecisionPriceRange | null {
-  if (prices.length < 3) return null;
+  if (prices.length < (input.minimumSamples ?? 5)) return null;
   const low = percentile(prices, 0.25) ?? Math.min(...prices);
   const high = percentile(prices, 0.75) ?? Math.max(...prices);
   const typical = percentile(prices, 0.5) ?? prices[Math.floor(prices.length / 2)];
@@ -381,7 +436,8 @@ function buildPriceRange(
     }
 
     const historicalAverage = numberOrNull(authorityCpvStats?.avg_winning_price);
-    if (historicalAverage && authorityCpvStats && authorityCpvStats.tender_count >= 8) {
+    const authorityCpvPriceSamples = sampleCount(authorityCpvStats?.price_sample_count);
+    if (historicalAverage && authorityCpvStats && authorityCpvPriceSamples >= 5) {
       const minPrice = numberOrNull(authorityCpvStats.min_winning_price) ?? historicalAverage * 0.85;
       const maxPrice = numberOrNull(authorityCpvStats.max_winning_price) ?? historicalAverage * 1.15;
       return {
@@ -389,9 +445,9 @@ function buildPriceRange(
         max: Math.round(Math.max(maxPrice, historicalAverage)),
         optimal: Math.round(historicalAverage),
         averageDiscountPct: null,
-        confidence: authorityCpvStats.tender_count >= 30 && authorityCpvStats.min_winning_price !== null ? "medium" : "low",
+        confidence: confidenceFromSample(authorityCpvPriceSamples, 8, 25),
         basedOn: "authority+cpv",
-        sampleCount: authorityCpvStats.tender_count,
+        sampleCount: authorityCpvPriceSamples,
         explanation: "Procijenjena vrijednost nije objavljena; prikazan je historijski raspon slicnih ugovora, ne budzet ovog tendera.",
       };
     }
@@ -399,6 +455,7 @@ function buildPriceRange(
     const authorityFallback = buildHistoricalPriceFallback(authorityWinningPrices, {
       basedOn: "authority",
       explanation: `Procijenjena vrijednost nije objavljena; raspon prikazuje ${authorityWinningPrices.length} ranijih pobjednickih cijena kod istog narucioca, bez CPV preciznosti.`,
+      minimumSamples: 8,
       mediumThreshold: 12,
       highThreshold: 50,
     });
@@ -426,10 +483,11 @@ function buildPriceRange(
     { min: 0, max: 80 },
   );
 
-  if (scopedDiscounts.length >= 3) {
+  if (scopedDiscounts.length >= 5) {
     const lowDiscount = clamp(percentile(scopedDiscounts, 0.25) ?? 0, 0, 55);
     const highDiscount = clamp(percentile(scopedDiscounts, 0.75) ?? lowDiscount, 0, 55);
     const typical = clamp(percentile(scopedDiscounts, 0.5) ?? lowDiscount, 0, 55);
+    const variability = variabilityPct(scopedDiscounts);
     return {
       min: Math.round(estimatedValue * (1 - highDiscount / 100)),
       max: Math.round(estimatedValue * (1 - lowDiscount / 100)),
@@ -438,34 +496,37 @@ function buildPriceRange(
       confidence: confidenceFromSample(scopedDiscounts.length, 6, 20),
       basedOn: "authority+cpv",
       sampleCount: scopedDiscounts.length,
-      explanation: `Raspon cijene je zasnovan na ${scopedDiscounts.length} sličnih ishoda kod istog naručioca i CPV grupe.`,
+      explanation: `Raspon cijene je zasnovan na ${scopedDiscounts.length} sličnih ishoda kod istog naručioca i kategorije; ${variabilityLabel(variability)}.`,
     };
   }
 
+  const authorityCpvDiscountSamples = sampleCount(authorityCpvStats?.discount_sample_count);
+  const authorityDiscountSamples = sampleCount(authorityStats?.discount_sample_count);
+  const cpvDiscountSamples = sampleCount(cpvStats?.discount_sample_count);
   const source =
-    authorityCpvStats && authorityCpvStats.tender_count >= 8 && authorityCpvStats.avg_discount_pct !== null
+    authorityCpvStats && authorityCpvDiscountSamples >= 5 && authorityCpvStats.avg_discount_pct !== null
       ? {
           discount: Number(authorityCpvStats.avg_discount_pct),
-          count: authorityCpvStats.tender_count,
+          count: authorityCpvDiscountSamples,
           basedOn: "authority+cpv" as const,
-          confidence: authorityCpvStats.tender_count >= 25 ? "high" as const : "medium" as const,
-          explanation: `Zasnovano na ponašanju naručioca u istoj CPV kategoriji (${authorityCpvStats.tender_count} ishoda).`,
+          confidence: confidenceFromSample(authorityCpvDiscountSamples, 8, 25),
+          explanation: `Zasnovano na ${authorityCpvDiscountSamples} poznatih pobjedničkih popusta kod ovog naručioca u istoj kategoriji.`,
         }
-      : authorityStats && authorityStats.tender_count >= 15 && authorityStats.avg_discount_pct !== null
+      : authorityStats && authorityDiscountSamples >= 8 && authorityStats.avg_discount_pct !== null
         ? {
             discount: Number(authorityStats.avg_discount_pct),
-            count: authorityStats.tender_count,
+            count: authorityDiscountSamples,
             basedOn: "authority" as const,
-            confidence: authorityStats.tender_count >= 40 ? "medium" as const : "low" as const,
-            explanation: `Zasnovano na prosječnom pobjedničkom popustu ovog naručioca (${authorityStats.tender_count} postupaka).`,
+            confidence: confidenceFromSample(authorityDiscountSamples, 15, 45),
+            explanation: `Zasnovano na ${authorityDiscountSamples} poznatih pobjedničkih popusta ovog naručioca; kategorija nije dovoljno specifična.`,
           }
-        : cpvStats && cpvStats.tender_count >= 50 && cpvStats.avg_discount_pct !== null
+        : cpvStats && cpvDiscountSamples >= 15 && cpvStats.avg_discount_pct !== null
           ? {
               discount: Number(cpvStats.avg_discount_pct),
-              count: cpvStats.tender_count,
+              count: cpvDiscountSamples,
               basedOn: "cpv" as const,
-              confidence: cpvStats.tender_count >= 150 ? "medium" as const : "low" as const,
-              explanation: `Zasnovano na prosjeku CPV grupe (${cpvStats.tender_count} ishoda).`,
+              confidence: confidenceFromSample(cpvDiscountSamples, 25, 80),
+              explanation: `Zasnovano na ${cpvDiscountSamples} poznatih pobjedničkih popusta u ovoj kategoriji; koristiti kao tržišni okvir.`,
             }
           : null;
 
@@ -587,14 +648,14 @@ function getCompetition(avgBidders: number | null, activeCompetitors: number): {
   label: string;
 } {
   if (!avgBidders) {
-    if (activeCompetitors >= 8) {
-      return { level: "high", label: `Visoka konkurencija (${activeCompetitors} poznatih pobjednika, indirektan signal)` };
+    if (activeCompetitors >= 10) {
+      return { level: "high", label: `Visoka konkurencija (mnogo aktivnih poznatih pobjednika, indirektan signal)` };
     }
-    if (activeCompetitors >= 3) {
-      return { level: "medium", label: `Srednja konkurencija (${activeCompetitors} poznatih pobjednika, indirektan signal)` };
+    if (activeCompetitors >= 4) {
+      return { level: "medium", label: `Srednja konkurencija (${activeCompetitors} aktivnih poznatih pobjednika, indirektan signal)` };
     }
-    if (activeCompetitors > 0) {
-      return { level: "low", label: `Ogranicena historijska konkurencija (${activeCompetitors} poznatih pobjednika)` };
+    if (activeCompetitors >= 2) {
+      return { level: "unknown", label: "Ograničen indirektan signal konkurencije" };
     }
     return { level: "unknown", label: "Nema dovoljno podataka" };
   }
@@ -680,17 +741,19 @@ function buildWinningDiscountRange(
     { min: 0, max: 80 },
   );
 
-  if (discounts.length >= 3) {
+  if (discounts.length >= 5) {
     const min = round(percentile(discounts, 0.25) ?? Math.min(...discounts), 1);
     const max = round(percentile(discounts, 0.75) ?? Math.max(...discounts), 1);
     const typical = round(percentile(discounts, 0.5) ?? discounts[Math.floor(discounts.length / 2)], 1);
+    const variability = variabilityPct(discounts);
     return {
       min,
       max,
       typical,
       confidence: confidenceFromSample(discounts.length, 6, 20),
       sampleCount: discounts.length,
-      explanation: `Tipičan pobjednički popust je zasnovan na ${discounts.length} historijskih ishoda.`,
+      variabilityPct: variability,
+      explanation: `Tipičan pobjednički popust je zasnovan na ${discounts.length} historijskih ishoda; ${variabilityLabel(variability)}.`,
     };
   }
 
@@ -701,6 +764,7 @@ function buildWinningDiscountRange(
       typical: priceRange.averageDiscountPct,
       confidence: priceRange.confidence,
       sampleCount: priceRange.sampleCount,
+      variabilityPct: null,
       explanation: "Raspon popusta izveden je iz agregiranog modela cijene.",
     };
   }
@@ -711,6 +775,7 @@ function buildWinningDiscountRange(
     typical: null,
     confidence: "low",
     sampleCount: 0,
+    variabilityPct: null,
     explanation: "Nema dovoljno historijskih cijena za pobjednički popust.",
   };
 }
@@ -720,8 +785,8 @@ function buildExpectedBiddersRange(
   avgBidders: number | null,
   aggregateSampleCount = 0,
   scopeLabel = "slicnih ishoda",
+  indirectCompetitorCount = 0,
 ): TenderExpectedBiddersRange {
-  void scopeLabel;
   const bidders = sortedNumbers(
     awards.map((award) => numberOrNull(award.total_bidders_count)),
     { min: 1 },
@@ -732,16 +797,34 @@ function buildExpectedBiddersRange(
       min: Math.max(1, Math.floor(percentile(bidders, 0.25) ?? Math.min(...bidders))),
       max: Math.max(1, Math.ceil(percentile(bidders, 0.75) ?? Math.max(...bidders))),
       confidence: confidenceFromSample(bidders.length, 6, 20),
-      explanation: `Očekivani broj ponuđača je izveden iz ${bidders.length} sličnih ishoda.`,
+      explanation: `Očekivani broj ponuđača je izveden iz ${bidders.length} ${scopeLabel}.`,
     };
   }
 
-  if (avgBidders) {
+  if (avgBidders && aggregateSampleCount >= 3) {
     return {
       min: Math.max(1, Math.floor(avgBidders - 1)),
       max: Math.max(1, Math.ceil(avgBidders + 1)),
       confidence: confidenceFromSample(aggregateSampleCount, 12, 40),
-      explanation: "Raspon ponuđača je izveden iz agregiranog prosjeka za naručioca ili CPV.",
+      explanation: `Raspon ponuđača je izveden iz ${aggregateSampleCount} agregiranih historijskih uzoraka.`,
+    };
+  }
+
+  if (indirectCompetitorCount >= 8) {
+    return {
+      min: 4,
+      max: Math.min(10, Math.ceil(indirectCompetitorCount / 2)),
+      confidence: "low",
+      explanation: `Direktan broj ponuđača nije dostupan; raspon je izveden iz ${indirectCompetitorCount} aktivnih poznatih pobjednika u sličnom tržišnom segmentu.`,
+    };
+  }
+
+  if (indirectCompetitorCount >= 3) {
+    return {
+      min: 2,
+      max: Math.min(6, indirectCompetitorCount + 1),
+      confidence: "low",
+      explanation: "Direktan broj ponuđača nije dostupan; postoji više poznatih pobjednika u segmentu, pa je ovo samo oprezan tržišni orijentir.",
     };
   }
 
@@ -753,20 +836,166 @@ function buildExpectedBiddersRange(
   };
 }
 
-function buildTopCompetitors(awards: AwardDecisionRow[]): TenderTopCompetitor[] {
-  const map = new Map<string, TenderTopCompetitor>();
-  for (const award of awards) {
+interface CompetitorAccumulator {
+  jib: string | null;
+  name: string;
+  wins: number;
+  sameAuthorityCategoryWins: number;
+  authorityWins: number;
+  categoryWins: number;
+  segmentSimilarity: number;
+  evidenceScore: number;
+  signals: Set<string>;
+}
+
+function companyDisplayName(jib: string | null, fallback: string | null | undefined, stats: Map<string, CompanyStatsRow>): string {
+  if (jib) {
+    const fromStats = stats.get(jib)?.company_name?.trim();
+    if (fromStats) return fromStats;
+  }
+  return fallback?.trim() || jib || "Nepoznat ponuđač";
+}
+
+function addCompetitorEvidence(
+  map: Map<string, CompetitorAccumulator>,
+  input: {
+    jib: string | null;
+    name?: string | null;
+    wins?: number;
+    sameAuthorityCategoryWins?: number;
+    authorityWins?: number;
+    categoryWins?: number;
+    segmentSimilarity?: number;
+    score: number;
+    signal: string;
+    companyStatsByJib: Map<string, CompanyStatsRow>;
+  },
+) {
+  const key = input.jib ?? input.name?.trim();
+  if (!key) return;
+  const existing = map.get(key) ?? {
+    jib: input.jib,
+    name: companyDisplayName(input.jib, input.name, input.companyStatsByJib),
+    wins: 0,
+    sameAuthorityCategoryWins: 0,
+    authorityWins: 0,
+    categoryWins: 0,
+    segmentSimilarity: 0,
+    evidenceScore: 0,
+    signals: new Set<string>(),
+  };
+  existing.wins += input.wins ?? 0;
+  existing.sameAuthorityCategoryWins += input.sameAuthorityCategoryWins ?? 0;
+  existing.authorityWins += input.authorityWins ?? 0;
+  existing.categoryWins += input.categoryWins ?? 0;
+  existing.segmentSimilarity += input.segmentSimilarity ?? 0;
+  existing.evidenceScore += input.score;
+  existing.signals.add(input.signal);
+  map.set(key, existing);
+}
+
+function buildTopCompetitors(input: {
+  authorityAwards: AwardDecisionRow[];
+  authoritySegmentRows: CompanySegmentStatsRow[];
+  categorySegmentRows: CompanySegmentStatsRow[];
+  companyStatsByJib: Map<string, CompanyStatsRow>;
+  authorityJib: string | null;
+  cpvPrefix: string | null;
+  currentCompanyJib?: string | null;
+}): TenderTopCompetitor[] {
+  const map = new Map<string, CompetitorAccumulator>();
+
+  for (const award of input.authorityAwards) {
     const key = award.winner_jib ?? award.winner_name;
     if (!key) continue;
-    const existing = map.get(key) ?? {
+    if (input.currentCompanyJib && award.winner_jib === input.currentCompanyJib) continue;
+    const relatedTender = Array.isArray(award.tenders) ? award.tenders[0] : award.tenders;
+    const sameCategory = Boolean(input.cpvPrefix) && normalizeCpvPrefix(relatedTender?.cpv_code) === input.cpvPrefix;
+    addCompetitorEvidence(map, {
       jib: award.winner_jib,
-      name: award.winner_name ?? award.winner_jib ?? "Nepoznat ponuđač",
-      wins: 0,
-    };
-    existing.wins += 1;
-    map.set(key, existing);
+      name: award.winner_name,
+      wins: 1,
+      sameAuthorityCategoryWins: sameCategory ? 1 : 0,
+      authorityWins: 1,
+      score: sameCategory ? 9 : 4,
+      signal: sameCategory
+        ? "Pobjeđivao je kod ovog naručioca u istoj kategoriji"
+        : "Pobjeđivao je kod ovog naručioca",
+      companyStatsByJib: input.companyStatsByJib,
+    });
   }
-  return [...map.values()].sort((a, b) => b.wins - a.wins).slice(0, 5);
+
+  for (const row of input.authoritySegmentRows) {
+    if (input.currentCompanyJib && row.company_jib === input.currentCompanyJib) continue;
+    const wins = sampleCount(row.wins);
+    if (wins <= 0) continue;
+    addCompetitorEvidence(map, {
+      jib: row.company_jib,
+      wins,
+      authorityWins: wins,
+      score: Math.min(18, wins * 3),
+      signal: "Ima ponovljene pobjede kod ovog naručioca",
+      companyStatsByJib: input.companyStatsByJib,
+    });
+  }
+
+  for (const row of input.categorySegmentRows) {
+    if (input.currentCompanyJib && row.company_jib === input.currentCompanyJib) continue;
+    const wins = sampleCount(row.wins);
+    if (wins <= 0) continue;
+    addCompetitorEvidence(map, {
+      jib: row.company_jib,
+      wins,
+      categoryWins: wins,
+      score: Math.min(16, wins * 2),
+      signal: "Aktivan je u istoj kategoriji nabavke",
+      companyStatsByJib: input.companyStatsByJib,
+    });
+  }
+
+  for (const row of input.companyStatsByJib.values()) {
+    if (!row.company_jib || (input.currentCompanyJib && row.company_jib === input.currentCompanyJib)) continue;
+    const topCpvPrefixes = (row.top_cpv_codes ?? []).map((code) => normalizeCpvPrefix(code)).filter(Boolean);
+    const topAuthorities = row.top_authorities ?? [];
+    const categoryOverlap = input.cpvPrefix ? topCpvPrefixes.includes(input.cpvPrefix) : false;
+    const authorityOverlap = input.authorityJib ? topAuthorities.includes(input.authorityJib) : false;
+    if (!categoryOverlap && !authorityOverlap) continue;
+    addCompetitorEvidence(map, {
+      jib: row.company_jib,
+      segmentSimilarity: categoryOverlap && authorityOverlap ? 2 : 1,
+      score: categoryOverlap && authorityOverlap ? 6 : 3,
+      signal: categoryOverlap && authorityOverlap
+        ? "Segment mu se preklapa i po naručiocu i po kategoriji"
+        : categoryOverlap
+          ? "Segment mu se preklapa po kategoriji"
+          : "Segment mu se preklapa po naručiocu",
+      companyStatsByJib: input.companyStatsByJib,
+    });
+  }
+
+  return [...map.values()]
+    .filter((competitor) => {
+      const hasStrongEvidence = competitor.sameAuthorityCategoryWins >= 1;
+      const hasRepeatedAuthorityEvidence = competitor.authorityWins >= 2;
+      const hasCategoryEvidence = competitor.categoryWins >= 3;
+      const hasCombinedSegmentEvidence = competitor.segmentSimilarity >= 2 && competitor.evidenceScore >= 8;
+      return hasStrongEvidence || hasRepeatedAuthorityEvidence || hasCategoryEvidence || hasCombinedSegmentEvidence;
+    })
+    .map<TenderTopCompetitor>((competitor) => ({
+      jib: competitor.jib,
+      name: competitor.name,
+      wins: competitor.wins,
+      evidenceScore: round(competitor.evidenceScore, 1),
+      confidence:
+        competitor.sameAuthorityCategoryWins >= 2 || competitor.evidenceScore >= 22
+          ? "high"
+          : competitor.sameAuthorityCategoryWins >= 1 || competitor.evidenceScore >= 12
+            ? "medium"
+            : "low",
+      signals: [...competitor.signals].slice(0, 3),
+    }))
+    .sort((a, b) => (b.evidenceScore ?? 0) - (a.evidenceScore ?? 0) || b.wins - a.wins)
+    .slice(0, 5);
 }
 
 function chooseRecommendation(input: {
@@ -914,20 +1143,20 @@ async function loadDecisionData(
             .limit(1200),
         )
       : Promise.resolve([]),
-    company?.jib && authorityJibs.length > 0
+    authorityJibs.length > 0
       ? safeSelect<CompanySegmentStatsRow>(
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           (anySupabase.from("company_authority_stats").select("*") as any)
-            .eq("company_jib", company.jib)
-            .in("authority_jib", authorityJibs),
+            .in("authority_jib", authorityJibs)
+            .limit(3000),
         )
       : Promise.resolve([]),
-    company?.jib
+    cpvPrefixes.length > 0
       ? safeSelect<CompanySegmentStatsRow>(
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           (anySupabase.from("company_cpv_stats").select("*") as any)
-            .eq("company_jib", company.jib)
-            .limit(600),
+            .in("cpv_code", cpvPrefixes)
+            .limit(3000),
         )
       : Promise.resolve([]),
     authorityJibs.length > 0
@@ -944,6 +1173,18 @@ async function loadDecisionData(
         )
       : Promise.resolve([]),
   ]);
+
+  const competitorJibs = uniq([
+    ...companyAuthorityRows.map((row) => row.company_jib),
+    ...companyCpvRows.map((row) => row.company_jib),
+    ...awardRows.map((row) => row.winner_jib),
+  ]).slice(0, 800);
+  const companyRows = competitorJibs.length > 0
+    ? await safeSelect<CompanyStatsRow>(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (anySupabase.from("company_stats").select("*") as any).in("company_jib", competitorJibs),
+      )
+    : [];
 
   const authorityStatsByJib = new Map(authorityRows.map((row) => [row.authority_jib, row]));
   const cpvStatsByPrefix = new Map(
@@ -964,12 +1205,12 @@ async function loadDecisionData(
 
   const companyAuthorityStatsByJib = new Map(
     companyAuthorityRows
-      .filter((row) => row.authority_jib)
+      .filter((row) => company?.jib && row.company_jib === company.jib && row.authority_jib)
       .map((row) => [row.authority_jib as string, row]),
   );
   const companyCpvStatsByPrefix = new Map<string, CompanySegmentStatsRow>();
 
-  for (const row of companyCpvRows) {
+  for (const row of companyCpvRows.filter((item) => company?.jib && item.company_jib === company.jib)) {
     const prefix = normalizeCpvPrefix(row.cpv_code);
     if (!prefix) continue;
     const existing = companyCpvStatsByPrefix.get(prefix);
@@ -977,6 +1218,25 @@ async function loadDecisionData(
       companyCpvStatsByPrefix.set(prefix, row);
     }
   }
+
+  const competitorAuthorityStatsByAuthority = new Map<string, CompanySegmentStatsRow[]>();
+  for (const row of companyAuthorityRows) {
+    if (!row.authority_jib) continue;
+    const rows = competitorAuthorityStatsByAuthority.get(row.authority_jib) ?? [];
+    rows.push(row);
+    competitorAuthorityStatsByAuthority.set(row.authority_jib, rows);
+  }
+
+  const competitorCpvStatsByPrefix = new Map<string, CompanySegmentStatsRow[]>();
+  for (const row of companyCpvRows) {
+    const prefix = normalizeCpvPrefix(row.cpv_code);
+    if (!prefix) continue;
+    const rows = competitorCpvStatsByPrefix.get(prefix) ?? [];
+    rows.push(row);
+    competitorCpvStatsByPrefix.set(prefix, rows);
+  }
+
+  const companyStatsByJib = new Map(companyRows.map((row) => [row.company_jib, row]));
 
   const awardsByScope = new Map<string, AwardDecisionRow[]>();
   const awardsByAuthority = new Map<string, AwardDecisionRow[]>();
@@ -1002,6 +1262,9 @@ async function loadDecisionData(
     authorityCpvStatsByKey,
     companyAuthorityStatsByJib,
     companyCpvStatsByPrefix,
+    competitorAuthorityStatsByAuthority,
+    competitorCpvStatsByPrefix,
+    companyStatsByJib,
     awardsByScope,
     awardsByAuthority,
   };
@@ -1027,26 +1290,41 @@ export async function computeTenderDecisionInsights(
     const authorityAwards = authorityJib ? data.awardsByAuthority.get(authorityJib) ?? [] : [];
     const scopedBiddersSampleCount = scopedAwards.filter((award) => numberOrNull(award.total_bidders_count) !== null).length;
     const authorityBiddersSampleCount = authorityAwards.filter((award) => numberOrNull(award.total_bidders_count) !== null).length;
-    const competitionAwards = scopedBiddersSampleCount >= 3 ? scopedAwards : authorityAwards;
-    const competitorAwards = scopedAwards.length >= 3 ? scopedAwards : authorityAwards;
-    const avgBiddersSampleCount =
-      scopedBiddersSampleCount >= 3 ? scopedBiddersSampleCount : authorityBiddersSampleCount;
-
-    const avgBidders =
-      (() => {
-        const bidders = competitionAwards
-          .map((award) => numberOrNull(award.total_bidders_count))
-          .filter((value): value is number => value !== null && value > 0);
-        return bidders.length >= 3
-          ? bidders.reduce((sum, value) => sum + value, 0) / bidders.length
-          : null;
-      })();
-
-    const activeCompetitors = new Set(
-      competitorAwards
-        .map((award) => award.winner_jib ?? award.winner_name)
-        .filter((value): value is string => Boolean(value)),
-    ).size;
+    const competitionAwards = scopedBiddersSampleCount >= 3 ? scopedAwards : authorityBiddersSampleCount >= 3 ? authorityAwards : [];
+    const directBidders = competitionAwards
+      .map((award) => numberOrNull(award.total_bidders_count))
+      .filter((value): value is number => value !== null && value > 0);
+    const directAvgBidders = directBidders.length >= 3
+      ? directBidders.reduce((sum, value) => sum + value, 0) / directBidders.length
+      : null;
+    const aggregateBiddersSource = [
+      {
+        avg: numberOrNull(authorityCpvStats?.avg_bidders_count),
+        count: sampleCount(authorityCpvStats?.bidders_sample_count),
+      },
+      {
+        avg: numberOrNull(authorityStats?.avg_bidders_count),
+        count: sampleCount(authorityStats?.bidders_sample_count),
+      },
+      {
+        avg: numberOrNull(cpvStats?.avg_bidders_count),
+        count: sampleCount(cpvStats?.bidders_sample_count),
+      },
+    ].find((item) => item.avg !== null && item.count >= 3);
+    const avgBidders = directAvgBidders ?? aggregateBiddersSource?.avg ?? null;
+    const avgBiddersSampleCount = directBidders.length >= 3
+      ? directBidders.length
+      : aggregateBiddersSource?.count ?? 0;
+    const topCompetitors = buildTopCompetitors({
+      authorityAwards,
+      authoritySegmentRows: authorityJib ? data.competitorAuthorityStatsByAuthority.get(authorityJib) ?? [] : [],
+      categorySegmentRows: cpvPrefix ? data.competitorCpvStatsByPrefix.get(cpvPrefix) ?? [] : [],
+      companyStatsByJib: data.companyStatsByJib,
+      authorityJib,
+      cpvPrefix,
+      currentCompanyJib: company?.jib ?? null,
+    });
+    const activeCompetitors = topCompetitors.length;
     const match = normalizeMatchScore(tender, company, signals.get(tender.id));
     const priceRange = buildPriceRange(tender, authorityStats, cpvStats, authorityCpvStats, scopedAwards, authorityAwards);
     const winningDiscountRange = buildWinningDiscountRange(scopedAwards.length >= 3 ? scopedAwards : authorityAwards, priceRange);
@@ -1061,9 +1339,9 @@ export async function computeTenderDecisionInsights(
       competitionAwards,
       avgBidders,
       avgBiddersSampleCount,
-      scopedBiddersSampleCount >= 3 ? "slicnih ishoda" : "ishoda kod istog narucioca",
+      scopedBiddersSampleCount >= 3 ? "sličnih ishoda" : "ishoda kod istog naručioca",
+      activeCompetitors,
     );
-    const topCompetitors = buildTopCompetitors(competitorAwards);
     const dataQuality = getDataQuality(match.confidence, win.confidence, priceRange.confidence);
     const riskIndicators = buildRiskIndicators({
       tender,
@@ -1163,6 +1441,7 @@ interface StoredTenderDecisionInsightRow {
   key_reasons: string[];
   explanation: string;
   data_quality: DecisionConfidence;
+  source_version?: string | null;
 }
 
 function deserializeStoredInsight(row: StoredTenderDecisionInsightRow): TenderDecisionInsight {
@@ -1235,6 +1514,7 @@ async function loadStoredDecisionInsights(
     );
 
     for (const row of rows) {
+      if (row.source_version !== DECISION_SOURCE_VERSION) continue;
       map.set(row.tender_id, deserializeStoredInsight(row));
     }
   }
@@ -1401,7 +1681,7 @@ export async function upsertTenderDecisionInsights(
     key_reasons: insight.keyReasons as unknown as Json,
     explanation: insight.explanation,
     data_quality: insight.dataQuality,
-    source_version: "decision-v1",
+    source_version: DECISION_SOURCE_VERSION,
     computed_at: new Date().toISOString(),
   }));
 

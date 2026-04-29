@@ -207,8 +207,8 @@ export function TenderDecisionSummary({
               label="Konkurencija"
               value={
                 insight.expectedBiddersRange.min !== null && insight.expectedBiddersRange.max !== null
-                  ? `${insight.competitionLabel}, ${insight.expectedBiddersRange.min}-${insight.expectedBiddersRange.max} ponuđača`
-                  : insight.competitionLabel
+                  ? `${insight.competitionLabel}, ${insight.expectedBiddersRange.min}-${insight.expectedBiddersRange.max} ponuđača (${confidenceLabel(insight.expectedBiddersRange.confidence)})`
+                  : `${insight.competitionLabel} (${confidenceLabel(insight.expectedBiddersRange.confidence)})`
               }
             />
             <Fact
@@ -222,9 +222,16 @@ export function TenderDecisionSummary({
               <p className="text-xs font-semibold uppercase text-slate-500">Najčešći konkurenti</p>
               <div className="mt-2 space-y-1 text-sm text-slate-700">
                 {insight.topCompetitors.slice(0, 3).map((competitor) => (
-                  <div key={competitor.jib ?? competitor.name} className="flex items-center justify-between gap-3">
-                    <span className="truncate">{competitor.name}</span>
-                    <span className="shrink-0 font-semibold text-slate-900">{competitor.wins}</span>
+                  <div key={competitor.jib ?? competitor.name} className="rounded-md bg-white px-2 py-1.5">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="truncate font-semibold text-slate-800">{competitor.name}</span>
+                      <span className="shrink-0 text-xs font-semibold text-slate-500">
+                        {competitor.confidence ? confidenceLabel(competitor.confidence) : "signal"}
+                      </span>
+                    </div>
+                    {competitor.signals?.[0] ? (
+                      <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-500">{competitor.signals[0]}</p>
+                    ) : null}
                   </div>
                 ))}
               </div>
