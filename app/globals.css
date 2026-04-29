@@ -170,3 +170,68 @@
   padding: 1px 0;
   box-shadow: 0 0 0 2px rgba(251, 191, 36, 0.3);
 }
+
+@layer base {
+  .dashboard-shell {
+    /* Surfaces */
+    --background: #ffffff;
+    --surface-1: #ffffff;
+    --surface-2: #f8fafc;
+    --surface-subtle: #eff6ff;
+
+    /* Brand override on dashboard */
+    --primary: #2563eb;
+    --primary-hover: #1d4ed8;
+    --primary-soft: #dbeafe;
+    --primary-strong: #1e40af;
+
+    /* AI accent (new) */
+    --accent-ai: #7c3aed;
+    --accent-ai-soft: #ede9fe;
+    --accent-ai-strong: #6d28d9;
+
+    /* Status (extend) */
+    --success: #10b981;
+    --success-soft: #d1fae5;
+    --success-strong: #047857;
+    --warning: #f59e0b;
+    --warning-soft: #fef3c7;
+    --warning-strong: #d97706;
+    --danger: #ef4444;
+    --danger-soft: #fee2e2;
+    --danger-strong: #dc2626;
+    --info: #06b6d4;
+    --info-soft: #cffafe;
+    --info-strong: #0891b2;
+
+    /* Text */
+    --text-primary: #0f172a;
+    --text-secondary: #475569;
+    --text-tertiary: #94a3b8;
+
+    /* Borders */
+    --border-default: #e2e8f0;
+    --border-hover: #cbd5e1;
+
+    /* Charts (extend to 6 series) */
+    --chart-1: #2563eb;
+    --chart-2: #10b981;
+    --chart-3: #f59e0b;
+    --chart-4: #7c3aed;
+    --chart-5: #06b6d4;
+    --chart-6: #ec4899;
+
+    /* Radii */
+    --radius-card: 12px;
+    --radius-input: 8px;
+    --radius-modal: 16px;
+
+    /* Shadows */
+    --shadow-card: 0 1px 3px rgba(15, 23, 42, 0.06);
+    --shadow-card-hover: 0 4px 12px rgba(15, 23, 42, 0.08);
+    --shadow-modal: 0 20px 40px rgba(15, 23, 42, 0.15);
+
+    /* Inter font on dashboard surfaces */
+    --font-sans: var(--font-inter, ui-sans-serif, system-ui, sans-serif);
+  }
+}

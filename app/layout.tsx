@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { IBM_Plex_Sans, IBM_Plex_Serif, IBM_Plex_Mono } from "next/font/google";
+import { IBM_Plex_Sans, IBM_Plex_Serif, IBM_Plex_Mono, Inter } from "next/font/google";
 import { Toaster } from "@/components/ui/toaster";
 import "./globals.css";
 
@@ -21,6 +21,11 @@ const ibmPlexMono = IBM_Plex_Mono({
   subsets: ["latin", "latin-ext"],
 });
 
+const inter = Inter({
+  variable: "--font-inter",
+  subsets: ["latin", "latin-ext"],
+});
+
 export const metadata: Metadata = {
   title: "Tendersistem.com — Upravljanje ponudama u javnim nabavkama",
   description: "Tendersistem je Vaš recept za uspjeh. Alat za upravljanje ponudama u javnim nabavkama u Bosni i Hercegovini.",
@@ -39,7 +44,7 @@ export default function RootLayout({
   return (
     <html lang="bs-BA">
       <body
-        className={`${ibmPlexSans.variable} ${ibmPlexSerif.variable} ${ibmPlexMono.variable} antialiased`}
+        className={`${ibmPlexSans.variable} ${ibmPlexSerif.variable} ${ibmPlexMono.variable} ${inter.variable} antialiased`}
       >
         {children}
         <Toaster />

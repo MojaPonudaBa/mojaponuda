@@ -49,7 +49,7 @@ export default async function DashboardLayout({
   }
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-[#f7f9fc]">
+    <div className="dashboard-shell min-h-screen overflow-x-hidden bg-[#f7f9fc]">
       <DashboardSidebar
         userEmail={user.email ?? ""}
         companyName={company?.name}
