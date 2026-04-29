@@ -115,7 +115,7 @@ export default async function AdminPrilikePage() {
                   <span>{log.items_found} pronađeno</span>
                   <span className="text-emerald-700 font-semibold">{log.items_new} novo</span>
                   <span>{log.items_skipped} preskočeno</span>
-                  <span>{new Date(log.ran_at).toLocaleString("bs-BA")}</span>
+                  <span>{log.ran_at ? new Date(log.ran_at).toLocaleString("bs-BA") : "Nije poznato"}</span>
                 </div>
               </div>
             ))}

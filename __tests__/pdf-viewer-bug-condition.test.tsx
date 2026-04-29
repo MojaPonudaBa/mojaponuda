@@ -46,12 +46,19 @@ describe('Bug Condition Exploration - PDF Viewer Layout and Scroll Issues', () =
       bid_id: 'test-bid-123',
       title: 'Test Item 1',
       description: null,
+      status: 'missing',
+      document_id: null,
+      document_type: null,
+      risk_note: null,
       page_number: 1,
       page_reference: 'Section 1.1',
       source_text: null,
-      completed: false,
+      sort_order: 0,
+      source_highlight_regions: null,
+      source_page: null,
+      source_quote: null,
+      tender_source_document_id: null,
       created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
     },
   ];
 
@@ -287,7 +294,7 @@ describe('Bug Condition Exploration - PDF Viewer Layout and Scroll Issues', () =
    */
   it('Property: Full viewer should render all pages for any PDF document (EXPECTED TO FAIL)', () => {
     fc.assert(
-      fc.property(
+      fc.asyncProperty(
         fc.record({
           numPages: fc.integer({ min: 1, max: 20 }),
           fileName: fc.string({ minLength: 5, maxLength: 30 }),
@@ -352,7 +359,7 @@ describe('Bug Condition Exploration - PDF Viewer Layout and Scroll Issues', () =
    */
   it('Property: Background scroll should be prevented for any full viewer state (EXPECTED TO FAIL)', () => {
     fc.assert(
-      fc.property(
+      fc.asyncProperty(
         fc.record({
           hasChecklistItems: fc.boolean(),
           numPages: fc.integer({ min: 1, max: 10 }),

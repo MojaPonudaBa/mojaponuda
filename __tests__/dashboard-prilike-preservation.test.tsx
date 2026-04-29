@@ -330,7 +330,7 @@ describe('Preservation Properties - Dashboard Prilike Valid Data Behavior', () =
       context: {} as any,
       personalized: personalizedOpportunities,
       others: otherOpportunities,
-    });
+    } as unknown as Awaited<ReturnType<typeof getPersonalizedOpportunityRecommendations>>);
 
     await render(await PrilikeDashboardPage());
 
@@ -579,7 +579,7 @@ describe('Preservation Properties - Dashboard Prilike Valid Data Behavior', () =
       context: {} as any,
       personalized: [personalizedOpportunity],
       others: [otherOpportunity],
-    });
+    } as unknown as Awaited<ReturnType<typeof getPersonalizedOpportunityRecommendations>>);
 
     await render(await PrilikeDashboardPage());
 

@@ -1,4 +1,4 @@
-﻿export type Json =
+export type Json =
   | string
   | number
   | boolean
@@ -14,6 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_portal_lead_notes: {
+        Row: {
+          created_at: string
+          id: string
+          last_contacted_at: string | null
+          lead_jib: string
+          lead_name: string
+          next_follow_up_at: string | null
+          note: string | null
+          outreach_status: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_contacted_at?: string | null
+          lead_jib: string
+          lead_name: string
+          next_follow_up_at?: string | null
+          note?: string | null
+          outreach_status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_contacted_at?: string | null
+          lead_jib?: string
+          lead_name?: string
+          next_follow_up_at?: string | null
+          note?: string | null
+          outreach_status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       agency_client_notes: {
         Row: {
           agency_client_id: string
@@ -261,6 +300,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      analytics_events: {
+        Row: {
+          created_at: string | null
+          event_name: string
+          id: string
+          metadata: Json | null
+          url: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          event_name: string
+          id?: string
+          metadata?: Json | null
+          url?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          event_name?: string
+          id?: string
+          metadata?: Json | null
+          url?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
       }
       authority_cpv_stats: {
         Row: {
@@ -2049,6 +2115,41 @@ export type Database = {
         }
         Relationships: []
       }
+      unlocked_tenders: {
+        Row: {
+          amount_paid: number
+          created_at: string
+          id: string
+          status: string
+          tender_id: string
+          user_id: string
+        }
+        Insert: {
+          amount_paid?: number
+          created_at?: string
+          id?: string
+          status?: string
+          tender_id: string
+          user_id: string
+        }
+        Update: {
+          amount_paid?: number
+          created_at?: string
+          id?: string
+          status?: string
+          tender_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "unlocked_tenders_tender_id_fkey"
+            columns: ["tender_id"]
+            isOneToOne: false
+            referencedRelation: "tenders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_analytics: {
         Row: {
           created_at: string
@@ -2414,3 +2515,57 @@ export const Constants = {
     },
   },
 } as const
+
+export type {
+  AdminPortalLeadNote,
+  AdminPortalLeadNoteInsert,
+  AdminPortalLeadNoteUpdate,
+  AuthorityRequirementPattern,
+  AuthorityRequirementPatternInsert,
+  AuthorityRequirementPatternUpdate,
+  AwardDecision,
+  AwardDecisionInsert,
+  AwardDecisionUpdate,
+  Bid,
+  BidChecklistItem,
+  BidChecklistItemInsert,
+  BidChecklistItemUpdate,
+  BidDocument,
+  BidDocumentInsert,
+  BidDocumentUpdate,
+  BidInsert,
+  BidStatus,
+  BidUpdate,
+  ChecklistStatus,
+  Company,
+  CompanyInsert,
+  CompanyUpdate,
+  ContractingAuthority,
+  ContractingAuthorityInsert,
+  ContractingAuthorityUpdate,
+  Document,
+  DocumentInsert,
+  DocumentUpdate,
+  DocumentWithExpiry,
+  MarketCompany,
+  MarketCompanyInsert,
+  MarketCompanyUpdate,
+  PlannedProcurement,
+  PlannedProcurementInsert,
+  PlannedProcurementUpdate,
+  PreparationConsumption,
+  PreparationConsumptionInsert,
+  PreparationConsumptionUpdate,
+  PreparationCreditPurchase,
+  PreparationCreditPurchaseInsert,
+  PreparationCreditPurchaseUpdate,
+  Subscription,
+  SubscriptionInsert,
+  SubscriptionUpdate,
+  Tender,
+  TenderDocUpload,
+  TenderDocUploadInsert,
+  TenderDocUploadUpdate,
+  TenderInsert,
+  TenderUpdate,
+} from "./db-aliases"

@@ -5,8 +5,8 @@ interface OpportunityStructuredDataProps {
     description: string | null;
     deadline: string | null;
     value: number | null;
-    source_url: string;
-    created_at: string;
+    source_url: string | null;
+    created_at: string | null;
   };
 }
 
@@ -20,8 +20,8 @@ export function OpportunityStructuredData({ opportunity: o }: OpportunityStructu
       "name": o.issuer,
     },
     "description": o.description ?? o.title,
-    "url": o.source_url,
-    "datePosted": o.created_at,
+    "url": o.source_url ?? undefined,
+    "datePosted": o.created_at ?? undefined,
     ...(o.deadline ? { "validThrough": o.deadline } : {}),
     ...(o.value ? { "offers": { "@type": "Offer", "price": o.value, "priceCurrency": "BAM" } } : {}),
   };

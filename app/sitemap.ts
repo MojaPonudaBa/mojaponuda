@@ -16,7 +16,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   const opportunityUrls: MetadataRoute.Sitemap = (opportunities ?? []).map((o) => ({
     url: `${BASE_URL}/prilike/${o.slug.split("/").pop()}`,
-    lastModified: new Date(o.updated_at),
+    lastModified: o.updated_at ? new Date(o.updated_at) : new Date(),
     changeFrequency: "daily",
     priority: 0.7,
   }));

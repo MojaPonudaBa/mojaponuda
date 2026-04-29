@@ -86,7 +86,7 @@ export async function GET() {
     supabase
       .from("bids")
       .select("id", { count: "exact", head: true })
-      .in("status", ["draft", "in-progress", "submitted"]),
+      .in("status", ["draft", "in_review", "submitted"]),
     supabase
       .from("tenders")
       .select("estimated_value, status")
