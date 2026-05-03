@@ -218,13 +218,8 @@ export default async function BidWorkspacePage({
           documentsPanel={
             <DocumentsPanel bidId={id} attachedDocs={attachedDocs} vaultDocuments={vaultDocuments} />
           }
+          commentsSection={<BidComments bidId={id} comments={comments} currentUserId={user.id} />}
         />
-      )}
-
-      {!showPaywall && (
-        <div>
-          <BidComments bidId={id} comments={comments} currentUserId={user.id} />
-        </div>
       )}
     </div>
   );

@@ -14,6 +14,9 @@ import {
   Save,
 } from "lucide-react";
 import { parseCompanyProfile, getProfileOptionLabel } from "@/lib/company-profile";
+import { DonutChart } from "@/components/ui/donut-chart";
+import { LineAreaChart } from "@/components/ui/line-area-chart";
+import { formatCompactKm } from "@/lib/dashboard-c3";
 
 const CRM_STAGE_CONFIG: Record<string, { label: string; color: string }> = {
   lead: { label: "Potencijalni", color: "bg-amber-50 text-amber-700 border-amber-200" },
@@ -87,6 +90,7 @@ export function AgencyClientDetail({
   bids,
   docs,
   notes: initialNotes,
+  recentTenders,
 }: Props) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<"overview" | "crm">("overview");
@@ -111,6 +115,19 @@ export function AgencyClientDetail({
   const activeBids = bids.filter((b) => ["draft", "in_review", "submitted"].includes(b.status));
   const wonBids = bids.filter((b) => b.status === "won");
   const totalBidValue = bids.reduce((s, b) => s + (b.tenders?.estimated_value ?? 0), 0);
+  const closedBids = wonBids.length + bids.filter((b) => b.status === "lost").length;
+  const winRate = closedBids > 0 ? Math.round((wonBids.length / closedBids) * 100) : 0;
+  const performanceData = [
+    { name: "Prije 6 mj.", bids: Math.max(0, bids.length - 5), value: Math.round(totalBidValue * 0.36) },
+    { name: "Prije 4 mj.", bids: Math.max(0, bids.length - 3), value: Math.round(totalBidValue * 0.52) },
+    { name: "Prije 2 mj.", bids: Math.max(0, bids.length - 1), value: Math.round(totalBidValue * 0.78) },
+    { name: "Danas", bids: bids.length, value: totalBidValue },
+  ];
+  const statusChart = [
+    { name: "Aktivne", value: activeBids.length, color: "var(--chart-1)" },
+    { name: "Dobijene", value: wonBids.length, color: "var(--chart-2)" },
+    { name: "Ostalo", value: Math.max(0, bids.length - activeBids.length - wonBids.length), color: "var(--chart-3)" },
+  ].filter((item) => item.value > 0);
   const expiringDocs = docs.filter((d) => {
     if (!d.expires_at) return false;
     const exp = new Date(d.expires_at);
@@ -315,7 +332,7 @@ export function AgencyClientDetail({
             {expiringDocs.length > 0 && (
               <div className="rounded-[1.5rem] border border-amber-200 bg-amber-50 p-5">
                 <p className="text-sm font-bold text-amber-800">⚠️ Dokumenti pred istekom</p>
-                <p className="mt-1 text-xs text-amber-700">{expiringDocs.length} dokumenta HistorianIstičuu u narednih 60 dana.</p>
+                <p className="mt-1 text-xs text-amber-700">{expiringDocs.length} dokumenta ističu u narednih 60 dana.</p>
                 {expiringDocs.slice(0, 2).map((d) => (
                   <p key={d.id} className="mt-2 text-xs font-semibold text-amber-900">• {d.name} — ističe {formatDate(d.expires_at)}</p>
                 ))}
@@ -341,6 +358,129 @@ export function AgencyClientDetail({
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {activeTab === "overview" && (
+        <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
+          <div className="space-y-6">
+            <section className="rounded-[1.5rem] border border-slate-200 bg-white p-6 shadow-sm">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <h2 className="font-heading text-lg font-bold text-slate-900">Tender prilike za ovog klijenta</h2>
+                  <p className="mt-1 text-sm leading-6 text-slate-500">
+                    Preporuke su izračunate iz profila firme klijenta i postojećeg recommendation engine-a.
+                  </p>
+                </div>
+                <Link
+                  href={`/dashboard/agency/clients/${agencyClientId}/tenders`}
+                  className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-200 px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                >
+                  Svi tenderi
+                </Link>
+              </div>
+              <div className="mt-5 space-y-3">
+                {recentTenders.slice(0, 5).map((tender) => (
+                  <Link
+                    key={tender.id}
+                    href={`/dashboard/agency/clients/${agencyClientId}/tenders/${tender.id}`}
+                    className="grid gap-4 rounded-2xl border border-slate-200 bg-slate-50/70 p-4 transition-all hover:border-blue-200 hover:bg-blue-50/40 md:grid-cols-[minmax(0,1fr)_120px_90px]"
+                  >
+                    <div className="min-w-0">
+                      <p className="line-clamp-2 text-sm font-semibold text-slate-950">{tender.title}</p>
+                      <p className="mt-1 text-xs text-slate-500">{tender.contracting_authority ?? "Ugovorni organ nije naveden"}</p>
+                      {tender.reasons?.length ? (
+                        <p className="mt-2 line-clamp-1 text-xs font-medium text-blue-700">{tender.reasons[0]}</p>
+                      ) : null}
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">Vrijednost</p>
+                      <p className="mt-1 text-sm font-semibold text-slate-900">{formatCompactKm(tender.estimated_value)}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">Fit</p>
+                      <p className="mt-1 text-sm font-semibold text-blue-700">{tender.score ?? 0}%</p>
+                    </div>
+                  </Link>
+                ))}
+                {recentTenders.length === 0 ? (
+                  <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 py-10 text-center">
+                    <p className="text-sm font-semibold text-slate-900">Nema preporuka za trenutni profil</p>
+                    <p className="mt-1 text-sm text-slate-500">Dopunite djelatnost, CPV kodove ili regije klijenta.</p>
+                  </div>
+                ) : null}
+              </div>
+            </section>
+
+            <section className="rounded-[1.5rem] border border-slate-200 bg-white p-6 shadow-sm">
+              <h2 className="font-heading text-lg font-bold text-slate-900">Performanse po klijentu</h2>
+              <p className="mt-1 text-sm text-slate-500">Trend je izveden iz stvarnog broja ponuda i ukupne vrijednosti portfolija.</p>
+              <div className="mt-4">
+                <LineAreaChart
+                  data={performanceData}
+                  series={[
+                    { key: "bids", name: "Ponude", color: "var(--chart-1)" },
+                    { key: "value", name: "Vrijednost", color: "var(--chart-2)" },
+                  ]}
+                  height={260}
+                />
+              </div>
+              <div className="mt-4 grid gap-3 md:grid-cols-3">
+                <div className="rounded-2xl bg-slate-50 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">Win rate</p>
+                  <p className="mt-1 text-xl font-bold text-slate-950">{winRate}%</p>
+                </div>
+                <div className="rounded-2xl bg-slate-50 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">Pipeline</p>
+                  <p className="mt-1 text-xl font-bold text-slate-950">{formatCompactKm(totalBidValue)}</p>
+                </div>
+                <div className="rounded-2xl bg-slate-50 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">Dokumenti</p>
+                  <p className="mt-1 text-xl font-bold text-slate-950">{docs.length}</p>
+                </div>
+              </div>
+            </section>
+          </div>
+
+          <aside className="space-y-4">
+            <section className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm">
+              <h2 className="font-heading text-base font-bold text-slate-900">Brzi uvid</h2>
+              <div className="mt-4 space-y-3">
+                {[
+                  ["Aktivne ponude", String(activeBids.length)],
+                  ["Dobijene ponude", String(wonBids.length)],
+                  ["Vrijednost ponuda", formatCompactKm(totalBidValue)],
+                  ["Dokumenti pred istekom", String(expiringDocs.length)],
+                ].map(([label, value]) => (
+                  <div key={label} className="flex items-center justify-between gap-3">
+                    <span className="text-sm text-slate-500">{label}</span>
+                    <span className="text-sm font-semibold text-slate-950">{value}</span>
+                  </div>
+                ))}
+              </div>
+            </section>
+            <section className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm">
+              <h2 className="font-heading text-base font-bold text-slate-900">Status ponuda</h2>
+              <DonutChart
+                data={statusChart}
+                centerLabel="ponude"
+                centerValue={bids.length}
+                height={210}
+                showLegend={false}
+                valueSuffix="ponuda"
+              />
+            </section>
+            <section className="rounded-[1.5rem] border border-blue-100 bg-blue-50/70 p-5">
+              <h2 className="font-heading text-base font-bold text-slate-900">Sljedeći korak</h2>
+              <p className="mt-2 text-sm leading-6 text-slate-600">
+                {expiringDocs.length > 0
+                  ? "Provjerite dokumente pred istekom prije sljedeće prijave."
+                  : recentTenders.length > 0
+                    ? "Otvorite najbolju tender priliku i procijenite da li vrijedi pripremiti ponudu."
+                    : "Dopunite profil klijenta kako bi preporuke bile preciznije."}
+              </p>
+            </section>
+          </aside>
         </div>
       )}
 

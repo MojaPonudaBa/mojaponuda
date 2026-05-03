@@ -1,6 +1,6 @@
 "use client";
 
-import { createElement } from "react";
+import type { ComponentType, ReactNode } from "react";
 import {
   AlertCircle,
   BarChart3,
@@ -8,13 +8,14 @@ import {
   Inbox,
   Plus,
   Search,
-  type LucideIcon,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-export type EmptyStateIcon = "inbox" | "search" | "file" | "chart" | "alert" | LucideIcon;
+type LegacyIconComponent = ComponentType<{ className?: string; "aria-hidden"?: boolean }>;
+
+export type EmptyStateIcon = "inbox" | "search" | "file" | "chart" | "alert" | ReactNode | LegacyIconComponent;
 
 export interface EmptyStateProps {
   title: string;
@@ -30,15 +31,20 @@ export interface EmptyStateProps {
 function EmptyStateIconGraphic({ icon }: { icon?: EmptyStateIcon }) {
   const iconClassName = "size-7";
 
-  if (typeof icon === "function") {
-    return createElement(icon, { className: iconClassName, "aria-hidden": true });
+  if (typeof icon === "string" || icon === undefined) {
+    if (icon === "search") return <Search className={iconClassName} aria-hidden="true" />;
+    if (icon === "file") return <FileText className={iconClassName} aria-hidden="true" />;
+    if (icon === "chart") return <BarChart3 className={iconClassName} aria-hidden="true" />;
+    if (icon === "alert") return <AlertCircle className={iconClassName} aria-hidden="true" />;
+    return <Inbox className={iconClassName} aria-hidden="true" />;
   }
 
-  if (icon === "search") return <Search className={iconClassName} aria-hidden="true" />;
-  if (icon === "file") return <FileText className={iconClassName} aria-hidden="true" />;
-  if (icon === "chart") return <BarChart3 className={iconClassName} aria-hidden="true" />;
-  if (icon === "alert") return <AlertCircle className={iconClassName} aria-hidden="true" />;
-  return <Inbox className={iconClassName} aria-hidden="true" />;
+  if (typeof icon === "function") {
+    const Icon = icon;
+    return <Icon className={iconClassName} aria-hidden={true} />;
+  }
+
+  return icon;
 }
 
 /**

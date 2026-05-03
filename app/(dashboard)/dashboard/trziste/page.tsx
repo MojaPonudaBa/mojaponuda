@@ -1,345 +1,418 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import type { ReactNode } from "react";
+import {
+  BarChart3,
+  CalendarDays,
+  Download,
+  FileText,
+  Globe2,
+  LineChart,
+  MapPinned,
+  Target,
+} from "lucide-react";
+
+import { AnalyticsInsightsCards } from "@/components/dashboard/analytics-insights-cards";
+import { AIInsightBox } from "@/components/ui/ai-insight-box";
+import { Button } from "@/components/ui/button";
+import { DonutChart } from "@/components/ui/donut-chart";
+import { EmptyState } from "@/components/ui/empty-state";
+import { LineAreaChart } from "@/components/ui/line-area-chart";
+import { StatCard } from "@/components/ui/stat-card";
 import { createClient } from "@/lib/supabase/server";
-import { CpvBarChart, MonthlyTrendChart } from "@/components/trziste/market-charts";
-import { ShieldCheck, Target, TrendingUp, Users } from "lucide-react";
+import { formatKm, formatPercent, getDashboardTrzisteData } from "@/lib/dashboard-trziste";
 
 export const dynamic = "force-dynamic";
 
-function fmtMoney(n: number | null) {
-  if (n === null || n === undefined) return "—";
-  return new Intl.NumberFormat("bs-BA", { maximumFractionDigits: 0 }).format(n) + " KM";
-}
-
-function median(values: number[]): number | null {
-  const sorted = values.filter((value) => Number.isFinite(value) && value > 0).sort((a, b) => a - b);
-  if (sorted.length === 0) return null;
-  const mid = Math.floor(sorted.length / 2);
-  return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
-}
-
-async function fetchActiveTenderStats(supabase: Awaited<ReturnType<typeof createClient>>) {
-  const nowIso = new Date().toISOString();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const any = supabase as any;
-
-  const { count } = await any
-    .from("tenders")
-    .select("id", { count: "exact", head: true })
-    .gt("deadline", nowIso);
-
-  // Napomena: sum na klijentskoj strani zbog PostgREST limitacija.
-  const { data: tvals } = await any
-    .from("tenders")
-    .select("estimated_value, cpv_code, deadline")
-    .gt("deadline", nowIso)
-    .limit(5000);
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const rows: any[] = tvals ?? [];
-  const knownValueRows = rows.filter((r) => Number(r.estimated_value) > 0);
-  const totalValue = knownValueRows.reduce((s, r) => s + Number(r.estimated_value ?? 0), 0);
-
-  const cpvCounter = new Map<string, number>();
-  for (const r of rows) {
-    const code = (r.cpv_code ?? "").toString().replace(/[^0-9]/g, "").slice(0, 2);
-    if (!code) continue;
-    cpvCounter.set(code, (cpvCounter.get(code) ?? 0) + 1);
-  }
-  const cpvData = [...cpvCounter.entries()]
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 10)
-    .map(([cpv, count]) => ({ cpv, count }));
-
-  return { activeCount: count ?? 0, totalValue, knownValueCount: knownValueRows.length, cpvData };
-}
-
-async function fetchMonthlyTrend(supabase: Awaited<ReturnType<typeof createClient>>) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const any = supabase as any;
-  const since = new Date();
-  since.setMonth(since.getMonth() - 12);
-  const { data } = await any
-    .from("award_decisions")
-    .select("award_date, winning_price")
-    .gte("award_date", since.toISOString().slice(0, 10))
-    .limit(20000);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const rows: any[] = data ?? [];
-  const buckets = new Map<string, number>();
-  for (const r of rows) {
-    if (!r.award_date) continue;
-    const d = new Date(r.award_date);
-    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-    buckets.set(key, (buckets.get(key) ?? 0) + 1);
-  }
-  return [...buckets.entries()].sort().map(([month, count]) => ({ month, count }));
-}
-
-async function fetchMarketSignals(supabase: Awaited<ReturnType<typeof createClient>>) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const any = supabase as any;
-  const since = new Date();
-  since.setFullYear(since.getFullYear() - 1);
-  const { data } = await any
-    .from("award_decisions")
-    .select("winner_jib, winner_name, winning_price, total_bidders_count, discount_pct, contract_type, award_date")
-    .gte("award_date", since.toISOString().slice(0, 10))
-    .limit(20000);
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const rows: any[] = data ?? [];
-  const bidderSamples = rows
-    .map((row) => Number(row.total_bidders_count))
-    .filter((value) => Number.isFinite(value) && value > 0);
-  const discountSamples = rows
-    .map((row) => Number(row.discount_pct))
-    .filter((value) => Number.isFinite(value) && value > 0);
-  const priceSamples = rows
-    .map((row) => Number(row.winning_price))
-    .filter((value) => Number.isFinite(value) && value > 0);
-
-  const winnerMap = new Map<string, { name: string; wins: number; value: number }>();
-  for (const row of rows) {
-    if (!row.winner_jib) continue;
-    const existing = winnerMap.get(row.winner_jib);
-    const value = Number(row.winning_price) || 0;
-    if (existing) {
-      existing.wins += 1;
-      existing.value += value;
-    } else {
-      winnerMap.set(row.winner_jib, { name: row.winner_name ?? row.winner_jib, wins: 1, value });
-    }
-  }
-  const topWinner = [...winnerMap.values()].sort((a, b) => b.wins - a.wins || b.value - a.value)[0] ?? null;
-  const topWinnerShare = topWinner && rows.length > 0 ? Math.round((topWinner.wins / rows.length) * 100) : null;
-
-  return {
-    awardCount: rows.length,
-    avgBidders: bidderSamples.length > 0 ? bidderSamples.reduce((sum, value) => sum + value, 0) / bidderSamples.length : null,
-    bidderSampleCount: bidderSamples.length,
-    avgDiscount: discountSamples.length > 0 ? discountSamples.reduce((sum, value) => sum + value, 0) / discountSamples.length : null,
-    discountSampleCount: discountSamples.length,
-    medianAwardValue: median(priceSamples),
-    priceSampleCount: priceSamples.length,
-    topWinner,
-    topWinnerShare,
-  };
-}
-
-async function fetchTopAuthorities(supabase: Awaited<ReturnType<typeof createClient>>) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const any = supabase as any;
-  const { data } = await any
-    .from("authority_stats")
-    .select("authority_jib, authority_name, tender_count, total_estimated_value")
-    .order("tender_count", { ascending: false })
-    .limit(10);
-  return data ?? [];
-}
-
-async function fetchTopCompanies(supabase: Awaited<ReturnType<typeof createClient>>) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const any = supabase as any;
-  const { data } = await any
-    .from("company_stats")
-    .select("company_jib, company_name, total_wins, total_won_value, win_rate")
-    .order("total_won_value", { ascending: false })
-    .limit(10);
-  return data ?? [];
-}
-
-export default async function MarketOverviewPage() {
+export default async function TrzistePage() {
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  const [stats, trend, topAuth, topComp, marketSignals] = await Promise.all([
-    fetchActiveTenderStats(supabase),
-    fetchMonthlyTrend(supabase),
-    fetchTopAuthorities(supabase),
-    fetchTopCompanies(supabase),
-    fetchMarketSignals(supabase),
-  ]);
-  const topCpv = stats.cpvData[0] ?? null;
-  const opportunityCards = [
-    {
-      title: "Gdje ima najvise otvorenih prilika",
-      value: topCpv ? `CPV ${topCpv.cpv}` : "Nema uzorka",
-      body: topCpv
-        ? `${topCpv.count} otvorenih tendera u najjacoj aktivnoj CPV grupi. Koristite ovo za brzo skeniranje trzista i postavljanje pracenja.`
-        : "Nema dovoljno aktivnih tendera za CPV zakljucak.",
-      icon: Target,
-      tone: "border-blue-100 bg-blue-50 text-blue-800",
-    },
-    {
-      title: "Konkurencija",
-      value: marketSignals.avgBidders !== null ? `${marketSignals.avgBidders.toFixed(1)} ponudjaca` : "Indirektan signal",
-      body: marketSignals.avgBidders !== null
-        ? `Zasnovano na ${marketSignals.bidderSampleCount} dodjela sa objavljenim brojem ponudjaca u zadnjih 12 mjeseci.`
-        : "Broj ponudjaca je slabo popunjen, pa se za procjenu konkurencije koristi sirina pobjednika i ponavljanje narucilaca.",
-      icon: Users,
-      tone: "border-emerald-100 bg-emerald-50 text-emerald-800",
-    },
-    {
-      title: "Cijena i popust",
-      value: marketSignals.avgDiscount !== null ? `${marketSignals.avgDiscount.toFixed(1)}%` : fmtMoney(marketSignals.medianAwardValue),
-      body: marketSignals.avgDiscount !== null
-        ? `Prosjecan poznati popust iz ${marketSignals.discountSampleCount} dodjela. Koristiti samo kao okvir po trzistu.`
-        : marketSignals.priceSampleCount > 0
-          ? `Medijan pobjednicke cijene iz ${marketSignals.priceSampleCount} poznatih dodjela.`
-          : "Nema dovoljno cijena za opsti cjenovni signal.",
-      icon: TrendingUp,
-      tone: "border-amber-100 bg-amber-50 text-amber-800",
-    },
-    {
-      title: "Dominacija dobavljaca",
-      value: marketSignals.topWinnerShare !== null && marketSignals.topWinner ? `${marketSignals.topWinnerShare}%` : "Nema obrasca",
-      body: marketSignals.topWinnerShare !== null && marketSignals.topWinner
-        ? `${marketSignals.topWinner.name} je najcesci poznati pobjednik u uzorku. Otvorite profil da vidite gdje je stvarno jak.`
-        : "Nema dovoljno pobjednika za procjenu koncentracije trzista.",
-      icon: ShieldCheck,
-      tone: "border-slate-200 bg-white text-slate-800",
-    },
+  if (!user) {
+    redirect("/login");
+  }
+
+  const { data: company } = await supabase
+    .from("companies")
+    .select("id, jib, industry, keywords, operating_regions, cpv_codes")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  const data = await getDashboardTrzisteData(supabase, company);
+  const winRate = data.userStats?.winRate ?? 0;
+  const topCategory = data.categoryData[0];
+  const chartPalette = [
+    "var(--chart-1)",
+    "var(--chart-2)",
+    "var(--chart-3)",
+    "var(--chart-4)",
+    "var(--chart-5)",
+    "var(--chart-6)",
   ];
 
+  const donutData = data.categoryData.map((item, index) => ({
+    name: item.name,
+    value: item.count,
+    color: chartPalette[index % chartPalette.length],
+  }));
+  const procedureData = data.procedureData.map((item, index) => ({
+    name: item.name,
+    value: item.count,
+    color: chartPalette[index % chartPalette.length],
+  }));
+
   return (
-    <div className="mx-auto max-w-[1400px] space-y-6 px-4 py-6">
-      <div>
-        <h1 className="text-2xl font-heading font-bold tracking-tight text-slate-900 sm:text-3xl">
-          Pregled tržišta
-        </h1>
-        <p className="mt-1 text-sm text-slate-600">
-          Globalni pregled javnih nabavki u BiH — aktivni tenderi, trendovi i najaktivniji učesnici.
-        </p>
-      </div>
-
-      {/* KPI row */}
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="text-xs font-medium uppercase tracking-wide text-slate-500">Aktivni tenderi</div>
-          <div className="mt-1 text-2xl font-heading font-bold tracking-tight text-slate-900">
-            {stats.activeCount.toLocaleString("bs-BA")}
+    <div className="space-y-6">
+      <header className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+          <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-[var(--border-default)] bg-[var(--surface-1)] px-3 py-1 text-xs font-semibold text-[var(--text-secondary)]">
+            <Globe2 className="h-3.5 w-3.5 text-[var(--primary)]" />
+            Analitika javnih nabavki BiH
           </div>
-        </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="text-xs font-medium uppercase tracking-wide text-slate-500">Poznata vrijednost aktivnih</div>
-          <div className="mt-1 text-2xl font-heading font-bold tracking-tight text-slate-900">
-            {stats.knownValueCount > 0 ? fmtMoney(stats.totalValue) : "Nije objavljena"}
-          </div>
-          <p className="mt-1 text-xs text-slate-500">{stats.knownValueCount} aktivnih tendera ima objavljenu vrijednost.</p>
-        </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="text-xs font-medium uppercase tracking-wide text-slate-500">Dodjele (12 mj)</div>
-          <div className="mt-1 text-2xl font-heading font-bold tracking-tight text-slate-900">
-            {trend.reduce((s, x) => s + x.count, 0).toLocaleString("bs-BA")}
-          </div>
-        </div>
-      </div>
-
-      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        <div className="mb-4">
-          <h2 className="font-heading text-lg font-bold text-slate-900">Trzisni zakljucci</h2>
-          <p className="mt-1 text-sm text-slate-500">
-            Signal za akciju iz dostupnih tendera i dodjela; gdje podaci nisu potpuni, prikazujemo indirektan signal.
+          <h1 className="text-3xl font-bold tracking-tight text-[var(--text-primary)]">Trziste</h1>
+          <p className="mt-2 max-w-2xl text-sm text-[var(--text-secondary)]">
+            Pregled aktivnih prilika, dodjela i konkurentskih signala iz realnih javnih podataka.
           </p>
         </div>
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-          {opportunityCards.map((card) => {
-            const Icon = card.icon;
-            return (
-              <div key={card.title} className={`rounded-2xl border p-4 ${card.tone}`}>
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <p className="text-sm font-bold">{card.title}</p>
-                    <p className="mt-1 text-lg font-heading font-extrabold">{card.value}</p>
-                  </div>
-                  <Icon className="mt-1 size-4 shrink-0 opacity-70" />
-                </div>
-                <p className="mt-3 text-sm leading-6 opacity-90">{card.body}</p>
-              </div>
-            );
-          })}
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" size="lg">
+            <CalendarDays className="h-4 w-4" />
+            Zadnjih 12 mjeseci
+          </Button>
+          <Button variant="outline" size="lg">
+            <Download className="h-4 w-4" />
+            Izvoz
+          </Button>
         </div>
+      </header>
+
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+        <StatCard
+          title="Aktivni tenderi"
+          value={data.activeTenderCount.toLocaleString("bs-BA")}
+          description="Objave koje su trenutno otvorene"
+          iconName="FileText"
+          iconColor="blue"
+        />
+        <StatCard
+          title="Vrijednost aktivnih"
+          value={formatKm(data.activeTenderValue)}
+          description="Procijenjena vrijednost sa dostupnim iznosima"
+          iconName="BarChart3"
+          iconColor="green"
+        />
+        <StatCard
+          title="Dodjele 12m"
+          value={data.awards12mCount.toLocaleString("bs-BA")}
+          description={formatKm(data.awards12mValue)}
+          iconName="Trophy"
+          iconColor="amber"
+        />
+        <StatCard
+          title="Vasa stopa uspjeha"
+          value={formatPercent(winRate)}
+          description={data.userStats ? `${data.userStats.totalWins} dobijenih od ${data.userStats.totalBids}` : "Nema povezanih ponuda"}
+          iconName="Target"
+          iconColor="purple"
+        />
+        <StatCard
+          title="Prosj. konkurencija"
+          value={data.avgBidders !== null ? data.avgBidders.toFixed(1) : "N/A"}
+          description="Ponudjaca po poznatoj dodjeli"
+          iconName="Users"
+          iconColor="cyan"
+        />
       </section>
 
-      {/* Charts */}
-      <div className="grid gap-4 lg:grid-cols-2">
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-700">
-            Raspodjela po CPV grupi (top 10)
-          </h3>
-          {stats.cpvData.length > 0 ? (
-            <CpvBarChart data={stats.cpvData} />
-          ) : (
-            <p className="py-10 text-center text-sm text-slate-500">Nema podataka.</p>
-          )}
-        </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-700">
-            Trend dodjela (12 mjeseci)
-          </h3>
-          {trend.length > 0 ? (
-            <MonthlyTrendChart data={trend} />
-          ) : (
-            <p className="py-10 text-center text-sm text-slate-500">Nema podataka.</p>
-          )}
-        </div>
-      </div>
+      <AnalyticsInsightsCards />
 
-      {/* Top authorities + companies */}
-      <div className="grid gap-4 lg:grid-cols-2">
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-700">
-            Top 10 naručilaca (po broju objavljenih)
-          </h3>
-          <ul className="divide-y divide-slate-200">
-            {topAuth.length === 0 && (
-              <li className="py-3 text-sm text-slate-500">
-                Agregati još nisu popunjeni. Pokreni <code>scripts/backfill-analytics.ts</code>.
-              </li>
-            )}
-            {topAuth.map((a: { authority_jib: string; authority_name: string | null; tender_count: number; total_estimated_value: number }) => (
-              <li key={a.authority_jib} className="flex items-center justify-between gap-3 py-2.5">
-                <Link
-                  href={`/dashboard/intelligence/authority/${a.authority_jib}`}
-                  className="min-w-0 flex-1 truncate text-sm font-medium text-slate-900 hover:text-blue-700"
-                >
-                  {a.authority_name ?? a.authority_jib}
-                </Link>
-                <div className="text-right">
-                  <div className="text-sm font-semibold text-slate-900">{a.tender_count}</div>
-                  <div className="text-[11px] text-slate-500">{fmtMoney(Number(a.total_estimated_value))}</div>
-                </div>
-              </li>
-            ))}
-          </ul>
-        </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-700">
-            Top 10 dobavljača (po vrijednosti dobijenih ugovora)
-          </h3>
-          <ul className="divide-y divide-slate-200">
-            {topComp.length === 0 && (
-              <li className="py-3 text-sm text-slate-500">
-                Agregati još nisu popunjeni. Pokreni <code>scripts/backfill-analytics.ts</code>.
-              </li>
-            )}
-            {topComp.map((c: { company_jib: string; company_name: string | null; total_wins: number; total_won_value: number; win_rate: number | null }) => (
-              <li key={c.company_jib} className="flex items-center justify-between gap-3 py-2.5">
-                <Link
-                  href={`/dashboard/intelligence/company/${c.company_jib}`}
-                  className="min-w-0 flex-1 truncate text-sm font-medium text-slate-900 hover:text-blue-700"
-                >
-                  {c.company_name ?? c.company_jib}
-                </Link>
-                <div className="text-right">
-                  <div className="text-sm font-semibold text-slate-900">{fmtMoney(Number(c.total_won_value))}</div>
-                  <div className="text-[11px] text-slate-500">
-                    {c.total_wins} pobjeda · {c.win_rate !== null ? `${c.win_rate}% stopa uspjeha` : ""}
-                  </div>
-                </div>
-              </li>
-            ))}
-          </ul>
-        </div>
+      <section className="grid gap-4 xl:grid-cols-2">
+        <Panel title="Trend dodjela" subtitle="Broj i vrijednost dodjela po mjesecima">
+          {data.monthlyAwards.some((month) => month.count > 0 || month.valueMillions > 0) ? (
+            <LineAreaChart
+              data={data.monthlyAwards}
+              xKey="label"
+              height={280}
+              series={[
+                { key: "count", name: "Broj dodjela", color: "var(--chart-1)" },
+                { key: "valueMillions", name: "Vrijednost (M KM)", color: "var(--chart-2)" },
+              ]}
+            />
+          ) : (
+            <EmptyState icon={<LineChart className="size-7" aria-hidden="true" />} title="Nema vremenskog trenda" description="Dodjele za zadnjih 12 mjeseci nisu dostupne." />
+          )}
+        </Panel>
+
+        <Panel title="Kategorije aktivnih tendera" subtitle="Top CPV grupe po broju otvorenih tendera">
+          {donutData.length > 0 ? (
+            <DonutChart
+              data={donutData}
+              height={280}
+              centerLabel="Top grupa"
+              centerValue={topCategory?.name ?? "N/A"}
+              valueSuffix="tendera"
+            />
+          ) : (
+            <EmptyState icon={<Target className="size-7" aria-hidden="true" />} title="Nema CPV raspodjele" description="Aktivni tenderi nemaju dovoljno CPV podataka." />
+          )}
+        </Panel>
+
+        <Panel title="Vrste postupaka" subtitle="Struktura poznatih odluka o dodjeli">
+          {procedureData.length > 0 ? (
+            <DonutChart
+              data={procedureData}
+              height={280}
+              centerLabel="Postupci"
+              centerValue={data.procedureData.length.toString()}
+              valueSuffix="odluka"
+            />
+          ) : (
+            <EmptyState icon={<BarChart3 className="size-7" aria-hidden="true" />} title="Nema strukture postupaka" description="Odluke nemaju popunjene vrste postupka." />
+          )}
+        </Panel>
+
+        <Panel title="Vasa izvedba kroz vrijeme" subtitle="Trend iz vasih sacuvanih ponuda">
+          {data.userStats?.monthlyTrend?.length ? (
+            <LineAreaChart
+              data={data.userStats.monthlyTrend}
+              xKey="month"
+              height={280}
+              series={[
+                { key: "bids", name: "Ponude", color: "var(--chart-1)" },
+                { key: "wins", name: "Pobjede", color: "var(--chart-2)" },
+              ]}
+            />
+          ) : (
+            <EmptyState
+              icon={<LineChart className="size-7" aria-hidden="true" />}
+              title="Nema historije vasih ponuda"
+              description="Trend ce se prikazati kada bude dovoljno sacuvanih ponuda."
+            />
+          )}
+        </Panel>
+      </section>
+
+      <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
+        <Panel title="Performanse po kategoriji" subtitle="Aktivne CPV grupe i koncentracija vrijednosti">
+          {data.categoryData.length > 0 ? (
+            <div className="overflow-hidden rounded-[var(--radius-card)] border border-[var(--border-default)]">
+              <table className="w-full text-sm">
+                <thead className="bg-[var(--surface-2)] text-xs uppercase tracking-wide text-[var(--text-tertiary)]">
+                  <tr>
+                    <th className="px-4 py-3 text-left">Kategorija</th>
+                    <th className="px-4 py-3 text-right">Tenderi</th>
+                    <th className="px-4 py-3 text-right">Vrijednost</th>
+                    <th className="px-4 py-3 text-left">Signal</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[var(--border-default)] bg-[var(--surface-1)]">
+                  {data.categoryData.map((category) => {
+                    const maxValue = Math.max(...data.categoryData.map((item) => item.value), 1);
+                    const width = Math.max(8, Math.round((category.value / maxValue) * 100));
+
+                    return (
+                      <tr key={category.name}>
+                        <td className="px-4 py-3 font-medium text-[var(--text-primary)]">{category.name}</td>
+                        <td className="px-4 py-3 text-right text-[var(--text-secondary)]">{category.count}</td>
+                        <td className="px-4 py-3 text-right font-medium text-[var(--text-primary)]">{formatKm(category.value)}</td>
+                        <td className="px-4 py-3">
+                          <div className="h-2 rounded-full bg-[var(--surface-2)]">
+                            <div className="h-2 rounded-full bg-[var(--primary)]" style={{ width: `${width}%` }} />
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <EmptyState icon={<BarChart3 className="size-7" aria-hidden="true" />} title="Nema kategorija" description="Nisu pronadjeni aktivni tenderi sa kategorijom." />
+          )}
+        </Panel>
+
+        <Panel title="Mapa BiH" subtitle="Regionalni jaz iz tender-area izvjestaja">
+          {data.areaReport?.items?.length ? (
+            <SimpleBihMap items={data.areaReport.items.slice(0, 5)} />
+          ) : (
+            // TODO(C.2): Dodati stvarni geo prikaz kada bude uvedena biblioteka ili geokodirani kantoni.
+            <EmptyState icon={<MapPinned className="size-7" aria-hidden="true" />} title="Nedovoljno geo podataka" description="Mapa ce se prikazati kada tenderi imaju pouzdanu regionalnu klasifikaciju." />
+          )}
+        </Panel>
+      </section>
+
+      <section className="grid gap-4 lg:grid-cols-3">
+        <AIInsightBox title="Vremenska analiza" variant="default">
+          <p>
+            Najveci obim objava i dodjela pratite kroz mjesecni graf. Prosjecna konkurencija je{" "}
+            <strong>{data.avgBidders !== null ? data.avgBidders.toFixed(1) : "nepoznata"}</strong> ponudjaca po poznatoj dodjeli.
+          </p>
+        </AIInsightBox>
+        <AIInsightBox title="Cjenovni signal" variant="suggestion">
+          <p>
+            Prosjecni poznati popust je{" "}
+            <strong>{data.avgDiscount !== null ? `${data.avgDiscount.toFixed(1)}%` : "nedostupan"}</strong>. Koristite ga samo kao trzisni okvir.
+          </p>
+        </AIInsightBox>
+        <AIInsightBox title="Najaktivniji narucioci" variant="success">
+          <p>
+            {data.topAuthorities[0]
+              ? `${data.topAuthorities[0].name} ima najvecu poznatu vrijednost dodjela u uzorku.`
+              : "Nema dovoljno historije narucilaca za pouzdan signal."}
+          </p>
+        </AIInsightBox>
+      </section>
+
+      <section className="grid gap-4 lg:grid-cols-2">
+        <Panel title="Najaktivniji narucioci" subtitle="Po vrijednosti poznatih dodjela">
+          <RankedList
+            emptyTitle="Nema narucilaca"
+            items={data.topAuthorities.map((authority) => ({
+              href: authority.jib ? `/dashboard/intelligence/authority/${authority.jib}` : undefined,
+              title: authority.name,
+              meta: `${authority.count} dodjela`,
+              value: formatKm(authority.value),
+            }))}
+          />
+        </Panel>
+        <Panel title="Najaktivnije firme" subtitle="Javni pobjednici u posmatranom periodu">
+          <RankedList
+            emptyTitle="Nema firmi"
+            items={data.topCompanies.map((company) => ({
+              href: company.jib ? `/dashboard/intelligence/company/${company.jib}` : undefined,
+              title: company.name,
+              meta: `${company.wins} pobjeda`,
+              value: formatKm(company.value),
+            }))}
+          />
+        </Panel>
+      </section>
+
+      <Panel title="Biblioteka izvjestaja" subtitle="Exportable analize ce se vezati u sljedecoj fazi">
+        {/* TODO(C.2): Povezati biblioteku izvjestaja kada se uvede tabela ili storage indeks za generisane market report fajlove. */}
+        <EmptyState
+          icon={<Download className="size-7" aria-hidden="true" />}
+          title="Nema generisanih izvjestaja"
+          description="Trenutno se prikazuju zivi podaci. Biblioteka PDF/CSV izvjestaja nema postojece skladiste u bazi."
+        />
+      </Panel>
+    </div>
+  );
+}
+
+function Panel({
+  title,
+  subtitle,
+  children,
+}: {
+  title: string;
+  subtitle?: string;
+  children: ReactNode;
+}) {
+  return (
+    <section className="rounded-[var(--radius-card)] border border-[var(--border-default)] bg-[var(--surface-1)] p-5 shadow-[var(--shadow-card)]">
+      <div className="mb-5">
+        <h2 className="text-base font-semibold text-[var(--text-primary)]">{title}</h2>
+        {subtitle ? <p className="mt-1 text-sm text-[var(--text-secondary)]">{subtitle}</p> : null}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function RankedList({
+  items,
+  emptyTitle,
+}: {
+  items: Array<{ title: string; meta: string; value: string; href?: string }>;
+  emptyTitle: string;
+}) {
+  if (items.length === 0) {
+    return <EmptyState icon={<FileText className="size-7" aria-hidden="true" />} title={emptyTitle} description="Nema dovoljno realnih podataka za ovu listu." />;
+  }
+
+  return (
+    <div className="divide-y divide-[var(--border-default)]">
+      {items.map((item, index) => {
+        const content = (
+          <div className="flex items-center justify-between gap-4 py-3">
+            <div className="flex min-w-0 items-center gap-3">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--surface-2)] text-xs font-bold text-[var(--text-secondary)]">
+                {index + 1}
+              </span>
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold text-[var(--text-primary)]">{item.title}</p>
+                <p className="text-xs text-[var(--text-tertiary)]">{item.meta}</p>
+              </div>
+            </div>
+            <span className="shrink-0 text-sm font-semibold text-[var(--primary)]">{item.value}</span>
+          </div>
+        );
+
+        return item.href ? (
+          <Link key={`${item.title}-${index}`} href={item.href} className="block hover:bg-[var(--surface-2)]">
+            {content}
+          </Link>
+        ) : (
+          <div key={`${item.title}-${index}`}>{content}</div>
+        );
+      })}
+    </div>
+  );
+}
+
+function SimpleBihMap({
+  items,
+}: {
+  items: Array<{
+    id: string;
+    title: string;
+    suggested_next_area_label: string | null;
+    authority_registry_label: string | null;
+    likely_reason_label: string;
+  }>;
+}) {
+  return (
+    <div className="space-y-4">
+      <svg viewBox="0 0 260 180" role="img" aria-label="Pojednostavljena mapa BiH" className="h-48 w-full">
+        <path
+          d="M54 40 112 18l52 20 34 43-18 54-55 24-58-17-27-45Z"
+          fill="var(--surface-subtle)"
+          stroke="var(--primary)"
+          strokeWidth="3"
+        />
+        {items.map((item, index) => {
+          const x = 78 + (index % 3) * 48;
+          const y = 58 + Math.floor(index / 3) * 44;
+          const radius = 12 + index * 2;
+
+          return (
+            <circle
+              key={item.id}
+              cx={x}
+              cy={y}
+              r={radius}
+              fill="var(--primary)"
+              opacity={0.18 + index * 0.1}
+              stroke="var(--primary)"
+            />
+          );
+        })}
+      </svg>
+      <div className="space-y-2">
+        {items.map((item) => (
+          <div key={item.id} className="rounded-lg bg-[var(--surface-2)] px-3 py-2 text-sm">
+            <div className="flex items-center justify-between gap-3">
+              <span className="min-w-0 truncate font-medium text-[var(--text-primary)]">
+                {item.suggested_next_area_label ?? item.authority_registry_label ?? "Rucna provjera"}
+              </span>
+              <span className="shrink-0 text-xs text-[var(--text-secondary)]">{item.likely_reason_label}</span>
+            </div>
+            <p className="mt-1 line-clamp-1 text-xs text-[var(--text-tertiary)]">{item.title}</p>
+          </div>
+        ))}
       </div>
     </div>
   );

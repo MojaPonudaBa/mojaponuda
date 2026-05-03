@@ -18,6 +18,8 @@ import {
   Users,
 } from "lucide-react";
 import { AddClientModal } from "./add-client-modal";
+import { DonutChart } from "@/components/ui/donut-chart";
+import { getAgencyStatusChart } from "@/lib/dashboard-c3";
 
 const DAY_IN_MS = 1000 * 60 * 60 * 24;
 const GRANT_PREVIEW_REFERENCE_TIME = Date.now();
@@ -150,6 +152,7 @@ export function AgencyCRMDashboard({
     const companyId = client.companies?.id;
     return sum + (companyId ? bidsByCompany[companyId]?.active ?? 0 : 0);
   }, 0);
+  const statusChart = getAgencyStatusChart(clients);
 
   const spotlightClients = filtered
     .map((client) => {
@@ -235,6 +238,48 @@ export function AgencyCRMDashboard({
               <Plus className="size-4" />
             </button>
           </div>
+        </div>
+      </section>
+
+      <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px] xl:gap-6">
+        <div className="rounded-[1.55rem] border border-slate-200/80 bg-white/90 p-5 shadow-[0_24px_60px_-42px_rgba(15,23,42,0.32)] backdrop-blur-sm sm:rounded-[1.85rem] lg:p-7">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Brzi uvid</p>
+              <h2 className="mt-2 font-heading text-2xl font-bold text-slate-950">Portfolio zdravlje</h2>
+            </div>
+            <Sparkles className="size-5 text-blue-600" />
+          </div>
+          <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Ukupno klijenata</p>
+              <p className="mt-2 text-2xl font-bold text-slate-950">{clients.length}</p>
+            </div>
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Aktivni</p>
+              <p className="mt-2 text-2xl font-bold text-emerald-600">{activeClientsCount}</p>
+            </div>
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Upozorenja</p>
+              <p className="mt-2 text-2xl font-bold text-amber-600">{criticalCount + warningCount}</p>
+            </div>
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Ponude u radu</p>
+              <p className="mt-2 text-2xl font-bold text-blue-600">{totalActiveBids}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-[1.55rem] border border-slate-200/80 bg-white/90 p-5 shadow-[0_24px_60px_-42px_rgba(15,23,42,0.32)] backdrop-blur-sm sm:rounded-[1.85rem] lg:p-7">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Status klijenata</p>
+          <DonutChart
+            data={statusChart}
+            centerLabel="statusi"
+            centerValue={statusChart.length}
+            height={220}
+            showLegend={false}
+            valueSuffix="klijenata"
+          />
         </div>
       </section>
 

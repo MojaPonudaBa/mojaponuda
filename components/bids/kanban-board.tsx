@@ -2,9 +2,11 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import { updateBidStatusAction } from "@/app/actions/bids";
+import { updateBidFieldsAction } from "@/app/actions/bids";
 import { BID_STATUS_LABELS } from "@/lib/bids/constants";
 import type { BidStatus } from "@/types/database";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 export interface KanbanBid {
   id: string;
@@ -60,6 +62,9 @@ export function KanbanBoard({ initialBids }: { initialBids: KanbanBid[] }) {
   const [bids, setBids] = useState<KanbanBid[]>(initialBids);
   const [dragId, setDragId] = useState<string | null>(null);
   const [overCol, setOverCol] = useState<BidStatus | null>(null);
+  const [outcomeBid, setOutcomeBid] = useState<KanbanBid | null>(null);
+  const [outcomeStatus, setOutcomeStatus] = useState<"won" | "lost">("won");
+  const [outcomeValue, setOutcomeValue] = useState("");
   const [, startTransition] = useTransition();
 
   const byStatus = KANBAN_COLUMNS.reduce<Record<BidStatus, KanbanBid[]>>((acc, col) => {
@@ -90,13 +95,58 @@ export function KanbanBoard({ initialBids }: { initialBids: KanbanBid[] }) {
     const position = byStatus[col].length;
     setDragId(null);
 
+    if (col === "won") {
+      setOutcomeBid(moved);
+      setOutcomeStatus("won");
+      setOutcomeValue(String(moved.bid_value ?? moved.estimated_value ?? ""));
+      return;
+    }
+
     startTransition(async () => {
       const fd = new FormData();
       fd.set("bid_id", moved.id);
       fd.set("status", col);
-      fd.set("position", String(position));
-      await updateBidStatusAction(fd);
+      fd.set("kanban_position", String(position));
+      await updateBidFieldsAction(fd);
     });
+  }
+
+  function saveOutcome() {
+    if (!outcomeBid) return;
+    const position = byStatus[outcomeStatus].length;
+    const finalStatus = outcomeStatus;
+    const finalValue = outcomeValue.trim();
+
+    setBids((xs) =>
+      xs.map((bid) =>
+        bid.id === outcomeBid.id
+          ? {
+              ...bid,
+              status: finalStatus,
+              bid_value: finalValue ? Number(finalValue) : bid.bid_value,
+            }
+          : bid,
+      ),
+    );
+    setOutcomeBid(null);
+
+    startTransition(async () => {
+      const fd = new FormData();
+      fd.set("bid_id", outcomeBid.id);
+      fd.set("status", finalStatus);
+      fd.set("kanban_position", String(position));
+      if (finalValue) fd.set("bid_value", finalValue);
+      await updateBidFieldsAction(fd);
+    });
+  }
+
+  function cancelOutcome() {
+    if (outcomeBid) {
+      setBids((xs) =>
+        xs.map((bid) => (bid.id === outcomeBid.id ? { ...bid, status: outcomeBid.status } : bid)),
+      );
+    }
+    setOutcomeBid(null);
   }
 
   const totalActive = bids
@@ -238,6 +288,50 @@ export function KanbanBoard({ initialBids }: { initialBids: KanbanBid[] }) {
           );
         })}
       </div>
+
+      <Dialog open={Boolean(outcomeBid)} onOpenChange={(open) => !open && cancelOutcome()}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Potvrdi ishod ponude</DialogTitle>
+            <DialogDescription>
+              Kartica je prebačena u završnu fazu. Evidentirajte stvarni ishod i finalnu vrijednost prije spremanja.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+              <p className="line-clamp-2 text-sm font-semibold text-slate-950">{outcomeBid?.tender_title}</p>
+              <p className="mt-1 text-xs text-slate-500">{outcomeBid?.authority_name ?? "Nepoznat naručilac"}</p>
+            </div>
+            <label className="space-y-2">
+              <span className="text-sm font-semibold text-slate-700">Ishod</span>
+              <select
+                value={outcomeStatus}
+                onChange={(event) => setOutcomeStatus(event.target.value as "won" | "lost")}
+                className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900"
+              >
+                <option value="won">Dobijeno</option>
+                <option value="lost">Izgubljeno</option>
+              </select>
+            </label>
+            <label className="space-y-2">
+              <span className="text-sm font-semibold text-slate-700">Finalna vrijednost</span>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={outcomeValue}
+                onChange={(event) => setOutcomeValue(event.target.value)}
+                className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900"
+                placeholder="npr. 125000"
+              />
+            </label>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={cancelOutcome}>Odustani</Button>
+            <Button onClick={saveOutcome}>Spremi ishod</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

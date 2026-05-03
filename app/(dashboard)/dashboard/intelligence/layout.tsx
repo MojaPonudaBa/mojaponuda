@@ -1,5 +1,5 @@
-import { redirect } from "next/navigation";
+import type { ReactNode } from "react";
 
-export default function DashboardIntelligenceLayout() {
-  redirect("/dashboard");
+export default function DashboardIntelligenceLayout({ children }: { children: ReactNode }) {
+  return children;
 }

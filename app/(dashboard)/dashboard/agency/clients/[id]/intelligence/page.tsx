@@ -11,7 +11,7 @@ import {
   RECOMMENDATION_SUMMARY_MINIMUM_RESULTS,
   selectTenderRecommendations,
 } from "@/lib/tender-recommendations";
-import { getSubscriptionStatus } from "@/lib/subscription";
+import { getSubscriptionStatus, isAgencyPlan } from "@/lib/subscription";
 import { CategoryChart } from "@/components/intelligence/category-chart";
 import { CompetitorSignalChart } from "@/components/intelligence/competitor-signal-chart";
 import { MonthlyAwardsChart } from "@/components/intelligence/monthly-awards-chart";
@@ -32,7 +32,7 @@ export default async function AgencyClientIntelligencePage({
   if (!user) redirect("/login");
 
   const { plan } = await getSubscriptionStatus(user.id, user.email, supabase);
-  if (plan.id !== "agency") redirect("/dashboard");
+  if (!isAgencyPlan(plan)) redirect("/dashboard");
 
   const { data: agencyClient } = await supabase
     .from("agency_clients")

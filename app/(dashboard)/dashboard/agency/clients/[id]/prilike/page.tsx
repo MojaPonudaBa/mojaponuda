@@ -1,6 +1,6 @@
 import { redirect, notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { getSubscriptionStatus } from "@/lib/subscription";
+import { getSubscriptionStatus, isAgencyPlan } from "@/lib/subscription";
 import { OpportunityDashboardCard } from "@/components/dashboard/opportunity-dashboard-card";
 import { Sparkles, Star } from "lucide-react";
 import { getPersonalizedOpportunityRecommendations } from "@/lib/opportunity-recommendations";
@@ -16,7 +16,7 @@ export default async function AgencyClientPrilikePage({
   if (!user) redirect("/login");
 
   const { plan } = await getSubscriptionStatus(user.id, user.email, supabase);
-  if (plan.id !== "agency") redirect("/dashboard");
+  if (!isAgencyPlan(plan)) redirect("/dashboard");
 
   // Verify agency client belongs to this user
   const { data: agencyClient } = await supabase

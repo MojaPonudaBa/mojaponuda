@@ -2,7 +2,7 @@ import { redirect, notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { formatCurrencyKM } from "@/lib/currency";
 import { getMarketOverview } from "@/lib/market-intelligence";
-import { getSubscriptionStatus } from "@/lib/subscription";
+import { getSubscriptionStatus, isAgencyPlan } from "@/lib/subscription";
 import { Calendar, TrendingUp, CalendarDays, ArrowUpRight } from "lucide-react";
 
 export default async function AgencyClientUpcomingPage({
@@ -16,7 +16,7 @@ export default async function AgencyClientUpcomingPage({
   if (!user) redirect("/login");
 
   const { plan } = await getSubscriptionStatus(user.id, user.email, supabase);
-  if (plan.id !== "agency") redirect("/dashboard");
+  if (!isAgencyPlan(plan)) redirect("/dashboard");
 
   const { data: agencyClient } = await supabase
     .from("agency_clients")

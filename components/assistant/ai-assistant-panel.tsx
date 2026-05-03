@@ -29,6 +29,12 @@ const welcomeMessage: AssistantMessage = {
   content: "Tu sam da pomognem oko prioriteta, rizika i sljedeceg koraka.",
 };
 
+const suggestedPrompts = [
+  "Koje tendere trebam prvo pregledati?",
+  "Sažmi rizike na ovoj stranici.",
+  "Šta je sljedeći najbolji korak?",
+];
+
 function createMessage(role: AssistantMessage["role"], content: string): AssistantMessage {
   return {
     id: `${role}-${Date.now()}-${Math.random().toString(36).slice(2)}`,
@@ -154,27 +160,39 @@ export function AIAssistantPanel({
           )}
           aria-label="AI asistent"
         >
-          <header className="flex items-center justify-between gap-3 border-b border-[var(--border-default)] px-4 py-3">
+          <header className="flex items-center justify-between gap-3 bg-gradient-to-r from-purple-700 via-violet-600 to-fuchsia-600 px-4 py-3 text-white">
             <div className="flex min-w-0 items-center gap-3">
-              <div className="flex size-9 items-center justify-center rounded-full bg-[var(--accent-ai-soft)] text-[var(--accent-ai-strong)]">
+              <div className="flex size-9 items-center justify-center rounded-full bg-white/15 text-white">
                 <Sparkles className="size-4" aria-hidden="true" />
               </div>
               <div className="min-w-0">
-                <h2 className="truncate text-sm font-semibold text-[var(--text-primary)]">AI asistent</h2>
-                <p className="truncate text-xs text-[var(--text-secondary)]">Kontekst: {resolvedScreenContext}</p>
+                <h2 className="truncate text-sm font-semibold text-white">AI asistent</h2>
+                <p className="truncate text-xs text-white/75">Kontekst: {resolvedScreenContext}</p>
               </div>
             </div>
             <div className="flex items-center gap-1">
-              <Button type="button" variant="ghost" size="icon-sm" aria-label="Prosiri panel">
+              <Button type="button" variant="ghost" size="icon-sm" aria-label="Prosiri panel" className="text-white hover:bg-white/15 hover:text-white">
                 <Maximize2 className="size-4" aria-hidden="true" />
               </Button>
-              <Button type="button" variant="ghost" size="icon-sm" onClick={() => onOpenChange(false)} aria-label="Zatvori AI asistenta">
+              <Button type="button" variant="ghost" size="icon-sm" onClick={() => onOpenChange(false)} aria-label="Zatvori AI asistenta" className="text-white hover:bg-white/15 hover:text-white">
                 <X className="size-4" aria-hidden="true" />
               </Button>
             </div>
           </header>
 
           <div ref={scrollRef} className="min-h-0 flex-1 space-y-3 overflow-y-auto bg-[var(--surface-2)] p-4">
+            <div className="flex flex-wrap gap-2">
+              {suggestedPrompts.map((prompt) => (
+                <button
+                  key={prompt}
+                  type="button"
+                  onClick={() => setInput(prompt)}
+                  className="rounded-full border border-purple-100 bg-white px-3 py-1 text-xs font-semibold text-purple-700 transition-colors hover:bg-purple-50 focus-visible:outline-2 focus-visible:outline-primary"
+                >
+                  {prompt}
+                </button>
+              ))}
+            </div>
             {messages.map((message) => (
               <div
                 key={message.id}

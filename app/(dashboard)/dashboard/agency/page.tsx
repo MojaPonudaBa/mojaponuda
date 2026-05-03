@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { getSubscriptionStatus } from "@/lib/subscription";
+import { getSubscriptionStatus, isAgencyPlan } from "@/lib/subscription";
 import { ProGate } from "@/components/subscription/pro-gate";
 import { AgencyCRMDashboard } from "@/components/agency/agency-crm-dashboard";
 
@@ -14,7 +14,7 @@ export default async function AgencyPage() {
   const { isSubscribed, plan } = await getSubscriptionStatus(user.id, user.email);
   if (!isSubscribed) return <ProGate />;
 
-  if (plan.id !== "agency") {
+  if (!isAgencyPlan(plan)) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
         <div className="max-w-md rounded-[1.5rem] border border-slate-200 bg-white p-8 text-center shadow-sm">
@@ -75,9 +75,9 @@ export default async function AgencyPage() {
 
   const companyIds = clients.map((c) => c.company_id).filter(Boolean);
 
-  let bidsByCompany: Record<string, { total: number; won: number; active: number }> = {};
-  let docsByCompany: Record<string, number> = {};
-  let alertsByCompany: Record<string, Array<{
+  const bidsByCompany: Record<string, { total: number; won: number; active: number }> = {};
+  const docsByCompany: Record<string, number> = {};
+  const alertsByCompany: Record<string, Array<{
     type: "missing_docs" | "deadline_soon" | "doc_expiring" | "contract_expiring" | "inactive_client" | "submitted_no_update";
     label: string;
     detail: string;

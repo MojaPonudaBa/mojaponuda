@@ -2,7 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { DashboardHomeOverview } from "@/components/dashboard/home-overview";
 import { getProfileOptionLabel } from "@/lib/company-profile";
 import { getPersonalizedTenderRecommendations } from "@/lib/personalized-tenders";
-import { getSubscriptionStatus } from "@/lib/subscription";
+import { getSubscriptionStatus, isAgencyPlan } from "@/lib/subscription";
 import { createClient } from "@/lib/supabase/server";
 import {
   buildRecommendationContext,
@@ -64,7 +64,7 @@ export default async function AgencyClientHomePage({
 
   const subscriptionStatus = await getSubscriptionStatus(user.id, user.email, supabase);
   const { plan } = subscriptionStatus;
-  if (plan.id !== "agency") redirect("/dashboard");
+  if (!isAgencyPlan(plan)) redirect("/dashboard");
 
   const { data: agencyClient } = await supabase
     .from("agency_clients")

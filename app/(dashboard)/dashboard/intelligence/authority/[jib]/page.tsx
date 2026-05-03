@@ -1,48 +1,48 @@
-import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
-import { formatCurrencyKM } from "@/lib/currency";
-import { getSubscriptionStatus } from "@/lib/subscription";
-import { ProGate } from "@/components/subscription/pro-gate";
-import { WatchButton } from "@/components/watchlist/watch-button";
-import { isWatched } from "@/lib/watchlist";
 import Link from "next/link";
-import { ArrowLeft, Building2, FileCheck, Clock, CheckCircle, TrendingUp, Users2, Percent } from "lucide-react";
+import { redirect } from "next/navigation";
+import type { ReactNode } from "react";
+import {
+  ArrowLeft,
+  Building2,
+  CalendarClock,
+  Clock,
+  FileText,
+  History,
+  MapPin,
+  Repeat,
+  Sparkles,
+  Trophy,
+  Users,
+} from "lucide-react";
+
+import { AuthorityNarrativeBox } from "@/components/dashboard/authority-narrative-box";
+import { ProGate } from "@/components/subscription/pro-gate";
 import { Button } from "@/components/ui/button";
+import { DonutChart } from "@/components/ui/donut-chart";
+import { EmptyState } from "@/components/ui/empty-state";
+import { StatCard } from "@/components/ui/stat-card";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { WatchButton } from "@/components/watchlist/watch-button";
+import { formatCurrencyKM } from "@/lib/currency";
+import { getCompetitors, getSimilarTenders } from "@/lib/competitor-intelligence";
+import { createClient } from "@/lib/supabase/server";
+import { getSubscriptionStatus } from "@/lib/subscription";
+import { isWatched } from "@/lib/watchlist";
 
 const DOC_TYPE_LABELS: Record<string, string> = {
-  registration: "Rješenje o registraciji",
+  registration: "Rjesenje o registraciji",
   tax: "Porezna uvjerenja",
   contributions: "Uvjerenja o doprinosima",
   guarantee: "Bankarska garancija",
   reference: "Reference",
-  financial: "Finansijski izvještaji",
-  staff: "Ključno osoblje",
+  financial: "Finansijski izvjestaji",
+  staff: "Kljucno osoblje",
   license: "Dozvole i licence",
   declaration: "Izjave",
   other: "Ostalo",
-  // Add fallback for database values that might match keys but different case
-  "Rješenje o registraciji": "Rješenje o registraciji",
-  "Porezna uvjerenja": "Porezna uvjerenja",
-  "Uvjerenja o doprinosima": "Uvjerenja o doprinosima",
-  "Bankarska garancija": "Bankarska garancija",
-  "Reference": "Reference",
-  "Finansijski izvještaji": "Finansijski izvještaji",
-  "Ključno osoblje": "Ključno osoblje",
-  "Dozvole i licence": "Dozvole i licence",
-  "Izjave": "Izjave",
-  "Ostalo": "Ostalo"
 };
 
-function median(values: number[]): number | null {
-  const sorted = values.filter((value) => Number.isFinite(value) && value > 0).sort((a, b) => a - b);
-  if (sorted.length === 0) return null;
-  const mid = Math.floor(sorted.length / 2);
-  return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
-}
-
-function share(count: number, total: number): number | null {
-  return total > 0 ? Math.round((count / total) * 100) : null;
-}
+export const dynamic = "force-dynamic";
 
 export default async function AuthorityProfilePage({
   params,
@@ -54,407 +54,481 @@ export default async function AuthorityProfilePage({
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+
+  if (!user) {
+    redirect("/login");
+  }
 
   const { isSubscribed } = await getSubscriptionStatus(user.id, user.email);
-  if (!isSubscribed) return <ProGate />;
-
-  // Info o naručiocu
-  const { data: authority } = await supabase
-    .from("contracting_authorities")
-    .select("name, jib, city, entity, canton, authority_type")
-    .eq("jib", jib)
-    .maybeSingle();
-
-  const authorityName = authority?.name ?? `Naručilac ${jib}`;
-
-  // Tenderi
-  const { count: totalTenderCount } = await supabase
-    .from("tenders")
-    .select("id", { count: "exact", head: true })
-    .eq("contracting_authority_jib", jib);
-
-  const totalTenders = totalTenderCount ?? 0;
-
-  // Odluke
-  const { data: awards } = await supabase
-    .from("award_decisions")
-    .select("winner_name, winner_jib, winning_price, total_bidders_count, discount_pct, award_date, contract_type")
-    .eq("contracting_authority_jib", jib)
-    .not("winner_jib", "is", null);
-
-  const winnerMap = new Map<
-    string,
-    { name: string; jib: string; wins: number; total_value: number }
-  >();
-  for (const a of awards ?? []) {
-    const key = a.winner_jib!;
-    const price = Number(a.winning_price) || 0;
-    const e = winnerMap.get(key);
-    if (e) { e.wins++; e.total_value += price; }
-    else winnerMap.set(key, { name: a.winner_name ?? key, jib: key, wins: 1, total_value: price });
+  if (!isSubscribed) {
+    return <ProGate />;
   }
-  const topWinners = [...winnerMap.values()].sort((a, b) => b.wins - a.wins).slice(0, 10);
-  const awardCount = awards?.length ?? 0;
-  const totalValue = (awards ?? []).reduce((sum, award) => sum + (Number(award.winning_price) || 0), 0);
-  const topWinner = topWinners[0] ?? null;
-  const topWinnerShare = topWinner ? share(topWinner.wins, awardCount) : null;
-  const priceSamples = (awards ?? []).map((award) => Number(award.winning_price)).filter((value) => value > 0);
-  const medianAwardValue = median(priceSamples);
-  const bidderSamples = (awards ?? [])
-    .map((award) => Number(award.total_bidders_count))
-    .filter((value) => Number.isFinite(value) && value > 0);
-  const avgBidders = bidderSamples.length > 0
-    ? bidderSamples.reduce((sum, value) => sum + value, 0) / bidderSamples.length
-    : null;
-  const discountSamples = (awards ?? [])
-    .map((award) => Number(award.discount_pct))
-    .filter((value) => Number.isFinite(value) && value > 0);
-  const avgDiscount = discountSamples.length > 0
-    ? discountSamples.reduce((sum, value) => sum + value, 0) / discountSamples.length
-    : null;
 
-  // Tipični zahtjevi
-  const { data: patterns } = await supabase
-    .from("authority_requirement_patterns")
-    .select("document_type, is_required")
-    .eq("contracting_authority_jib", jib);
+  const [{ data: authority }, { data: company }] = await Promise.all([
+    supabase
+      .from("contracting_authorities")
+      .select("name, jib, city, entity, canton, municipality, authority_type")
+      .eq("jib", jib)
+      .maybeSingle(),
+    supabase.from("companies").select("id, name, jib, cpv_codes").eq("user_id", user.id).maybeSingle(),
+  ]);
 
-  const patternMap = new Map<string, { type: string; count: number; required: number }>();
-  for (const p of patterns ?? []) {
-    const e = patternMap.get(p.document_type);
-    if (e) { e.count++; if (p.is_required) e.required++; }
-    else patternMap.set(p.document_type, { type: p.document_type, count: 1, required: p.is_required ? 1 : 0 });
-  }
-  const typicalRequirements = [...patternMap.values()].sort((a, b) => b.count - a.count);
-
-  // Aktivni tenderi
+  const authorityName = authority?.name ?? `Narucilac ${jib}`;
   const nowIso = new Date().toISOString();
-  const { data: activeTenders } = await supabase
-    .from("tenders")
-    .select("id, title, deadline, estimated_value, contract_type")
-    .eq("contracting_authority_jib", jib)
-    .gte("deadline", nowIso)
-    .order("deadline", { ascending: true })
-    .limit(20);
+  const twelveMonthsAgo = new Date();
+  twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
 
-  // Agregati iz analytics tablice + watch status
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const anySupabase = supabase as any;
-  const [statsResult, alreadyWatched] = await Promise.all([
-    anySupabase
+  const [
+    totalTenderResult,
+    tender12mResult,
+    awardsResult,
+    patternsResult,
+    activeTendersResult,
+    statsResult,
+    companyStatsResult,
+    watched,
+    competitors,
+    similarTenders,
+  ] = await Promise.all([
+    supabase.from("tenders").select("id", { count: "exact", head: true }).eq("contracting_authority_jib", jib),
+    supabase
+      .from("tenders")
+      .select("id", { count: "exact", head: true })
+      .eq("contracting_authority_jib", jib)
+      .gte("created_at", twelveMonthsAgo.toISOString()),
+    supabase
+      .from("award_decisions")
+      .select("winner_name, winner_jib, winning_price, total_bidders_count, discount_pct, award_date, contract_type, procedure_name")
+      .eq("contracting_authority_jib", jib)
+      .order("award_date", { ascending: false })
+      .limit(300),
+    supabase
+      .from("authority_requirement_patterns")
+      .select("document_type, is_required")
+      .eq("contracting_authority_jib", jib),
+    supabase
+      .from("tenders")
+      .select("id, title, deadline, estimated_value, contract_type")
+      .eq("contracting_authority_jib", jib)
+      .gte("deadline", nowIso)
+      .order("deadline", { ascending: true })
+      .limit(10),
+    supabase
       .from("authority_stats")
-      .select("avg_contract_value, avg_bidders_count, avg_discount_pct, top_cpv_codes")
+      .select("avg_contract_value, avg_bidders_count, avg_discount_pct, top_cpv_codes, tender_count, total_estimated_value, unique_winner_count")
       .eq("authority_jib", jib)
       .maybeSingle(),
+    company?.jib
+      ? supabase
+          .from("company_authority_stats")
+          .select("appearances, wins, win_rate")
+          .eq("authority_jib", jib)
+          .eq("company_jib", company.jib)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
     isWatched(user.id, "authority", jib),
+    getCompetitors({ authorityJib: jib, cpvCode: null, excludeJib: company?.jib ?? undefined, limit: 6 }).catch(() => []),
+    getSimilarTenders({ authorityJib: jib, cpvCode: null, limit: 10 }).catch(() => []),
   ]);
-  const authorityStats = (statsResult?.data ?? null) as {
+
+  const awards = awardsResult.data ?? [];
+  const activeTenders = activeTendersResult.data ?? [];
+  const authorityStats = statsResult.data as {
     avg_contract_value: number | null;
     avg_bidders_count: number | null;
     avg_discount_pct: number | null;
     top_cpv_codes: string[] | null;
+    tender_count: number;
+    total_estimated_value: number;
+    unique_winner_count: number;
+  } | null;
+  const companyAuthorityStats = companyStatsResult.data as {
+    appearances: number;
+    wins: number;
+    win_rate: number | null;
   } | null;
 
-  const authorityConclusions = [
-    {
-      title: topWinnerShare !== null && topWinnerShare >= 35 ? "Koncentrisana dodjela" : "Otvoreniji obrazac dodjele",
-      value: topWinnerShare !== null && topWinner ? `${topWinnerShare}% kod ${topWinner.name}` : "Nema dovoljno pobjednika",
-      body: topWinnerShare !== null && topWinnerShare >= 35
-        ? "Jedan dobavljac uzima veliki dio poznatih dodjela. Prije ulaska provjerite da li imate jasnu diferencijaciju ili bolju cijenu."
-        : "Poznate dodjele nisu vezane za jednog dominantnog dobavljaca, pa je prostor za nove ponude realniji.",
-      tone: "border-blue-100 bg-blue-50 text-blue-800",
-    },
-    {
-      title: "Cjenovni kontekst",
-      value: medianAwardValue !== null ? formatCurrencyKM(medianAwardValue) : "Niska pouzdanost",
-      body: priceSamples.length >= 5
-        ? `Medijan poznatih pobjednickih cijena je izracunat iz ${priceSamples.length} dodjela. Koristite ga kao okvir, ne kao tacnu procjenu budzeta.`
-        : "Premalo poznatih cijena kod ovog narucioca. Cijenu osloniti na slicne CPV dodjele i vlastitu kalkulaciju.",
-      tone: "border-emerald-100 bg-emerald-50 text-emerald-800",
-    },
-    {
-      title: "Konkurencija",
-      value: avgBidders !== null ? `${avgBidders.toFixed(1)} ponudjaca` : `${winnerMap.size} poznatih pobjednika`,
-      body: avgBidders !== null
-        ? `Broj ponudjaca je zasnovan na ${bidderSamples.length} dodjela gdje je taj podatak objavljen.`
-        : "Broj ponudjaca nije dovoljno popunjen, pa sistem koristi sirinu poznatih pobjednika kao indirektan signal.",
-      tone: "border-amber-100 bg-amber-50 text-amber-800",
-    },
-    {
-      title: "Akcija",
-      value: (activeTenders ?? []).length > 0 ? `${(activeTenders ?? []).length} aktivnih tendera` : "Pratiti naredne objave",
-      body: (activeTenders ?? []).length > 0
-        ? "Postoje otvoreni rokovi kod ovog narucioca. Otvorite aktivne tendere i odmah provjerite uskladjenost, rizik i potrebne dokumente."
-        : "Nema otvorenih rokova, ali pracenje ovog narucioca je korisno ako se pojavljuje u vasim CPV kategorijama.",
-      tone: "border-slate-200 bg-white text-slate-800",
-    },
-  ];
+  const totalValue = awards.reduce((sum, award) => sum + Number(award.winning_price ?? 0), 0);
+  const avgBidders = average(awards.map((award) => Number(award.total_bidders_count)).filter((value) => value > 0));
+  const categoryRows = buildCategoryRows(awards);
+  const requirements = buildRequirements(patternsResult.data ?? []);
+  const topWinners = buildTopWinners(awards);
+  const topWinner = topWinners[0] ?? null;
+  const topWinnerShare = topWinner && awards.length > 0 ? Math.round((topWinner.wins / awards.length) * 100) : null;
 
   return (
-    <div className="space-y-8 max-w-[1200px]">
-      {/* Header */}
-      <div className="flex items-start gap-4">
-        <Link href="/dashboard/intelligence">
-          <Button variant="outline" size="icon" className="rounded-xl">
-            <ArrowLeft className="size-5 text-slate-600" />
-          </Button>
-        </Link>
-        <div>
-          <div className="flex items-center gap-3 mb-1">
-            <div className="flex size-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
-              <Building2 className="size-5" />
+    <div className="space-y-6">
+      <header className="rounded-[var(--radius-card)] border border-[var(--border-default)] bg-[var(--surface-1)] p-5 shadow-[var(--shadow-card)]">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div className="flex gap-4">
+            <Button asChild variant="outline" size="icon-lg">
+              <Link href="/dashboard/intelligence">
+                <ArrowLeft className="h-4 w-4" />
+              </Link>
+            </Button>
+            <div>
+              <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--primary-soft)] text-[var(--primary)]">
+                <Building2 className="h-7 w-7" />
+              </div>
+              <h1 className="max-w-4xl text-3xl font-bold tracking-tight text-[var(--text-primary)]">{authorityName}</h1>
+              <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-[var(--text-secondary)]">
+                <span className="rounded-full bg-[var(--surface-2)] px-3 py-1 font-mono text-xs">{jib}</span>
+                {authority?.city ? (
+                  <span className="inline-flex items-center gap-1">
+                    <MapPin className="h-3.5 w-3.5" />
+                    {authority.city}
+                  </span>
+                ) : null}
+                {authority?.entity ? <span>{authority.entity}</span> : null}
+                {authority?.authority_type ? <StatusBadge status={authority.authority_type} /> : null}
+              </div>
             </div>
-            <h1 className="text-2xl font-heading font-bold text-slate-900 tracking-tight leading-tight">{authorityName}</h1>
           </div>
-          <div className="mt-2 flex flex-wrap items-center gap-3 text-sm font-medium text-slate-500 ml-1">
-            <span className="font-mono bg-slate-100 px-2 py-0.5 rounded text-slate-600">{jib}</span>
-            {authority?.city && <span className="flex items-center gap-1"><span className="size-1 rounded-full bg-slate-300"></span>{authority.city}</span>}
-            {authority?.entity && <span className="flex items-center gap-1"><span className="size-1 rounded-full bg-slate-300"></span>{authority.entity}</span>}
-            {authority?.authority_type && (
-              <span className="rounded-md bg-blue-50 px-2 py-0.5 text-xs font-bold text-blue-600 border border-blue-100">{authority.authority_type}</span>
-            )}
-          </div>
-        </div>
-        <div className="ml-auto">
           <WatchButton
             entityType="authority"
             entityKey={jib}
             entityLabel={authorityName}
-            isWatched={alreadyWatched}
+            isWatched={watched}
             redirectTo={`/dashboard/intelligence/authority/${jib}`}
             size="sm"
           />
         </div>
-      </div>
+      </header>
 
-      {/* Kartice */}
-      <div className="grid gap-6 sm:grid-cols-3">
-        <div className="rounded-[1.5rem] border border-slate-100 bg-white p-6 shadow-sm flex flex-col justify-between group hover:border-blue-200 transition-colors">
-          <div className="flex items-center justify-between mb-4">
-            <p className="text-sm font-bold text-slate-500 uppercase tracking-wide">Ukupno tendera</p>
-            <div className="size-8 rounded-lg bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-blue-50 group-hover:text-blue-500 transition-colors">
-              <FileCheck className="size-4" />
-            </div>
-          </div>
-          <p className="font-heading text-4xl font-extrabold text-slate-900">{totalTenders}</p>
-        </div>
-        <div className="rounded-[1.5rem] border border-slate-100 bg-white p-6 shadow-sm flex flex-col justify-between group hover:border-emerald-200 transition-colors">
-          <div className="flex items-center justify-between mb-4">
-            <p className="text-sm font-bold text-slate-500 uppercase tracking-wide">Vrijednost dodjela</p>
-            <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
-              <TrendingUp className="size-4" />
-            </div>
-          </div>
-          <p className="font-heading text-4xl font-extrabold text-slate-900 tracking-tight">{formatCurrencyKM(totalValue)}</p>
-        </div>
-        <div className="rounded-[1.5rem] border border-slate-100 bg-white p-6 shadow-sm flex flex-col justify-between group hover:border-amber-200 transition-colors">
-          <div className="flex items-center justify-between mb-4">
-            <p className="text-sm font-bold text-slate-500 uppercase tracking-wide">Odluke o dodjeli</p>
-            <div className="size-8 rounded-lg bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-amber-50 group-hover:text-amber-600 transition-colors">
-              <Clock className="size-4" />
-            </div>
-          </div>
-          <p className="font-heading text-4xl font-extrabold text-slate-900">{awards?.length ?? 0}</p>
-        </div>
-      </div>
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard
+          title="Tenderi 12m"
+          value={(tender12mResult.count ?? 0).toLocaleString("bs-BA")}
+          description={`${(totalTenderResult.count ?? 0).toLocaleString("bs-BA")} ukupno u bazi`}
+          iconName="FileText"
+          iconColor="blue"
+        />
+        <StatCard
+          title="Ukupna vrijednost"
+          value={formatCurrencyKM(totalValue || authorityStats?.total_estimated_value || 0)}
+          description="Poznate odluke o dodjeli"
+          iconName="Trophy"
+          iconColor="green"
+        />
+        <StatCard
+          title="Vas uspjeh"
+          value={companyAuthorityStats?.win_rate !== null && companyAuthorityStats?.win_rate !== undefined ? `${Math.round(companyAuthorityStats.win_rate)}%` : "N/A"}
+          description={companyAuthorityStats ? `${companyAuthorityStats.wins}/${companyAuthorityStats.appearances} pojavljivanja` : "Nema historije sa vasom firmom"}
+          iconName="CheckCircle2"
+          iconColor="purple"
+        />
+        <StatCard
+          title="Prosj. broj ponuda"
+          value={(authorityStats?.avg_bidders_count ?? avgBidders)?.toFixed(1) ?? "N/A"}
+          description="Na poznatim odlukama"
+          iconName="Users"
+          iconColor="cyan"
+        />
+      </section>
 
-      {/* Analytics iz agregata */}
-      {authorityStats && (
-        <div className="rounded-[1.5rem] border border-slate-100 bg-white p-6 shadow-sm">
-          <h2 className="mb-4 font-heading text-lg font-bold text-slate-900">Profil naručioca</h2>
-          <div className="grid gap-4 sm:grid-cols-3">
-            <div className="rounded-xl bg-slate-50 p-4">
-              <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                <TrendingUp className="size-3.5" />
-                Prosječna vrijednost ugovora
+      <section className="grid gap-4 xl:grid-cols-2">
+        <Panel title="Obrazac dodjele" subtitle="Koncentracija pobjednika i prosjecna vrijednost">
+          {topWinner ? (
+            <div className="space-y-4">
+              <div className="rounded-[var(--radius-input)] bg-[var(--surface-2)] p-4">
+                <p className="text-sm text-[var(--text-secondary)]">Najcesci pobjednik</p>
+                <p className="mt-1 text-lg font-semibold text-[var(--text-primary)]">{topWinner.name}</p>
+                <p className="mt-1 text-sm text-[var(--text-secondary)]">
+                  {topWinner.wins} pobjeda Â· {topWinnerShare ?? 0}% poznatih dodjela Â· {formatCurrencyKM(topWinner.value)}
+                </p>
               </div>
-              <div className="text-2xl font-heading font-bold text-slate-900">
-                {authorityStats.avg_contract_value !== null
-                  ? formatCurrencyKM(Number(authorityStats.avg_contract_value))
-                  : "—"}
-              </div>
-            </div>
-            <div className="rounded-xl bg-slate-50 p-4">
-              <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                <Users2 className="size-3.5" />
-                Prosj. broj ponuđača
-              </div>
-              <div className="text-2xl font-heading font-bold text-slate-900">
-                {authorityStats.avg_bidders_count !== null
-                  ? Number(authorityStats.avg_bidders_count).toFixed(1)
-                  : "—"}
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Metric label="Prosj. ugovor" value={formatCurrencyKM(authorityStats?.avg_contract_value ?? average(awards.map((award) => Number(award.winning_price)).filter((value) => value > 0)) ?? 0)} />
+                <Metric label="Prosj. popust" value={authorityStats?.avg_discount_pct !== null && authorityStats?.avg_discount_pct !== undefined ? `${Number(authorityStats.avg_discount_pct).toFixed(1)}%` : "N/A"} />
               </div>
             </div>
-            <div className="rounded-xl bg-slate-50 p-4">
-              <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                <Percent className="size-3.5" />
-                Prosj. popust pobjednika
-              </div>
-              <div className="text-2xl font-heading font-bold text-slate-900">
-                {authorityStats.avg_discount_pct !== null
-                  ? `${Number(authorityStats.avg_discount_pct).toFixed(1)}%`
-                  : "—"}
-              </div>
-            </div>
-          </div>
-          {authorityStats.top_cpv_codes && authorityStats.top_cpv_codes.length > 0 && (
-            <div className="mt-4">
-              <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                Top CPV kategorije
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {authorityStats.top_cpv_codes.slice(0, 5).map((cpv) => (
-                  <span key={cpv} className="rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700 border border-blue-100">
-                    CPV {cpv}*
-                  </span>
-                ))}
-              </div>
-            </div>
+          ) : (
+            <EmptyState icon={<Trophy className="size-7" aria-hidden="true" />} title="Nedovoljno podataka" description="Nema dovoljno poznatih dodjela za obrazac pobjednika." />
           )}
-        </div>
-      )}
+        </Panel>
 
-      <div className="rounded-[1.5rem] border border-slate-100 bg-white p-6 shadow-sm">
-        <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <h2 className="font-heading text-lg font-bold text-slate-900">Zakljucci za odluku</h2>
-            <p className="mt-1 text-sm text-slate-500">
-              Kratak prevod dostupnih historijskih podataka u prakticne poteze za sljedecu ponudu.
-            </p>
-          </div>
-          {avgDiscount !== null ? (
-            <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-600">
-              Prosj. poznati popust {avgDiscount.toFixed(1)}%
-            </span>
-          ) : null}
-        </div>
-        <div className="grid gap-3 md:grid-cols-2">
-          {authorityConclusions.map((item) => (
-            <div key={item.title} className={`rounded-2xl border p-4 ${item.tone}`}>
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="text-sm font-bold">{item.title}</p>
-                  <p className="mt-1 text-lg font-heading font-extrabold">{item.value}</p>
-                </div>
-                <CheckCircle className="mt-1 size-4 shrink-0 opacity-70" />
-              </div>
-              <p className="mt-3 text-sm leading-6 opacity-90">{item.body}</p>
+        <Panel title="Tipican vremenski okvir" subtitle="Rokovi i tempo objava">
+          {activeTenders.length > 0 ? (
+            <div className="space-y-3">
+              {activeTenders.slice(0, 4).map((tender) => (
+                <Link
+                  key={tender.id}
+                  href={`/dashboard/tenders/${tender.id}`}
+                  className="block rounded-[var(--radius-input)] border border-[var(--border-default)] p-3 hover:bg-[var(--surface-2)]"
+                >
+                  <p className="line-clamp-1 text-sm font-semibold text-[var(--text-primary)]">{tender.title}</p>
+                  <p className="mt-1 text-xs text-[var(--text-secondary)]">
+                    Rok: {tender.deadline ? new Date(tender.deadline).toLocaleDateString("bs-BA") : "Nije objavljen"}
+                  </p>
+                </Link>
+              ))}
             </div>
-          ))}
-        </div>
-      </div>
+          ) : (
+            // TODO(C.2): Dodati agregaciju prosjecnog broja dana od objave do roka po naruciocu.
+            <EmptyState icon={<CalendarClock className="size-7" aria-hidden="true" />} title="Nema aktivnih rokova" description="Za punu vremensku analizu treba dodatna agregacija historijskih rokova." />
+          )}
+        </Panel>
 
-      <div className="grid gap-8 lg:grid-cols-2">
-        {/* Najčešći pobjednici */}
-        <div className="rounded-[1.5rem] border border-slate-100 bg-white shadow-sm overflow-hidden flex flex-col">
-          <div className="p-6 border-b border-slate-100 bg-slate-50/50">
-            <h2 className="font-heading text-lg font-bold text-slate-900">Najčešći pobjednici</h2>
-            <p className="mt-1 text-xs font-medium text-slate-500">Ko najčešće dobija ugovore od ovog naručioca</p>
-          </div>
-          <div className="p-0 flex-1">
-            {topWinners.length === 0 ? (
-              <div className="py-12 text-center text-slate-500">
-                <p className="text-sm font-medium">Nema podataka o pobjednicima.</p>
-              </div>
-            ) : (
-              <div className="divide-y divide-slate-50">
-                {topWinners.map((w, i) => (
-                  <div key={w.jib} className="flex items-center justify-between p-4 hover:bg-slate-50 transition-colors">
-                    <div className="flex items-center gap-4 min-w-0">
-                      <div className={`flex size-8 shrink-0 items-center justify-center rounded-lg font-mono text-sm font-bold ${
-                        i === 0 ? "bg-amber-100 text-amber-700" :
-                        i === 1 ? "bg-slate-200 text-slate-700" :
-                        i === 2 ? "bg-orange-100 text-orange-800" :
-                        "bg-slate-50 text-slate-500"
-                      }`}>
-                        {i + 1}
-                      </div>
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-bold text-slate-900">{w.name}</p>
-                        <p className="font-mono text-xs text-slate-500">{w.wins} pobjeda</p>
-                      </div>
-                    </div>
-                    <span className="shrink-0 font-mono text-sm font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded-md">{formatCurrencyKM(w.total_value)}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
+        <Panel title="Firme kao vasa pobijedjuju" subtitle="Benchmark prema company_authority_stats">
+          {companyAuthorityStats ? (
+            <div className="grid gap-3 sm:grid-cols-3">
+              <Metric label="Pojavljivanja" value={companyAuthorityStats.appearances.toString()} />
+              <Metric label="Pobjede" value={companyAuthorityStats.wins.toString()} />
+              <Metric label="Win rate" value={companyAuthorityStats.win_rate !== null ? `${Math.round(companyAuthorityStats.win_rate)}%` : "N/A"} />
+            </div>
+          ) : (
+            <EmptyState icon={<Users className="size-7" aria-hidden="true" />} title="Nedovoljno podataka" description="Nema sacuvane historije vase firme kod ovog narucioca." />
+          )}
+        </Panel>
 
-        {/* Tipični dokumentacijski zahtjevi */}
-        <div className="rounded-[1.5rem] border border-slate-100 bg-white shadow-sm overflow-hidden flex flex-col">
-          <div className="p-6 border-b border-slate-100 bg-slate-50/50">
-            <h2 className="font-heading text-lg font-bold text-slate-900">Tipični zahtjevi</h2>
-            <p className="mt-1 text-xs font-medium text-slate-500">Dokumenti koje ovaj naručilac najčešće traži</p>
-          </div>
-          <div className="p-0 flex-1">
-            {typicalRequirements.length === 0 ? (
-              <div className="py-12 text-center text-slate-500">
-                <p className="text-sm font-medium">Nema automatskih analiza za ovog naručioca.</p>
-              </div>
-            ) : (
-              <div className="divide-y divide-slate-50">
-                {typicalRequirements.map((r) => (
-                  <div key={r.type} className="flex items-center justify-between p-4 hover:bg-slate-50 transition-colors">
-                    <div className="flex items-center gap-3">
-                      <CheckCircle className="size-4 text-emerald-500" />
-                      <span className="text-sm font-medium text-slate-700">{DOC_TYPE_LABELS[r.type] ?? r.type}</span>
-                    </div>
-                    <span className="font-mono text-xs font-bold text-slate-500 bg-slate-100 px-2 py-1 rounded-md">
-                      {Math.round((r.required / r.count) * 100)}% obavezno
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Aktivni tenderi */}
-      <div className="rounded-[1.5rem] border border-slate-100 bg-white shadow-sm overflow-hidden">
-        <div className="p-6 border-b border-slate-100 bg-slate-50/50">
-          <h2 className="font-heading text-lg font-bold text-slate-900">Aktivni tenderi</h2>
-          <p className="mt-1 text-xs font-medium text-slate-500">Tenderi s otvorenim rokom za dostavljanje ponuda</p>
-        </div>
-        {(activeTenders ?? []).length === 0 ? (
-          <div className="py-12 text-center text-slate-500">
-            <p className="text-sm font-medium">Nema aktivnih tendera.</p>
-          </div>
-        ) : (
-          <div className="divide-y divide-slate-50">
-            {(activeTenders ?? []).map((t) => (
-              <Link
-                key={t.id}
-                href={`/dashboard/tenders/${t.id}`}
-                className="block p-4 transition-colors hover:bg-slate-50 group"
-              >
-                <div className="flex justify-between gap-4">
-                  <p className="text-sm font-bold text-slate-900 group-hover:text-blue-700 transition-colors line-clamp-1">{t.title}</p>
-                  {t.estimated_value && (
-                    <span className="font-mono text-sm font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md whitespace-nowrap">{formatCurrencyKM(Number(t.estimated_value))}</span>
-                  )}
-                </div>
-                <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-slate-500">
-                  {t.deadline && (
-                    <div className="flex items-center gap-1.5">
-                      <Clock className="size-3.5" />
-                      <span className="font-medium text-slate-700">
-                        Rok: {new Date(t.deadline).toLocaleDateString("bs-BA")}
+        <Panel title="Ponavljajuci obrasci tendera" subtitle="Dokumentacija i CPV koji se ponavljaju">
+          {requirements.length > 0 || authorityStats?.top_cpv_codes?.length ? (
+            <div className="space-y-4">
+              {authorityStats?.top_cpv_codes?.length ? (
+                <div>
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--text-tertiary)]">Top CPV</p>
+                  <div className="flex flex-wrap gap-2">
+                    {authorityStats.top_cpv_codes.slice(0, 6).map((cpv) => (
+                      <span key={cpv} className="rounded-full bg-[var(--primary-soft)] px-3 py-1 text-xs font-semibold text-[var(--primary-strong)]">
+                        CPV {cpv}
                       </span>
-                    </div>
-                  )}
-                  {t.contract_type && (
-                    <span className="rounded bg-white border border-slate-200 px-1.5 py-0.5 font-medium">{t.contract_type}</span>
-                  )}
+                    ))}
+                  </div>
                 </div>
+              ) : null}
+              {requirements.slice(0, 5).map((requirement) => (
+                <div key={requirement.type} className="flex items-center justify-between rounded-[var(--radius-input)] bg-[var(--surface-2)] px-3 py-2">
+                  <span className="text-sm font-medium text-[var(--text-primary)]">{DOC_TYPE_LABELS[requirement.type] ?? requirement.type}</span>
+                  <span className="text-xs font-semibold text-[var(--text-secondary)]">{requirement.requiredShare}% obavezno</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <EmptyState icon={<Repeat className="size-7" aria-hidden="true" />} title="Nedovoljno podataka" description="Nisu pronadjeni ponavljajuci dokumentacijski obrasci." />
+          )}
+        </Panel>
+      </section>
+
+      <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
+        <Panel title="Historija tendera" subtitle="Zadnje javne dodjele kod ovog narucioca">
+          <div className="mb-4 flex justify-end">
+            <select className="h-9 rounded-[var(--radius-input)] border border-[var(--border-default)] bg-[var(--surface-1)] px-3 text-sm text-[var(--text-secondary)]" defaultValue="all">
+              <option value="all">Sve godine</option>
+            </select>
+          </div>
+          {similarTenders.length > 0 ? (
+            <div className="overflow-hidden rounded-[var(--radius-card)] border border-[var(--border-default)]">
+              <table className="w-full text-sm">
+                <thead className="bg-[var(--surface-2)] text-xs uppercase tracking-wide text-[var(--text-tertiary)]">
+                  <tr>
+                    <th className="px-4 py-3 text-left">Tender</th>
+                    <th className="px-4 py-3 text-left">Pobjednik</th>
+                    <th className="px-4 py-3 text-right">Vrijednost</th>
+                    <th className="px-4 py-3 text-right">Datum</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[var(--border-default)]">
+                  {similarTenders.map((tender) => (
+                    <tr key={`${tender.id}-${tender.award_date}`}>
+                      <td className="max-w-[360px] px-4 py-3 font-medium text-[var(--text-primary)]">
+                        <Link href={`/dashboard/tenders/${tender.id}`} className="line-clamp-1 hover:text-[var(--primary)]">
+                          {tender.title || "Tender bez naziva"}
+                        </Link>
+                      </td>
+                      <td className="px-4 py-3 text-[var(--text-secondary)]">{tender.winner_name ?? "Nije navedeno"}</td>
+                      <td className="px-4 py-3 text-right font-semibold text-[var(--text-primary)]">{formatCurrencyKM(tender.winning_price ?? 0)}</td>
+                      <td className="px-4 py-3 text-right text-[var(--text-secondary)]">
+                        {tender.award_date ? new Date(tender.award_date).toLocaleDateString("bs-BA") : "N/A"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <EmptyState icon={<History className="size-7" aria-hidden="true" />} title="Nema historije" description="Nisu pronadjene javne dodjele za ovog narucioca." />
+          )}
+        </Panel>
+
+        <Panel title="Kategorije" subtitle="Raspodjela po vrstama ugovora">
+          {categoryRows.length > 0 ? (
+            <DonutChart
+              data={categoryRows.map((item, index) => ({
+                name: item.name,
+                value: item.count,
+                color: ["var(--chart-1)", "var(--chart-2)", "var(--chart-3)", "var(--chart-4)", "var(--chart-5)", "var(--chart-6)"][
+                  index % 6
+                ],
+              }))}
+              height={280}
+              centerLabel="Kategorije"
+              centerValue={categoryRows.length.toString()}
+              valueSuffix="dodjela"
+            />
+          ) : (
+            <EmptyState icon={<FileText className="size-7" aria-hidden="true" />} title="Nema kategorija" description="Odluke nemaju dovoljno klasifikacije." />
+          )}
+        </Panel>
+      </section>
+
+      <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
+        <AuthorityNarrativeBox jib={jib} />
+
+        <Panel title="Aktivnost" subtitle="Zadnji signali za ovog narucioca">
+          <div className="space-y-3">
+            {activeTenders.slice(0, 3).map((tender) => (
+              <ActivityItem
+                key={tender.id}
+                icon={<Clock className="h-4 w-4" aria-hidden="true" />}
+                title="Aktivan tender"
+                description={tender.title}
+                meta={tender.deadline ? `Rok ${new Date(tender.deadline).toLocaleDateString("bs-BA")}` : "Rok nije objavljen"}
+              />
+            ))}
+            {awards.slice(0, 3).map((award, index) => (
+              <ActivityItem
+                key={`${award.winner_jib}-${award.award_date}-${index}`}
+                icon={<Trophy className="h-4 w-4" aria-hidden="true" />}
+                title="Odluka o dodjeli"
+                description={award.winner_name ?? "Pobjednik nije naveden"}
+                meta={award.award_date ? new Date(award.award_date).toLocaleDateString("bs-BA") : "Datum nije poznat"}
+              />
+            ))}
+            {activeTenders.length === 0 && awards.length === 0 ? (
+              <EmptyState icon={<Sparkles className="size-7" aria-hidden="true" />} title="Nema aktivnosti" description="Nema novijih javnih zapisa za feed aktivnosti." />
+            ) : null}
+          </div>
+        </Panel>
+      </section>
+
+      <Panel title="Najcesci konkurenti kod narucioca" subtitle="Iz javnih odluka o dodjeli">
+        {competitors.length > 0 ? (
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {competitors.map((competitor) => (
+              <Link
+                key={competitor.jib}
+                href={`/dashboard/intelligence/company/${competitor.jib}`}
+                className="rounded-[var(--radius-card)] border border-[var(--border-default)] bg-[var(--surface-1)] p-4 hover:border-[var(--primary)]"
+              >
+                <p className="line-clamp-1 text-sm font-semibold text-[var(--text-primary)]">{competitor.name}</p>
+                <p className="mt-1 text-xs text-[var(--text-tertiary)]">{competitor.jib}</p>
+                <p className="mt-3 text-sm font-semibold text-[var(--primary)]">
+                  {competitor.wins} pobjeda Â· {competitor.avg_winning_price ? formatCurrencyKM(competitor.avg_winning_price) : "N/A"} prosjek
+                </p>
               </Link>
             ))}
           </div>
+        ) : (
+          <EmptyState icon={<Users className="size-7" aria-hidden="true" />} title="Nema konkurenata" description="Nema dovoljno odluka za listu konkurenata." />
         )}
+      </Panel>
+    </div>
+  );
+}
+
+function Panel({
+  title,
+  subtitle,
+  children,
+}: {
+  title: string;
+  subtitle?: string;
+  children: ReactNode;
+}) {
+  return (
+    <section className="rounded-[var(--radius-card)] border border-[var(--border-default)] bg-[var(--surface-1)] p-5 shadow-[var(--shadow-card)]">
+      <div className="mb-5">
+        <h2 className="text-base font-semibold text-[var(--text-primary)]">{title}</h2>
+        {subtitle ? <p className="mt-1 text-sm text-[var(--text-secondary)]">{subtitle}</p> : null}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function Metric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-[var(--radius-input)] bg-[var(--surface-2)] p-3">
+      <p className="text-xs font-semibold uppercase tracking-wide text-[var(--text-tertiary)]">{label}</p>
+      <p className="mt-1 text-lg font-bold text-[var(--text-primary)]">{value}</p>
+    </div>
+  );
+}
+
+function ActivityItem({
+  icon,
+  title,
+  description,
+  meta,
+}: {
+  icon: ReactNode;
+  title: string;
+  description: string | null;
+  meta: string;
+}) {
+  return (
+    <div className="flex gap-3 rounded-[var(--radius-input)] bg-[var(--surface-2)] p-3">
+      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--surface-1)] text-[var(--primary)]">
+        {icon}
+      </span>
+      <div className="min-w-0">
+        <p className="text-xs font-semibold uppercase tracking-wide text-[var(--text-tertiary)]">{title}</p>
+        <p className="line-clamp-1 text-sm font-medium text-[var(--text-primary)]">{description ?? "Nije navedeno"}</p>
+        <p className="text-xs text-[var(--text-secondary)]">{meta}</p>
       </div>
     </div>
   );
+}
+
+function average(values: number[]) {
+  const clean = values.filter((value) => Number.isFinite(value) && value > 0);
+  if (clean.length === 0) return null;
+  return clean.reduce((sum, value) => sum + value, 0) / clean.length;
+}
+
+function buildCategoryRows(awards: Array<{ contract_type: string | null }>) {
+  const buckets = new Map<string, number>();
+
+  for (const award of awards) {
+    const key = award.contract_type || "Nije navedeno";
+    buckets.set(key, (buckets.get(key) ?? 0) + 1);
+  }
+
+  return Array.from(buckets.entries())
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 6);
+}
+
+function buildRequirements(patterns: Array<{ document_type: string; is_required: boolean | null }>) {
+  const buckets = new Map<string, { type: string; count: number; required: number }>();
+
+  for (const pattern of patterns) {
+    const bucket = buckets.get(pattern.document_type) ?? { type: pattern.document_type, count: 0, required: 0 };
+    bucket.count += 1;
+    if (pattern.is_required) bucket.required += 1;
+    buckets.set(pattern.document_type, bucket);
+  }
+
+  return Array.from(buckets.values())
+    .map((bucket) => ({
+      type: bucket.type,
+      count: bucket.count,
+      requiredShare: Math.round((bucket.required / bucket.count) * 100),
+    }))
+    .sort((a, b) => b.count - a.count);
+}
+
+function buildTopWinners(awards: Array<{ winner_jib: string | null; winner_name: string | null; winning_price: number | null }>) {
+  const buckets = new Map<string, { name: string; wins: number; value: number }>();
+
+  for (const award of awards) {
+    const key = award.winner_jib || award.winner_name || "unknown";
+    const bucket = buckets.get(key) ?? { name: award.winner_name || key, wins: 0, value: 0 };
+    bucket.wins += 1;
+    bucket.value += Number(award.winning_price ?? 0);
+    buckets.set(key, bucket);
+  }
+
+  return Array.from(buckets.values()).sort((a, b) => b.wins - a.wins || b.value - a.value);
 }

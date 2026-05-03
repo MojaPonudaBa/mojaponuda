@@ -14,7 +14,7 @@ import { BidWorkspaceLayout } from "@/components/bids/workspace/bid-workspace-cl
 import { DocumentsPanel } from "@/components/bids/workspace/documents-panel";
 import { NotesSection } from "@/components/bids/workspace/notes-section";
 import { TenderDocUpload } from "@/components/bids/workspace/tender-doc-upload";
-import { getSubscriptionStatus } from "@/lib/subscription";
+import { getSubscriptionStatus, isAgencyPlan } from "@/lib/subscription";
 
 function extractRiskFlags(aiAnalysis: Json | null): string[] {
   if (!aiAnalysis || typeof aiAnalysis !== "object" || Array.isArray(aiAnalysis)) return [];
@@ -45,7 +45,7 @@ export default async function AgencyClientBidWorkspacePage({
   if (!user) redirect("/login");
 
   const { plan } = await getSubscriptionStatus(user.id, user.email, supabase);
-  if (plan.id !== "agency") redirect("/dashboard");
+  if (!isAgencyPlan(plan)) redirect("/dashboard");
 
   const { data: agencyClient } = await supabase
     .from("agency_clients")

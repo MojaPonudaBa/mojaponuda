@@ -3,10 +3,12 @@ import { redirect } from "next/navigation";
 import { BidsTable, type BidRow } from "@/components/bids/bids-table";
 import { NewBidModal } from "@/components/bids/new-bid-modal";
 import { Button } from "@/components/ui/button";
+import { BID_STATUS_LABELS } from "@/lib/bids/constants";
 import { demoBidSummaries, isCompanyProfileComplete, isDemoUser } from "@/lib/demo";
 import { getSubscriptionStatus, isAgencyPlan } from "@/lib/subscription";
 import { createClient } from "@/lib/supabase/server";
 import type { Company, BidStatus } from "@/types/database";
+import { BarChart3, CheckCircle2, Clock3, FileCheck2, Trophy } from "lucide-react";
 
 interface TenderRelation {
   id: string;
@@ -67,14 +69,19 @@ function BidsPageFallback() {
 
 function AgencyBidsShell({ bids }: { bids: BidRow[] }) {
   return (
-    <div className="mx-auto max-w-[1200px] space-y-6">
-      <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+    <div className="mx-auto max-w-[1360px] space-y-6">
+      <section className="relative overflow-hidden rounded-[1.75rem] border border-slate-800 bg-[radial-gradient(circle_at_top_left,rgba(56,189,248,0.16),transparent_28%),radial-gradient(circle_at_top_right,rgba(59,130,246,0.16),transparent_30%),linear-gradient(180deg,#111827_0%,#0f172a_58%,#0b1120_100%)] p-6 text-white shadow-[0_35px_90px_-45px_rgba(2,6,23,0.92)] sm:p-8">
+        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,rgba(148,163,184,0.06)_1px,transparent_1px),linear-gradient(to_bottom,rgba(148,163,184,0.06)_1px,transparent_1px)] bg-[size:52px_52px] [mask-image:radial-gradient(circle_at_top_left,#000_18%,transparent_75%)]" />
         <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <h1 className="text-3xl font-heading font-bold text-slate-950 sm:text-4xl">
+            <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-200">
+              <BarChart3 className="size-3.5 text-sky-300" />
+              Agency bids
+            </span>
+            <h1 className="mt-4 text-3xl font-heading font-bold text-white sm:text-4xl">
               Ponude svih klijenata
             </h1>
-            <p className="mt-2 max-w-3xl text-sm leading-7 text-slate-500 sm:text-base">
+            <p className="mt-2 max-w-3xl text-sm leading-7 text-slate-300 sm:text-base">
               Sve ponude vasih klijenata na jednom mjestu, sa cistim status
               signalima i brzim akcijama bez guzve u tabeli.
             </p>
@@ -88,6 +95,7 @@ function AgencyBidsShell({ bids }: { bids: BidRow[] }) {
         </div>
       </section>
 
+      <BidsKpiStrip bids={bids} />
       <BidsTable
         bids={bids}
         showClientColumn
@@ -104,14 +112,19 @@ function PersonalBidsShell({
   tenders: Array<{ id: string; title: string; contracting_authority: string | null }>;
 }) {
   return (
-    <div className="mx-auto max-w-[1200px] space-y-6">
-      <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+    <div className="mx-auto max-w-[1360px] space-y-6">
+      <section className="relative overflow-hidden rounded-[1.75rem] border border-slate-800 bg-[radial-gradient(circle_at_top_left,rgba(56,189,248,0.16),transparent_28%),radial-gradient(circle_at_top_right,rgba(16,185,129,0.16),transparent_30%),linear-gradient(180deg,#111827_0%,#0f172a_58%,#0b1120_100%)] p-6 text-white shadow-[0_35px_90px_-45px_rgba(2,6,23,0.92)] sm:p-8">
+        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,rgba(148,163,184,0.06)_1px,transparent_1px),linear-gradient(to_bottom,rgba(148,163,184,0.06)_1px,transparent_1px)] bg-[size:52px_52px] [mask-image:radial-gradient(circle_at_top_left,#000_18%,transparent_75%)]" />
         <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <h1 className="text-3xl font-heading font-bold text-slate-950 sm:text-4xl">
+            <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-200">
+              <FileCheck2 className="size-3.5 text-emerald-300" />
+              Bid cockpit
+            </span>
+            <h1 className="mt-4 text-3xl font-heading font-bold text-white sm:text-4xl">
               Moje ponude
               </h1>
-              <p className="mt-2 max-w-3xl text-sm leading-7 text-slate-500 sm:text-base">
+              <p className="mt-2 max-w-3xl text-sm leading-7 text-slate-300 sm:text-base">
                 Sve aktivne i završene ponude na jednom mjestu, sa jasnim statusom i brzim akcijama.
               </p>
           </div>
@@ -119,8 +132,49 @@ function PersonalBidsShell({
         </div>
       </section>
 
+      <BidsKpiStrip bids={bids} />
       <BidsTable bids={bids} />
     </div>
+  );
+}
+
+function BidsKpiStrip({ bids }: { bids: BidRow[] }) {
+  const currentTime = new Date().getTime();
+  const activeCount = bids.filter((bid) => ["draft", "in_review", "submitted"].includes(bid.status)).length;
+  const wonCount = bids.filter((bid) => bid.status === "won").length;
+  const submittedCount = bids.filter((bid) => bid.status === "submitted").length;
+  const overdueCount = bids.filter((bid) => {
+    const deadline = bid.tender?.deadline;
+    return deadline ? new Date(deadline).getTime() < currentTime && !["won", "lost"].includes(bid.status) : false;
+  }).length;
+  const cards = [
+    { title: "Ukupno", value: bids.length, description: "Sve ponude", icon: BarChart3, tone: "bg-blue-50 text-blue-600" },
+    { title: "Aktivne", value: activeCount, description: "Nacrt, priprema i predano", icon: Clock3, tone: "bg-amber-50 text-amber-600" },
+    { title: "Predane", value: submittedCount, description: BID_STATUS_LABELS.submitted, icon: CheckCircle2, tone: "bg-sky-50 text-sky-600" },
+    { title: "Dobijene", value: wonCount, description: "Zaključene pobjede", icon: Trophy, tone: "bg-emerald-50 text-emerald-600" },
+    { title: "Rok istekao", value: overdueCount, description: "Potrebna provjera", icon: FileCheck2, tone: "bg-rose-50 text-rose-600" },
+  ];
+
+  return (
+    <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+      {cards.map((card) => {
+        const Icon = card.icon;
+        return (
+          <article key={card.title} className="rounded-[var(--radius-card)] border border-[var(--border-default)] bg-[var(--surface-1)] p-5 shadow-[var(--shadow-card)]">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-sm font-medium text-[var(--text-secondary)]">{card.title}</p>
+                <p className="mt-1 text-2xl font-semibold tracking-normal text-[var(--text-primary)]">{card.value}</p>
+              </div>
+              <span className={`flex size-10 shrink-0 items-center justify-center rounded-[var(--radius-input)] ${card.tone}`}>
+                <Icon className="size-5" />
+              </span>
+            </div>
+            <p className="mt-4 text-xs text-[var(--text-tertiary)]">{card.description}</p>
+          </article>
+        );
+      })}
+    </section>
   );
 }
 

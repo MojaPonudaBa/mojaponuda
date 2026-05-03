@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect, notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { getSubscriptionStatus } from "@/lib/subscription";
+import { getSubscriptionStatus, isAgencyPlan } from "@/lib/subscription";
 import type { BidStatus } from "@/types/database";
 import { BidsTable, type BidRow } from "@/components/bids/bids-table";
 import { NewBidModal } from "@/components/bids/new-bid-modal";
@@ -126,7 +126,7 @@ export default async function AgencyClientBidsPage({
     if (!user) redirect("/login");
 
     const { plan } = await getSubscriptionStatus(user.id, user.email, supabase);
-    if (plan.id !== "agency") redirect("/dashboard");
+    if (!isAgencyPlan(plan)) redirect("/dashboard");
 
     const { data: agencyClient, error: agencyClientError } = await supabase
       .from("agency_clients")

@@ -1,6 +1,8 @@
 "use client";
 
-import { ArrowDownRight, ArrowUpRight, Minus, type LucideIcon } from "lucide-react";
+import * as LucideIcons from "lucide-react";
+import { ArrowDownRight, ArrowUpRight, Minus } from "lucide-react";
+import type { ComponentType, ReactNode } from "react";
 import {
   Area,
   AreaChart,
@@ -16,11 +18,15 @@ export interface StatTrend {
   direction?: "up" | "down" | "neutral";
 }
 
+type LegacyIconComponent = ComponentType<{ className?: string; "aria-hidden"?: boolean }>;
+type IconName = keyof typeof LucideIcons;
+
 export interface StatCardProps {
   title: string;
   value: string | number;
   description?: string;
-  icon?: LucideIcon;
+  iconName?: IconName;
+  icon?: ReactNode | LegacyIconComponent;
   iconColor?: "blue" | "green" | "amber" | "purple" | "cyan" | "rose";
   trend?: StatTrend;
   chartData?: Array<{ value: number; label?: string }>;
@@ -56,7 +62,8 @@ export function StatCard({
   title,
   value,
   description,
-  icon: Icon,
+  iconName,
+  icon,
   iconColor = "blue",
   trend,
   chartData,
@@ -64,6 +71,8 @@ export function StatCard({
 }: StatCardProps) {
   const direction = trend ? getTrendDirection(trend) : "neutral";
   const TrendIcon = direction === "up" ? ArrowUpRight : direction === "down" ? ArrowDownRight : Minus;
+  const NamedIcon = iconName ? (LucideIcons[iconName] as LegacyIconComponent | undefined) : null;
+  const Icon = NamedIcon ?? (typeof icon === "function" ? icon : null);
   const normalizedChartData = chartData?.map((point, index) => ({
     name: point.label ?? `${index + 1}`,
     value: point.value,
@@ -83,9 +92,9 @@ export function StatCard({
             {value}
           </p>
         </div>
-        {Icon && (
+        {(Icon || icon) && (
           <div className={cn("flex size-10 shrink-0 items-center justify-center rounded-[var(--radius-input)]", iconColorConfig[iconColor])}>
-            <Icon className="size-5" aria-hidden="true" />
+            {Icon ? <Icon className="size-5" aria-hidden={true} /> : (icon as ReactNode)}
           </div>
         )}
       </div>
@@ -130,4 +139,3 @@ export function StatCard({
     </article>
   );
 }
-

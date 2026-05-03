@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { deleteBidAction, updateBidFieldsAction } from "@/app/actions/bids";
 import type { BidStatus } from "@/types/database";
 import { BID_STATUSES, BID_STATUS_LABELS } from "@/lib/bids/constants";
 import { Button } from "@/components/ui/button";
@@ -81,22 +82,18 @@ export function BidsTable({
   }, [rows, statusFilter]);
 
   async function updateBidStatus(bidId: string, newStatus: BidStatus) {
+    const previousRows = rows;
     setUpdatingId(bidId);
+    setRows((current) =>
+      current.map((bid) => (bid.id === bidId ? { ...bid, status: newStatus } : bid)),
+    );
     try {
-      const response = await fetch(`/api/bids/${bidId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: newStatus }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Status nije ažuriran.");
-      }
-
-      setRows((current) =>
-        current.map((bid) => (bid.id === bidId ? { ...bid, status: newStatus } : bid)),
-      );
+      const formData = new FormData();
+      formData.set("bid_id", bidId);
+      formData.set("status", newStatus);
+      await updateBidFieldsAction(formData);
     } catch (error) {
+      setRows(previousRows);
       console.error("Failed to update status:", error);
     } finally {
       setUpdatingId(null);
@@ -107,18 +104,15 @@ export function BidsTable({
     const confirmed = window.confirm("Želite li ukloniti ovu ponudu sa liste?");
     if (!confirmed) return;
 
+    const previousRows = rows;
     setDeletingId(bidId);
+    setRows((current) => current.filter((bid) => bid.id !== bidId));
     try {
-      const response = await fetch(`/api/bids/${bidId}`, {
-        method: "DELETE",
-      });
-
-      if (!response.ok) {
-        throw new Error("Ponuda nije uklonjena.");
-      }
-
-      setRows((current) => current.filter((bid) => bid.id !== bidId));
+      const formData = new FormData();
+      formData.set("bid_id", bidId);
+      await deleteBidAction(formData);
     } catch (error) {
+      setRows(previousRows);
       console.error("Failed to delete bid:", error);
     } finally {
       setDeletingId(null);

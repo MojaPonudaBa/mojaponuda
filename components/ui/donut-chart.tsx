@@ -24,7 +24,7 @@ export interface DonutChartProps {
   height?: number;
   showLegend?: boolean;
   className?: string;
-  formatValue?: (value: number) => string;
+  valueSuffix?: string;
 }
 
 const defaultColors = [
@@ -46,7 +46,7 @@ export function DonutChart({
   height = 260,
   showLegend = true,
   className,
-  formatValue = (value) => `${value}`,
+  valueSuffix,
 }: DonutChartProps) {
   const chartData = data.map((item, index) => ({
     ...item,
@@ -88,7 +88,10 @@ export function DonutChart({
           </Pie>
           <RechartsTooltip
             cursor={false}
-            formatter={(value) => [formatValue(Number(value)), "Vrijednost"]}
+            formatter={(value) => [
+              `${Number(value).toLocaleString("bs-BA")}${valueSuffix ? ` ${valueSuffix}` : ""}`,
+              "Vrijednost",
+            ]}
             contentStyle={{
               border: "1px solid var(--border-default)",
               borderRadius: "var(--radius-input)",
@@ -119,4 +122,3 @@ export function DonutChart({
     </div>
   );
 }
-

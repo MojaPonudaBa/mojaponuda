@@ -5,6 +5,7 @@ import { ProfileSettings } from "@/components/settings/profile-settings";
 import { TeamSettings } from "@/components/settings/team-settings";
 import { NotificationSettings } from "@/components/settings/notification-settings";
 import { EjnCredentialsForm } from "@/components/settings/ejn-credentials-form";
+import { RecommendationWeightsSettings } from "@/components/settings/recommendation-weights-settings";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getSubscriptionStatus, isAgencyPlan } from "@/lib/subscription";
 import { createClient } from "@/lib/supabase/server";
@@ -22,6 +23,18 @@ export default async function SettingsPage() {
   const status = await getSubscriptionStatus(user.id, user.email, supabase);
   const isAgency = isAgencyPlan(status.plan);
   const ejnConnected = await hasEjnCredentials(user.id);
+  const [{ data: userSettings }, { data: previewTenders }] = await Promise.all([
+    supabase
+      .from("user_settings")
+      .select("recommendation_weights")
+      .eq("user_id", user.id)
+      .maybeSingle(),
+    supabase
+      .from("tenders")
+      .select("id, title, contracting_authority, estimated_value, deadline, procedure_type")
+      .order("created_at", { ascending: false })
+      .limit(8),
+  ]);
 
   if (isAgency) {
     return (
@@ -61,7 +74,13 @@ export default async function SettingsPage() {
           </TabsContent>
 
           <TabsContent value="notifications" className="focus-visible:ring-0">
-            <NotificationSettings />
+            <div className="space-y-5">
+              <NotificationSettings />
+              <RecommendationWeightsSettings
+                initialWeights={userSettings?.recommendation_weights as Record<string, number> | null | undefined}
+                previewTenders={previewTenders ?? []}
+              />
+            </div>
           </TabsContent>
 
           <TabsContent value="ejn" className="focus-visible:ring-0">
@@ -144,7 +163,13 @@ export default async function SettingsPage() {
         </TabsContent>
 
         <TabsContent value="notifications" className="focus-visible:ring-0">
-          <NotificationSettings />
+          <div className="space-y-5">
+            <NotificationSettings />
+            <RecommendationWeightsSettings
+              initialWeights={userSettings?.recommendation_weights as Record<string, number> | null | undefined}
+              previewTenders={previewTenders ?? []}
+            />
+          </div>
         </TabsContent>
 
         <TabsContent value="ejn" className="focus-visible:ring-0">

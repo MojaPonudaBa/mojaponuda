@@ -15,7 +15,7 @@ import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { StartBidButton } from "@/components/tenders/start-bid-button";
 import { getOpenAIClient } from "@/lib/openai";
-import { getSubscriptionStatus } from "@/lib/subscription";
+import { getSubscriptionStatus, isAgencyPlan } from "@/lib/subscription";
 import { createClient } from "@/lib/supabase/server";
 import type { Tender } from "@/types/database";
 
@@ -82,7 +82,7 @@ export default async function AgencyClientTenderDetailPage({
   if (!user) redirect("/login");
 
   const { plan } = await getSubscriptionStatus(user.id, user.email, supabase);
-  if (plan.id !== "agency") redirect("/dashboard");
+  if (!isAgencyPlan(plan)) redirect("/dashboard");
 
   const [{ data: agencyClient }, { data: tenderData }] = await Promise.all([
     supabase

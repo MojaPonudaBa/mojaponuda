@@ -9,7 +9,7 @@ import {
   sortRecommendedTenderItems,
 } from "@/lib/tender-sorting";
 import { ensureCompanyProfileEnrichment } from "@/lib/ai-profile-enrichment";
-import { getSubscriptionStatus } from "@/lib/subscription";
+import { getSubscriptionStatus, isAgencyPlan } from "@/lib/subscription";
 import { getRecommendedTenders, classifyTier } from "@/lib/tender-relevance";
 import {
   buildRecommendationContext,
@@ -30,7 +30,9 @@ import { tenderMatchesClientFilters } from "@/lib/tender-client-filters";
 import { TenderFilters } from "@/components/tenders/tender-filters";
 import { TenderCard } from "@/components/tenders/tender-card";
 import { Pagination } from "@/components/tenders/pagination";
-import { MapPinned, Search, Sparkles, Lock } from "lucide-react";
+import { AIInsightBox } from "@/components/ui/ai-insight-box";
+import { CircularProgressScore } from "@/components/ui/circular-progress-score";
+import { MapPinned, Search, Sparkles, Lock, Download, Save, Plus, List, Table2, Grid3X3, Building2, Clock3, Banknote, Bookmark } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -60,6 +62,30 @@ function getMultiParam(value: SearchParamValue): string[] {
   }
 
   return typeof value === "string" && value.trim().length > 0 ? [value] : [];
+}
+
+function formatTenderValue(value: number | null): string {
+  if (value === null || value === undefined) return "Nije objavljeno";
+  return `${new Intl.NumberFormat("bs-BA", { maximumFractionDigits: 0 }).format(value)} KM`;
+}
+
+function formatTenderDate(value: string | null): string {
+  if (!value) return "Rok nije objavljen";
+  return new Intl.DateTimeFormat("bs-BA", { day: "2-digit", month: "2-digit", year: "numeric" }).format(new Date(value));
+}
+
+function getTenderScore(insight: TenderDecisionInsight | null | undefined, activeTab: string): number {
+  if (!insight) return activeTab === "recommended" ? 68 : 50;
+  return Math.max(0, Math.min(100, insight.priorityScore || insight.matchScore || 0));
+}
+
+function getViewParam(value: string | undefined): "list" | "table" | "grid" {
+  if (value === "table" || value === "grid") return value;
+  return "list";
+}
+
+function buildTenderQuery(params: { [key: string]: SearchParamValue }, patch: Record<string, string>) {
+  return { query: { ...params, ...patch, page: "1" } };
 }
 
 async function fetchAuthorityJibsForLocationTerms(
@@ -122,6 +148,7 @@ async function TendersContent({
   const offset = (page - 1) * PAGE_SIZE;
   const activeTab = tabParam === "all" ? "all" : "recommended";
   const sortParam = resolveTenderSort(getSingleParam(params.sort), activeTab);
+  const viewMode = getViewParam(getSingleParam(params.view));
   const defaultSortForTab = activeTab === "recommended" ? "nearest" : "deadline_asc";
 
   // Agency: multi-client recommendation data
@@ -632,18 +659,54 @@ async function TendersContent({
         )
       : new Map();
 
-  return (
-    <>
-      <div className="mb-4 flex items-center justify-between">
-        <p className="text-sm font-medium text-slate-500">
-          {activeTab === "recommended" ? "Preporučeno" : "Pronađeno"} {totalCount}{" "}
-          {totalCount === 1 ? "tender" : "tendera"}
-          {hasFilters && " (filtrirano)"}
-        </p>
-      </div>
+  const viewControls = [
+    { value: "list", label: "Lista", icon: List },
+    { value: "table", label: "Tabela", icon: Table2 },
+    { value: "grid", label: "Grid", icon: Grid3X3 },
+  ] as const;
 
-      {tenders.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-sm border border-dashed border-slate-300 bg-slate-50 py-20">
+  return (
+    <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
+      <section className="min-w-0 space-y-5">
+        <div className="flex flex-col gap-4 rounded-[var(--radius-card)] border border-[var(--border-default)] bg-[var(--surface-1)] p-4 shadow-[var(--shadow-card)] lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <p className="text-sm font-medium text-[var(--text-secondary)]">
+              {activeTab === "recommended" ? "Preporučeno" : "Pronađeno"} {totalCount}{" "}
+              {totalCount === 1 ? "tender" : "tendera"}
+              {hasFilters && " (filtrirano)"}
+            </p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <span className="rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
+                {activeTab === "recommended" ? "AI rangirano" : "Svi tenderi"}
+              </span>
+              <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-600">
+                Sort: {sortParam}
+              </span>
+              {locationFilterValues.length > 0 ? (
+                <span className="rounded-full border border-emerald-100 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
+                  Lokacije: {locationFilterValues.length}
+                </span>
+              ) : null}
+            </div>
+          </div>
+          <div className="flex rounded-xl border border-slate-200 bg-slate-50 p-1">
+            {viewControls.map((control) => {
+              const Icon = control.icon;
+              const active = viewMode === control.value;
+              return (
+                <Button key={control.value} variant={active ? "default" : "ghost"} size="sm" asChild className="rounded-lg">
+                  <Link href={buildTenderQuery(params, { view: control.value })} prefetch>
+                    <Icon className="size-4" />
+                    {control.label}
+                  </Link>
+                </Button>
+              );
+            })}
+          </div>
+        </div>
+
+        {tenders.length === 0 ? (
+        <div className="flex flex-col items-center justify-center rounded-[var(--radius-card)] border border-dashed border-slate-300 bg-slate-50 py-20">
           <div className="flex size-14 items-center justify-center rounded-sm bg-slate-200/50 text-slate-500 mb-4 border border-slate-300">
             <Search className="size-6" />
           </div>
@@ -667,8 +730,8 @@ async function TendersContent({
             </Button>
           )}
         </div>
-      ) : (
-        <div className="space-y-3">
+        ) : (
+        <div className={viewMode === "grid" ? "grid gap-4 lg:grid-cols-2" : "space-y-3"}>
           {isLocked && tenders.length > 0 && (
              <div className="relative mb-6 overflow-hidden rounded-xl border border-blue-100 bg-blue-50 p-6 shadow-sm">
                 <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-6">
@@ -692,26 +755,144 @@ async function TendersContent({
              </div>
           )}
 
-          {tenders.map((tender) => (
-            <TenderCard
-              key={tender.id}
-              tender={tender}
-              locked={isLocked}
-              clientNames={agencyTenderClientMap.get(tender.id)?.clientNames}
-              insight={decisionInsights.get(tender.id)}
-            />
-          ))}
-        </div>
-      )}
+          {tenders.map((tender) => {
+            const insight = decisionInsights.get(tender.id);
+            const score = getTenderScore(insight, activeTab);
+            const clientNames = agencyTenderClientMap.get(tender.id)?.clientNames;
+            const href = isLocked ? "/dashboard/subscription" : `/dashboard/tenders/${tender.id}`;
 
-      <div className="mt-8">
-        <Pagination
-          currentPage={page}
-          totalPages={totalPages}
-          basePath="/dashboard/tenders"
-        />
-      </div>
-    </>
+            if (viewMode === "grid") {
+              return (
+                <TenderCard
+                  key={tender.id}
+                  tender={tender}
+                  locked={isLocked}
+                  clientNames={clientNames}
+                  insight={insight}
+                />
+              );
+            }
+
+            return (
+              <article key={tender.id} className="rounded-[var(--radius-card)] border border-[var(--border-default)] bg-[var(--surface-1)] p-4 shadow-[var(--shadow-card)] transition-all hover:border-blue-200 hover:shadow-[var(--shadow-card-hover)]">
+                <div className={viewMode === "table" ? "grid gap-4 xl:grid-cols-[minmax(0,2fr)_1fr_1fr_0.8fr_1.3fr]" : "grid gap-4 xl:grid-cols-[minmax(0,1.8fr)_104px_1.3fr]"}>
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="rounded-full border border-blue-100 bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">
+                        {tender.contract_type ?? "Tender"}
+                      </span>
+                      {tender.procedure_type ? (
+                        <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-semibold text-slate-600">
+                          {tender.procedure_type}
+                        </span>
+                      ) : null}
+                      {clientNames?.slice(0, 2).map((name) => (
+                        <span key={name} className="rounded-full border border-purple-100 bg-purple-50 px-2.5 py-1 text-xs font-semibold text-purple-700">
+                          {name}
+                        </span>
+                      ))}
+                    </div>
+                    <h2 className="mt-3 line-clamp-2 text-base font-semibold leading-7 text-[var(--text-primary)]">
+                      {isLocked ? `Tender #${tender.id.slice(0, 4)} - ${tender.contract_type ?? "Javna nabavka"}` : tender.title}
+                    </h2>
+                    <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-sm text-[var(--text-secondary)]">
+                      <span className="inline-flex max-w-full items-center gap-1.5">
+                        <Building2 className="size-4 shrink-0 text-[var(--text-tertiary)]" />
+                        <span className={isLocked ? "select-none blur-sm" : "truncate"}>{isLocked ? "Javni naručilac" : tender.contracting_authority ?? "Nepoznat naručilac"}</span>
+                      </span>
+                      <span className="inline-flex items-center gap-1.5">
+                        <Clock3 className="size-4 shrink-0 text-[var(--text-tertiary)]" />
+                        {formatTenderDate(tender.deadline)}
+                      </span>
+                      <span className="inline-flex items-center gap-1.5 font-semibold text-[var(--text-primary)]">
+                        <Banknote className="size-4 shrink-0 text-[var(--text-tertiary)]" />
+                        {isLocked ? "XXX.XXX KM" : formatTenderValue(tender.estimated_value)}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-start xl:justify-center">
+                    <CircularProgressScore score={score} size="sm" label={activeTab === "recommended" ? "Fit" : "Skor"} />
+                  </div>
+
+                  {viewMode === "table" ? (
+                    <>
+                      <div className="text-sm">
+                        <p className="font-semibold text-[var(--text-primary)]">{formatTenderValue(tender.estimated_value)}</p>
+                        <p className="text-xs text-[var(--text-tertiary)]">Procjena</p>
+                      </div>
+                      <div className="text-sm">
+                        <p className="font-semibold text-[var(--text-primary)]">{formatTenderDate(tender.deadline)}</p>
+                        <p className="text-xs text-[var(--text-tertiary)]">Rok</p>
+                      </div>
+                    </>
+                  ) : null}
+
+                  <AIInsightBox title={activeTab === "recommended" ? "Zašto preporučujemo?" : "AI uvid"} variant={insight?.riskLevel === "high" ? "warning" : "suggestion"} feedbackId={`tender-${tender.id}`}>
+                    <div className="space-y-1">
+                      {(insight?.keyReasons.length ? insight.keyReasons : insight?.explanation ? [insight.explanation] : ["Procjena je zasnovana na profilu firme, vrijednosti, roku i dostupnim historijskim signalima."]).slice(0, 3).map((reason) => (
+                        <p key={reason}>{reason}</p>
+                      ))}
+                    </div>
+                  </AIInsightBox>
+                </div>
+                <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-[var(--border-default)] pt-4">
+                  <div className="flex flex-wrap gap-2 text-xs text-[var(--text-tertiary)]">
+                    {tender.cpv_code ? <span>CPV {tender.cpv_code}</span> : null}
+                    {insight?.recommendationLabel ? <span>Preporuka: {insight.recommendationLabel}</span> : null}
+                    {insight?.winProbability ? <span>Šansa: {insight.winProbability}%</span> : null}
+                  </div>
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" asChild>
+                      <Link href={href} prefetch>Pregledaj</Link>
+                    </Button>
+                    <Button variant="ghost" size="icon-sm" aria-label="Sačuvaj tender">
+                      <Bookmark className="size-4" />
+                    </Button>
+                  </div>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+        )}
+
+        <div className="mt-8">
+          <Pagination
+            currentPage={page}
+            totalPages={totalPages}
+            basePath="/dashboard/tenders"
+          />
+        </div>
+      </section>
+
+      <aside className="space-y-4 xl:sticky xl:top-6 xl:self-start">
+        {!isLocked ? (
+          <Suspense fallback={null}>
+            <TenderFilters key={`filters-${activeTab}-${JSON.stringify(params)}`} />
+          </Suspense>
+        ) : null}
+        <section className="rounded-[var(--radius-card)] border border-[var(--border-default)] bg-[var(--surface-1)] p-5 shadow-[var(--shadow-card)]">
+          <h2 className="font-heading text-base font-bold text-[var(--text-primary)]">Brze akcije</h2>
+          <div className="mt-4 grid gap-2">
+            <Button variant="outline" className="justify-start" asChild>
+              <Link href={buildTenderQuery(params, { tab: "recommended" })}>
+                <Sparkles className="size-4" />
+                Preporučeni tenderi
+              </Link>
+            </Button>
+            {!isLocked ? (
+              <Button variant="outline" className="justify-start" asChild>
+                <Link href={buildTenderQuery(params, { tab: "all" })}>
+                  <Search className="size-4" />
+                  Svi tenderi
+                </Link>
+              </Button>
+            ) : null}
+          </div>
+        </section>
+      </aside>
+    </div>
   );
 }
 
@@ -724,7 +905,7 @@ export default async function TendersPage(props: TendersPageProps) {
 
   const subscriptionStatus = user ? await getSubscriptionStatus(user.id, user.email, supabase) : null;
   const isLocked = subscriptionStatus?.plan?.id === "basic";
-  const isAgencyOuter = subscriptionStatus?.plan?.id === "agency";
+  const isAgencyOuter = subscriptionStatus ? isAgencyPlan(subscriptionStatus.plan) : false;
 
   const activeTabOrigin = getSingleParam(params.tab) === "all" ? "all" : "recommended";
   const activeTab = isLocked ? "recommended" : activeTabOrigin;
@@ -732,26 +913,49 @@ export default async function TendersPage(props: TendersPageProps) {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+      <section className="relative overflow-hidden rounded-[1.75rem] border border-slate-800 bg-[radial-gradient(circle_at_top_left,rgba(56,189,248,0.16),transparent_28%),radial-gradient(circle_at_top_right,rgba(124,58,237,0.16),transparent_30%),linear-gradient(180deg,#111827_0%,#0f172a_58%,#0b1120_100%)] p-6 text-white shadow-[0_35px_90px_-45px_rgba(2,6,23,0.92)] sm:p-8">
+        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,rgba(148,163,184,0.06)_1px,transparent_1px),linear-gradient(to_bottom,rgba(148,163,184,0.06)_1px,transparent_1px)] bg-[size:52px_52px] [mask-image:radial-gradient(circle_at_top_left,#000_18%,transparent_75%)]" />
+      <div className="relative flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-3xl font-heading font-bold text-slate-900">
+          <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-200">
+            <Sparkles className="size-3.5 text-sky-300" />
+            Tender radar
+          </span>
+          <h1 className="mt-4 text-3xl font-heading font-bold text-white sm:text-4xl">
             Tenderi i preporuke
           </h1>
-          <p className="mt-1.5 text-base text-slate-500">
+          <p className="mt-2 max-w-3xl text-sm leading-7 text-slate-300 sm:text-base">
             {isAgencyOuter
               ? "Preporučeni tenderi za sve klijente koje vodite, sa oznakom za koga je svaki tender."
               : "Pregledajte sve aktivne tendere ili otvorite one koji se najbolje uklapaju u vaš profil i lokaciju firme."}
           </p>
         </div>
-        {showGeoReport ? (
-          <Button variant="outline" asChild>
-            <Link href="/dashboard/tenders/geo-report">
-              <MapPinned className="size-4" />
-              Geo izvještaj
+        <div className="flex flex-wrap gap-2">
+          <Button variant="secondary" asChild className="rounded-xl bg-white/10 text-white hover:bg-white/15">
+            <Link href="/dashboard/tenders?tab=all">
+              <Plus className="size-4" />
+              Nova pretraga
             </Link>
           </Button>
-        ) : null}
+          <Button variant="secondary" className="rounded-xl bg-white/10 text-white hover:bg-white/15">
+            <Save className="size-4" />
+            Sačuvaj pretragu
+          </Button>
+          <Button variant="secondary" className="rounded-xl bg-white/10 text-white hover:bg-white/15">
+            <Download className="size-4" />
+            Izvoz
+          </Button>
+          {showGeoReport ? (
+            <Button variant="secondary" asChild className="rounded-xl bg-white/10 text-white hover:bg-white/15">
+              <Link href="/dashboard/tenders/geo-report">
+                <MapPinned className="size-4" />
+                Geo izvještaj
+              </Link>
+            </Button>
+          ) : null}
+        </div>
       </div>
+      </section>
 
       <Tabs defaultValue={activeTab} className="w-full">
         <TabsList className={`grid w-full lg:w-[400px] ${isLocked ? "grid-cols-1" : "grid-cols-2"}`}>
@@ -775,12 +979,6 @@ export default async function TendersPage(props: TendersPageProps) {
         </TabsList>
 
         <div className="mt-6">
-          {!isLocked && (
-            <Suspense fallback={null}>
-              <TenderFilters key={`filters-${activeTab}-${JSON.stringify(params)}`} />
-            </Suspense>
-          )}
-
           <Suspense
             key={activeTab + JSON.stringify(params)}
             fallback={

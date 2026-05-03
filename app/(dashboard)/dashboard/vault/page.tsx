@@ -1,11 +1,16 @@
 import { redirect } from "next/navigation";
-import { AddDocumentModal } from "@/components/vault/add-document-modal";
-import { AgencyDocumentFolders } from "@/components/vault/agency-document-folders";
-import { DocumentGrid } from "@/components/vault/document-grid";
+import { VaultHubClient } from "@/components/dashboard/vault-hub-client";
 import { getDemoDocuments, isCompanyProfileComplete, isDemoUser } from "@/lib/demo";
 import { getSubscriptionStatus, isAgencyPlan } from "@/lib/subscription";
 import { createClient } from "@/lib/supabase/server";
-import type { Company, Document } from "@/types/database";
+import {
+  buildVaultCategoryGroups,
+  buildVaultRisks,
+  buildVaultTenderGroups,
+  type VaultBidDocumentUsage,
+  type VaultClientFolder,
+} from "@/lib/dashboard-c3";
+import type { Company, Document } from "@/types/db-aliases";
 
 export default async function VaultPage() {
   const supabase = await createClient();
@@ -37,40 +42,55 @@ export default async function VaultPage() {
 
     const companyIds = clientCompanies.map((company) => company.companyId);
     let allDocs: Array<Document & { company_id: string }> = [];
+    let usage: VaultBidDocumentUsage[] = [];
 
     if (companyIds.length > 0) {
-      const { data: docsData } = await supabase
-        .from("documents")
-        .select("*")
-        .in("company_id", companyIds)
-        .order("created_at", { ascending: false });
+      const [{ data: docsData }, { data: usageData }] = await Promise.all([
+        supabase
+          .from("documents")
+          .select("*")
+          .in("company_id", companyIds)
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("bid_documents")
+          .select("document_id, bid_id, checklist_item_name, bids!inner(company_id, tenders(title))")
+          .in("bids.company_id", companyIds),
+      ]);
 
       allDocs = (docsData ?? []) as Array<Document & { company_id: string }>;
+      usage = ((usageData ?? []) as Array<{
+        document_id: string;
+        bid_id: string;
+        checklist_item_name: string | null;
+        bids: { tenders: { title: string | null } | null } | null;
+      }>).map((item) => ({
+        document_id: item.document_id,
+        bid_id: item.bid_id,
+        checklist_item_name: item.checklist_item_name,
+        tender_title: item.bids?.tenders?.title ?? null,
+      }));
     }
 
-    const folders = clientCompanies.map((client) => ({
-      clientName: client.companyName,
+    const folders: VaultClientFolder[] = clientCompanies.map((client) => ({
+      companyName: client.companyName,
       agencyClientId: client.agencyClientId,
+      companyId: client.companyId,
       documents: allDocs.filter((document) => document.company_id === client.companyId),
     }));
 
     return (
-      <div className="mx-auto max-w-[1200px] space-y-6">
-        <section className="relative overflow-hidden rounded-[2rem] border border-slate-800 bg-[radial-gradient(circle_at_top_left,rgba(56,189,248,0.14),transparent_28%),radial-gradient(circle_at_top_right,rgba(59,130,246,0.14),transparent_30%),linear-gradient(180deg,#111827_0%,#0f172a_58%,#0b1120_100%)] p-6 text-white shadow-[0_35px_90px_-45px_rgba(2,6,23,0.92)] sm:p-8">
-          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,rgba(148,163,184,0.06)_1px,transparent_1px),linear-gradient(to_bottom,rgba(148,163,184,0.06)_1px,transparent_1px)] bg-[size:52px_52px] [mask-image:radial-gradient(circle_at_top_left,#000_15%,transparent_75%)]" />
-          <div className="relative flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <h1 className="text-3xl font-heading font-bold tracking-tight text-white sm:text-4xl">Dokumenti klijenata</h1>
-              <p className="mt-2 max-w-3xl text-sm leading-7 text-slate-300 sm:text-base">
-                Dokumenti svih klijenata složeni su pregledno, po firmama i bez nepotrebne gužve.
-              </p>
-            </div>
-            <AddDocumentModal />
-          </div>
-        </section>
-
-        <AgencyDocumentFolders folders={folders} />
-      </div>
+      <VaultHubClient
+        data={{
+          documents: allDocs,
+          usage,
+          folders,
+          tenderGroups: buildVaultTenderGroups(usage),
+          categoryGroups: buildVaultCategoryGroups(allDocs),
+          risks: buildVaultRisks(allDocs, usage, "/dashboard/vault"),
+          isAgency: true,
+          companyName: "Agencijski klijenti",
+        }}
+      />
     );
   }
 
@@ -96,22 +116,35 @@ export default async function VaultPage() {
       ? getDemoDocuments(resolvedCompany.id)
       : [];
 
-  return (
-    <div className="mx-auto max-w-[1200px] space-y-6">
-      <section className="relative overflow-hidden rounded-[2rem] border border-slate-800 bg-[radial-gradient(circle_at_top_left,rgba(56,189,248,0.14),transparent_28%),radial-gradient(circle_at_top_right,rgba(59,130,246,0.14),transparent_30%),linear-gradient(180deg,#111827_0%,#0f172a_58%,#0b1120_100%)] p-6 text-white shadow-[0_35px_90px_-45px_rgba(2,6,23,0.92)] sm:p-8">
-        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,rgba(148,163,184,0.06)_1px,transparent_1px),linear-gradient(to_bottom,rgba(148,163,184,0.06)_1px,transparent_1px)] bg-[size:52px_52px] [mask-image:radial-gradient(circle_at_top_left,#000_15%,transparent_75%)]" />
-        <div className="relative flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <h1 className="text-3xl font-heading font-bold tracking-tight text-white sm:text-4xl">Dokumenti</h1>
-            <p className="mt-2 max-w-3xl text-sm leading-7 text-slate-300 sm:text-base">
-              Sigurni trezor za dokumente firme, sa preglednim statusima isteka i akcijama koje ostaju čiste i čitljive.
-            </p>
-          </div>
-          <AddDocumentModal />
-        </div>
-      </section>
+  const { data: usageData } = await supabase
+    .from("bid_documents")
+    .select("document_id, bid_id, checklist_item_name, bids!inner(company_id, tenders(title))")
+    .eq("bids.company_id", resolvedCompany.id);
 
-      <DocumentGrid documents={documents} />
-    </div>
+  const usage: VaultBidDocumentUsage[] = ((usageData ?? []) as Array<{
+    document_id: string;
+    bid_id: string;
+    checklist_item_name: string | null;
+    bids: { tenders: { title: string | null } | null } | null;
+  }>).map((item) => ({
+    document_id: item.document_id,
+    bid_id: item.bid_id,
+    checklist_item_name: item.checklist_item_name,
+    tender_title: item.bids?.tenders?.title ?? null,
+  }));
+
+  return (
+    <VaultHubClient
+      data={{
+        documents,
+        usage,
+        folders: [],
+        tenderGroups: buildVaultTenderGroups(usage),
+        categoryGroups: buildVaultCategoryGroups(documents),
+        risks: buildVaultRisks(documents, usage, "/dashboard/vault"),
+        isAgency: false,
+        companyName: "Moja firma",
+      }}
+    />
   );
 }
